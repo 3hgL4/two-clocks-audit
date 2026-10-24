@@ -1,0 +1,7 @@
+# Arm mu=8: eight optimizer steps per rollout, b = 512.
+# Matches the paper's Table 1 operating point (mu = 8) for the S tier.
+extends: base.yaml
+run:
+  tag: mu8
+train:
+  mu: 8

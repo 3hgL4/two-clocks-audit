@@ -1,0 +1,7 @@
+# Arm mu=16: sixteen optimizer steps per rollout, b = 256.
+# The extreme end of the staleness axis that Assumption A2 excludes.
+extends: base.yaml
+run:
+  tag: mu16
+train:
+  mu: 16

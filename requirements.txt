@@ -1,0 +1,19 @@
+# local (CPU dry-run + analysis)
+torch>=2.4
+transformers>=4.45
+peft>=0.13
+numpy>=1.26
+pandas>=2.0
+pyyaml>=6.0
+
+# cloud only (Linux, CUDA): the production rollout backend
+# vllm>=0.6.5
+
+# landing channel (HF returns 429 from this network; ModelScope is the fallback)
+# modelscope>=1.19
+
+# optional: figures (analysis falls back to CSV + ASCII without it)
+# matplotlib>=3.8
+
+# optional: test runner (tests/run_all.py needs nothing)
+# pytest>=8.0

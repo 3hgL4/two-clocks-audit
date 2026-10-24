@@ -1,0 +1,8 @@
+# Arm mu=1: one optimizer step per rollout.
+# b = Br/mu = 4096 responses per step -- the on-policy baseline (Assumption A2
+# of arXiv:2610.18853 holds exactly here, so this arm calibrates the measurement).
+extends: base.yaml
+run:
+  tag: mu1
+train:
+  mu: 1

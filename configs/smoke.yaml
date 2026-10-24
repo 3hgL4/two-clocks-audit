@@ -1,0 +1,27 @@
+# Smoke test: the cheapest run that still touches the real weights and vLLM.
+#
+# Purpose: the first paid session is 2 hours / ¥3, and the first 40 minutes are
+# about finding out (a) whether vLLM + LoRA sync works, (b) how many seconds a
+# response actually costs, (c) what the real pass rate is. Those three answers
+# rescale the whole budget, and it is much cheaper to get them from 64 responses
+# than from a full 32k-response run.
+#
+#   python src/train.py --config configs/smoke.yaml --tag smoke
+#   python tools/check_schema.py runs/smoke --strict
+#
+# Expected cost at ¥1.50/h: well under ¥0.30.
+extends: base.yaml
+run:
+  tag: smoke
+  seed: 0
+train:
+  num_rollouts: 1
+  num_generations: 8
+  responses_per_rollout: 64
+  mu: 2
+  micro_batch_responses: 8
+  max_completion_length: 128
+rollout:
+  backend: vllm
+logging:
+  log_rollout_samples: 8

@@ -1,0 +1,29 @@
+{
+  "files": {
+    "data/prompts_mixed2000.jsonl": {
+      "sha256": "670b2854696f880dd6da9d3779419138b49f2960d3b70062cc7eb0379b437398",
+      "bytes": 918330
+    }
+  },
+  "generator": "src/gen_counting.py:build_dataset",
+  "kind": "mixed",
+  "size": 2000,
+  "seed": 20261024,
+  "deduped_from": 2120,
+  "pool_summary": {
+    "n_items": 2000,
+    "depth_hist": {
+      "1": 318,
+      "2": 345,
+      "3": 346,
+      "4": 460,
+      "5": 259,
+      "6": 179,
+      "7": 93
+    },
+    "answer_mean": 8387.803,
+    "answer_min": -3129138,
+    "answer_max": 5055800,
+    "n_distinct_prompts": 2000
+  }
+}

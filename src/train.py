@@ -1,0 +1,457 @@
+"""Main training loop: rollout -> mu optimizer steps -> recorded measurements.
+
+Why a hand-written loop instead of TRL's GRPOTrainer (which does support mu via
+`num_iterations`): the audit needs per-mu-step *observations* the trainer does
+not expose -- the KL between the current policy and the rollout policy at each
+mu, the clipped share of the gradient norm, and the micro-batch gradient spread
+sigma that the drift clock is defined on. Those are the measurement, so they
+cannot live behind a callback that only sees aggregated scalars.
+
+The loop is deliberately boring:
+
+    for rollout:
+        generate Br responses            (backend)
+        rewards, group advantages
+        old_logp  = policy at rollout time        (no grad, once)
+        for mu_step in range(mu):
+            b = Br / mu responses
+            for micro_batch in b:
+                loss.backward()  -> snapshot ||g_i||
+            g_bar = mean(g_i); sigma from ||g_i|| spread
+            clip, step, record
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import platform
+import random
+import sys
+import time
+from pathlib import Path
+
+import numpy as np
+import torch
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import accounting  # noqa: E402
+import config as config_mod  # noqa: E402
+import data as data_mod  # noqa: E402
+import grpo  # noqa: E402
+import metrics as metrics_mod  # noqa: E402
+import rollout as rollout_mod  # noqa: E402
+import verify  # noqa: E402
+from model import Policy  # noqa: E402
+
+
+# ---------------------------------------------------------------------------
+# helpers
+# ---------------------------------------------------------------------------
+
+
+def seed_everything(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed % (2**32 - 1))
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+
+def plan_partition(n: int, mu: int, micro: int, rng: np.random.Generator) -> list[list[np.ndarray]]:
+    """Split n responses into mu steps of n/mu, each into micro-batches.
+
+    The permutation is fixed per rollout and shared by every mu arm, so all arms
+    consume exactly the same set of responses per rollout; mu only changes where
+    the optimizer-step boundaries fall. That is what makes the arms comparable.
+    """
+    perm = rng.permutation(n)
+    steps = np.array_split(perm, mu)
+    return [list(np.array_split(s, micro)) for s in steps]
+
+
+def _trainable(policy: Policy):
+    return [p for p in policy.model.parameters() if p.requires_grad]
+
+
+def _grad_buffer(policy: Policy):
+    return [torch.zeros_like(p, dtype=torch.float32) for p in _trainable(policy)]
+
+
+def _accumulate(buf, policy: Policy, scale: float) -> None:
+    for b, p in zip(buf, _trainable(policy)):
+        if p.grad is None:
+            raise RuntimeError("micro-batch produced no gradient (all-zero advantage?)")
+        b.add_(p.grad.detach().float(), alpha=scale)
+
+
+def _write_back(buf, policy: Policy) -> None:
+    for b, p in zip(buf, _trainable(policy)):
+        p.grad = b.to(dtype=p.dtype).clone()
+
+
+def _grad_norm(params_or_tensors) -> float:
+    """L2 norm of parameter gradients (or of raw tensors).
+
+    Accepts Parameters and reads `.grad`, because passing the parameters
+    themselves computes ||theta|| instead of ||grad|| -- a mistake that is
+    invisible on a real run (it produces a plausible-looking number) and only
+    shows up as a sigma of zero. Accumulated in float64: the variance formula
+    behind sigma is a difference of two large numbers, and a float32 sum can
+    flip its sign.
+    """
+    total = 0.0
+    for t in params_or_tensors:
+        g = t.grad if isinstance(t, torch.nn.Parameter) else t
+        if g is None:
+            continue
+        total += float(g.detach().float().pow(2).sum(dtype=torch.float64))
+    return total ** 0.5
+
+
+def _lr_at(step: int, total: int, base_lr: float, warmup_ratio: float) -> float:
+    warm = max(1, int(total * warmup_ratio))
+    if step < warm:
+        return base_lr * (step + 1) / warm
+    prog = (step - warm) / max(1, total - warm)
+    return base_lr * 0.5 * (1.0 + np.cos(np.pi * min(1.0, prog)))
+
+
+def _run_meta(cfg) -> dict:
+    import transformers
+
+    meta = {
+        "created": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+        "host": platform.node(),
+        "platform": platform.platform(),
+        "python": sys.version.split()[0],
+        "torch": torch.__version__,
+        "transformers": transformers.__version__,
+        "cuda": torch.version.cuda,
+        "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu",
+        "argv": sys.argv,
+        "cwd": os.getcwd(),
+    }
+    if torch.cuda.is_available():
+        meta["gpu_total_gb"] = round(torch.cuda.get_device_properties(0).total_memory / 1e9, 2)
+    return meta
+
+
+# ---------------------------------------------------------------------------
+# main
+# ---------------------------------------------------------------------------
+
+
+def build_argparser() -> argparse.ArgumentParser:
+    ap = argparse.ArgumentParser(description="Two Clocks audit trainer")
+    ap.add_argument("--config", required=True)
+    ap.add_argument("--tag", default=None, help="run directory name under runs/")
+    ap.add_argument("--mu", type=int, default=None)
+    ap.add_argument("--seed", type=int, default=None)
+    ap.add_argument("--rollout", default=None, choices=["fake", "hf", "vllm"])
+    ap.add_argument("--num-rollouts", type=int, default=None)
+    ap.add_argument("--responses-per-rollout", type=int, default=None)
+    ap.add_argument("--prompt-limit", type=int, default=None, help="debug: cap pool size")
+    ap.add_argument("--resume", action="store_true")
+    ap.add_argument("--no-save-state", action="store_true")
+    ap.add_argument("--device", default=None)
+    return ap
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_argparser().parse_args(argv)
+    overrides: dict = {}
+    if args.mu is not None:
+        overrides.setdefault("train", {})["mu"] = args.mu
+    if args.seed is not None:
+        overrides.setdefault("run", {})["seed"] = args.seed
+    if args.rollout is not None:
+        overrides.setdefault("rollout", {})["backend"] = args.rollout
+    if args.num_rollouts is not None:
+        overrides.setdefault("train", {})["num_rollouts"] = args.num_rollouts
+    if args.responses_per_rollout is not None:
+        overrides.setdefault("train", {})["responses_per_rollout"] = args.responses_per_rollout
+    if args.tag is not None:
+        overrides.setdefault("run", {})["tag"] = args.tag
+
+    cfg = config_mod.load_config(args.config, overrides)
+    tag = cfg["run.tag"]
+    run_dir = Path(cfg["run.out_dir"]) / tag
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    seed = int(cfg["run.seed"])
+    seed_everything(seed)
+
+    pool = data_mod.load_pool(cfg["data.pool"], cfg["data.sha256"] or None)
+    if args.prompt_limit:
+        pool = pool[: args.prompt_limit]
+    pool_info = data_mod.pool_summary(pool)
+    if len(pool) < cfg.prompts_per_rollout:
+        print(
+            f"[warn] pool has {len(pool)} prompts but a rollout needs "
+            f"{cfg.prompts_per_rollout}; prompts will be reused within rollouts"
+        )
+
+    cfg.dump(run_dir / "config.resolved.yaml")
+    with open(run_dir / "run_meta.json", "w", encoding="utf-8") as f:
+        json.dump({"meta": _run_meta(cfg), "pool": pool_info}, f, indent=2)
+
+    policy = Policy(cfg, device=args.device)
+    backend = rollout_mod.build_backend(cfg["rollout.backend"], cfg, policy)
+    n_params = policy.n_params_total
+
+    # memory pre-flight: fail before renting, not 40 minutes in
+    est = policy.score_memory_bytes(
+        int(cfg["train.micro_batch_responses"]),
+        int(cfg["train.max_completion_length"]) + 128,
+        fp32=True,
+    )
+    print(f"[info] vocab={len(policy.tokenizer)} params={n_params/1e9:.3f}B "
+          f"trainable={policy.n_params_trainable/1e6:.1f}M")
+    print(f"[info] est. logits memory per micro-batch ~{est/2**30:.2f} GiB")
+
+    params = _trainable(policy)
+    opt = torch.optim.AdamW(params, lr=float(cfg["train.lr"]),
+                            weight_decay=float(cfg["train.weight_decay"]))
+    total_steps = int(cfg["train.num_rollouts"]) * int(cfg["train.mu"])
+    meter = accounting.CostMeter(
+        n_params=n_params,
+        price_cny_per_hour=float(cfg["accounting.price_cny_per_hour"]),
+        gpu_type=str(cfg["accounting.gpu_type"]),
+    )
+    writer = metrics_mod.MetricsWriter(run_dir / "metrics.jsonl")
+    samples_f = open(run_dir / "samples.jsonl", "a", encoding="utf-8")
+
+    start_rollout = 0
+    state_path = run_dir / "state.pt"
+    if args.resume and state_path.exists():
+        state = torch.load(state_path, map_location="cpu", weights_only=False)
+        start_rollout = int(state["rollout_idx"]) + 1
+        opt.load_state_dict(state["optim"])
+        policy.load_trainable_state_dict(state["lora"])
+        torch.set_rng_state(state["torch_rng"])
+        random.setstate(state["py_rng"])
+        np.random.set_state(state["np_rng"])
+        if torch.cuda.is_available() and state.get("cuda_rng") is not None:
+            torch.cuda.set_rng_state_all(state["cuda_rng"])
+        dropped = writer.truncate_to_rollout(start_rollout)
+        meter.base = state.get("totals", {}) or {}
+        print(f"[resume] from rollout {start_rollout}; kept {dropped} metric rows; "
+              f"carried {meter.base.get('responses', 0)} responses / "
+              f"¥{meter.base.get('cost_cny', 0):.2f}")
+
+    G = int(cfg["train.num_generations"])
+    Br = int(cfg["train.responses_per_rollout"])
+    mu = int(cfg["train.mu"])
+    micro = int(cfg["train.micro_batch_responses"])
+    eps_low = float(cfg["train.eps_low"])
+    eps_high = float(cfg["train.eps_high"])
+    clip_delta = cfg["train.clip_delta"]
+    kappa = float(cfg["drift.kappa"])
+    max_len = int(cfg["train.max_completion_length"])
+
+    print(f"[info] arm mu={mu} b={Br//mu} Br={Br} micro={micro} "
+          f"M={Br//mu//micro} rollouts={cfg['train.num_rollouts']} total_steps={total_steps}")
+
+    try:
+        for r_idx in range(start_rollout, int(cfg["train.num_rollouts"])):
+            items = data_mod.prompt_batch(pool, seed, r_idx, cfg.prompts_per_rollout)
+
+            # -- rollout -----------------------------------------------------
+            if backend.name == "vllm" and bool(cfg.get("rollout.vllm.offload_policy", False)):
+                policy.model.to("cpu")
+                torch.cuda.empty_cache()
+            rb = backend.generate(items, G, r_idx, seed=seed)
+            if backend.name == "vllm" and bool(cfg.get("rollout.vllm.offload_policy", False)):
+                policy.model.to(policy.device)
+
+            rewards = torch.tensor(
+                [verify.reward(int(it["answer"]), txt) for it, txt in zip(rb.items, rb.completion_texts)],
+                dtype=torch.float32,
+            )
+            correct = [verify.is_correct(int(it["answer"]), txt) for it, txt in zip(rb.items, rb.completion_texts)]
+            adv, adv_stats = grpo.group_advantages(rewards, G)
+            adv = adv.to(policy.device)
+
+            # -- old policy log-probs (once per rollout) ---------------------
+            part_rng = np.random.default_rng((seed * 1_000_003) ^ (r_idx * 9_176 + 1))
+            parts = plan_partition(Br, mu, micro, part_rng)
+            old_lp: dict[tuple[int, int], torch.Tensor] = {}
+            try:
+                with torch.no_grad():
+                    for si, step_parts in enumerate(parts):
+                        for mi, idxs in enumerate(step_parts):
+                            idx_list = [int(i) for i in idxs]
+                            old_lp[(si, mi)] = policy.score(
+                                [rb.prompt_ids[i] for i in idx_list],
+                                [rb.completion_ids[i] for i in idx_list],
+                                requires_grad=False,
+                            ).cpu()
+            except torch.cuda.OutOfMemoryError:
+                print("[fatal] OOM while scoring the rollout policy; lower "
+                      "train.micro_batch_responses (currently %d)" % micro)
+                raise
+
+            prompt_tokens = sum(len(p) for p in rb.prompt_ids)
+            completion_tokens = sum(len(c) for c in rb.completion_ids)
+            mean_resp_len = completion_tokens / max(1, rb.n_responses)
+
+            # -- one pass of mu optimizer steps ------------------------------
+            upd_t0 = time.perf_counter()
+            trained_tokens = 0
+            for si, step_parts in enumerate(parts):
+                buf = _grad_buffer(policy)
+                g_of_micro: list[float] = []
+                n_tok_step = 0
+                loss_w = kl_w = cl_low_w = cl_high_w = cl_any_w = ratio_w = p95_w = 0.0
+                for mi, idxs in enumerate(step_parts):
+                    idx_list = [int(i) for i in idxs]
+                    pids = [rb.prompt_ids[i] for i in idx_list]
+                    cids = [rb.completion_ids[i] for i in idx_list]
+                    mask = policy.mask_for(cids)
+                    lp = policy.score(pids, cids, requires_grad=True)
+                    old = old_lp[(si, mi)].to(policy.device)
+                    a = adv[torch.tensor(idx_list, device=policy.device)]
+                    loss, stats = grpo.grpo_loss(
+                        lp, old, a, mask,
+                        eps_low=eps_low, eps_high=eps_high,
+                        clip_delta=clip_delta, norm=str(cfg["train.loss_norm"]),
+                    )
+                    opt.zero_grad(set_to_none=True)
+                    loss.backward()
+                    _accumulate(buf, policy, 1.0 / len(step_parts))
+                    g_of_micro.append(_grad_norm(_trainable(policy)))
+                    n_tok = int(mask.sum().item())
+                    loss_w += stats["loss"] * n_tok
+                    kl_w += stats["kl_per_rollout_policy"] * n_tok
+                    cl_low_w += stats["clip_frac_low"] * n_tok
+                    cl_high_w += stats["clip_frac_high"] * n_tok
+                    cl_any_w += stats["clip_frac_any"] * n_tok
+                    ratio_w += stats["ratio_mean"] * n_tok
+                    p95_w += stats["ratio_p95"] * n_tok
+                    n_tok_step += n_tok
+                    del lp, loss, mask
+
+                _write_back(buf, policy)
+                n_mb = len(step_parts)
+                # sum of grad norms is not the norm of the sum; recompute ||g_bar||
+                g_bar_norm = _grad_norm(_trainable(policy))
+                gs = grpo.GradStats()
+                for norm_i in g_of_micro:
+                    gs.add(norm_i)
+                sigma = gs.sigma(g_bar_norm)
+                lr_now = _lr_at(si + r_idx * mu, total_steps, float(cfg["train.lr"]),
+                                float(cfg["train.warmup_ratio"]))
+                for g in opt.param_groups:
+                    g["lr"] = lr_now
+                raw = float(torch.nn.utils.clip_grad_norm_(params, float(cfg["train.grad_clip"])))
+                clipped = min(raw, float(cfg["train.grad_clip"]))
+                opt.step()
+                opt.zero_grad(set_to_none=True)
+                trained_tokens += n_tok_step
+
+                denom = max(1, n_tok_step)
+                meter.add_rollout(
+                    rollout_idx=r_idx, mu=mu, n_responses=Br // mu,
+                    prompt_tokens=prompt_tokens // mu, completion_tokens=completion_tokens // mu,
+                    trained_tokens=n_tok_step,
+                    wall_ms_rollout=rb.wall_ms if si == 0 else 0.0,
+                    wall_ms_update=0.0,
+                )
+                tot = meter.totals()
+                rec = {
+                    "ts": metrics_mod.now_ts(),
+                    "run_id": tag,
+                    "arm": f"mu{mu}",
+                    "seed": seed,
+                    "rollout_idx": r_idx,
+                    "mu": mu,
+                    "mu_step": si,
+                    "global_step": r_idx * mu + si,
+                    "b_responses": Br // mu,
+                    "br_responses": Br,
+                    "prompts_per_rollout": cfg.prompts_per_rollout,
+                    "n_generations": G,
+                    "resp_len_mean": round(mean_resp_len, 4),
+                    "completion_tokens": completion_tokens,
+                    "reward_mean": round(float(rewards.mean()), 6),
+                    "pass_rate": round(float(np.mean(correct)), 6),
+                    "zero_var_group_frac": adv_stats["zero_var_group_frac"],
+                    "adv_abs_mean": adv_stats["adv_abs_mean"],
+                    "wall_ms_rollout": round(rb.wall_ms if si == 0 else 0.0, 3),
+                    "loss": loss_w / denom,
+                    "lr": lr_now,
+                    "ratio_mean": ratio_w / denom,
+                    "ratio_p95": p95_w / denom,
+                    "kl_per_rollout_policy": kl_w / denom,
+                    "clip_frac_low": cl_low_w / denom,
+                    "clip_frac_high": cl_high_w / denom,
+                    "clip_frac_any": cl_any_w / denom,
+                    "grad_norm_raw": raw,
+                    "grad_norm_clipped": clipped,
+                    "grad_noise_sigma": float(sigma if sigma is not None else -1.0),
+                    "n_micro_batches": n_mb,
+                    "drift_d": grpo.drift_clock(g_bar_norm, sigma, kappa),
+                    "wall_ms_update": 0.0,
+                    "responses_cum": tot["responses"],
+                    "flops_cum": tot["flops_total"],
+                    "cost_cny_cum": tot["cost_cny"],
+                }
+                writer.write(rec)
+                print(
+                    f"[r{r_idx} mu{si:02d}] pass={rec['pass_rate']:.3f} "
+                    f"r={rec['reward_mean']:+.3f} len={rec['resp_len_mean']:.0f} "
+                    f"kl={rec['kl_per_rollout_policy']:+.2e} "
+                    f"clip={rec['clip_frac_any']:.4f} "
+                    f"gn={rec['grad_norm_raw']:.3f} sig={rec['grad_noise_sigma']:.4g} "
+                    f"d={rec['drift_d'] if rec['drift_d'] is None else round(rec['drift_d'], 4)}"
+                )
+
+            # -- per-rollout bookkeeping ------------------------------------
+            upd_ms = (time.perf_counter() - upd_t0) * 1000.0
+            for m in meter.rollouts[-mu:]:
+                m.wall_ms_update += upd_ms / mu
+            tot = meter.totals()
+            print(f"[r{r_idx}] done: rollout {rb.wall_ms/1000:.1f}s update {upd_ms/1000:.1f}s "
+                  f"cum {tot['responses']} resp, {tot['gpu_hours_billed']:.3f} GPU-h, "
+                  f"¥{tot['cost_cny']:.2f}")
+
+            for i in range(min(int(cfg["logging.log_rollout_samples"]), rb.n_responses)):
+                samples_f.write(json.dumps({
+                    "rollout_idx": r_idx,
+                    "item": rb.items[i]["prompt"][:200],
+                    "answer": rb.items[i]["answer"],
+                    "completion": rb.completion_texts[i][:800],
+                    "reward": float(rewards[i]),
+                    "correct": bool(correct[i]),
+                }, ensure_ascii=False) + "\n")
+            samples_f.flush()
+
+            # -- checkpoint (state must survive a rented-box shutdown) ------
+            if not args.no_save_state and (r_idx + 1) % int(cfg["logging.save_state_every_rollouts"]) == 0:
+                tmp = state_path.with_suffix(".tmp")
+                torch.save({
+                    "rollout_idx": r_idx,
+                    "optim": opt.state_dict(),
+                    "lora": policy.trainable_state_dict(),
+                    "torch_rng": torch.get_rng_state(),
+                    "py_rng": random.getstate(),
+                    "np_rng": np.random.get_state(),
+                    "cuda_rng": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
+                    "totals": meter.totals(),
+                }, tmp)
+                tmp.replace(state_path)
+                print(f"[ckpt] {state_path} @ rollout {r_idx}")
+    finally:
+        samples_f.close()
+        writer.close()
+        summary = {"totals": meter.totals(), "pool": pool_info, "resolved": cfg.raw}
+        with open(run_dir / "summary.json", "w", encoding="utf-8") as f:
+            json.dump(summary, f, indent=2, ensure_ascii=False)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

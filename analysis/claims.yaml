@@ -1,0 +1,84 @@
+# 预注册声明（pre-registration）
+#
+# 这个文件在跑任何 GPU 之前写定。每条 claim 给出 id / 一句话 / 证据路径 / 证据字段 /
+# 状态。跑完之后只允许改 status 和 values，不允许改措辞或阈值——否则就是事后选指标。
+#
+# status 只有三种：verified（已核实，evidence 必须存在且字段存在）
+#                 default （默认执行的可逆工程决定）
+#                 pending （待拍板 / 待数据，禁止在 REPORT 里当作事实陈述）
+#
+# 校验：python analysis/trace.py --strict
+
+preregistered_on: "2026-10-24"
+paper: "arXiv:2610.18853 (Two Clocks)"
+model: "Qwen/Qwen3-1.7B-Base"
+task: "counting (mixed, depth 1-7, 2000 frozen prompts)"
+
+# 主结论只允许一条，其余一律标为探索性，避免多重比较。
+main_claim: C3
+
+claims:
+  - id: C1
+    text: "测量器自检：同一个 rollout 内的第一个优化步（mu_step=0）与 rollout 策略完全一致，KL 应为 0；check_schema 在 --strict 下把任何 |KL|>1e-4 的 mu_step=0 行判为失败，因此这条不是可选项。"
+    status: verified
+    evidence: tools/check_schema.py
+    note: "数据层面的验证在首批 run 落地后自动生效（runs/*/metrics.jsonl 的 mu_step=0 行）。"
+
+  - id: C2
+    text: "逐 token 的 KL(policy || rollout policy) 在每个 rollout 内部随 mu_step 单调上升（离线量的直接测量）。"
+    status: pending
+    evidence: runs/mu16/metrics.jsonl
+    field: kl_per_rollout_policy
+    note: "若在 mu=16 仍不上升，说明该配置下策略走不动，需先报病态再做结论。"
+
+  - id: C3
+    text: "主结论：在 Br=4096、G=8、32k responses 的同一预算下，论文 Eq.(5) 预测 N_tau(mu=16)/N_tau(mu=1) = 6.1x；本实验给出实测比值及其自助置信区间。该预测因论文假设 A2 显式忽略陈旧性而无惩罚项，实测比值若显著低于 6.1x，即为 A2 代价的定量估计。"
+    status: pending
+    evidence: analysis/out/table.json
+    field: n_d20
+    note: "只允许报告'实测 vs 预测'，不允许写成'论文错了'。"
+
+  - id: C4
+    text: "drift clock d = kappa*||g_bar||/sigma 随 mu 增大而下降（同一 Br 下 b=Br/mu 变小，梯度噪声相对变大）。"
+    status: pending
+    evidence: runs/mu1/metrics.jsonl
+    field: drift_d
+    note: "kappa 为量纲约定，所有比较只用比值，故 kappa 取值不影响结论。"
+
+  - id: C5
+    text: "响应长度随 mu 不存在系统性漂移（论文全文 0 处报告响应长度，本条为本次新增的可观测项）。"
+    status: pending
+    evidence: runs/mu8/metrics.jsonl
+    field: resp_len_mean
+
+  - id: C6
+    text: "被 clip 的 token 比例随 mu 上升，且被 clip 的梯度范数份额高于其 token 份额（复现论文'0.5% token 但 50-70% 梯度范数'的现象）。"
+    status: pending
+    evidence: runs/mu16/metrics.jsonl
+    field: clip_frac_any
+
+  - id: C7
+    text: "单次运行成本不超过 ¥6（4090-24G @ ¥1.50/h，实测墙钟计），九次运行不超过 ¥55。"
+    status: pending
+    evidence: runs/mu1/metrics.jsonl
+    field: cost_cny_cum
+
+  - id: D1
+    text: "训练器为自写循环而非 TRL GRPOTrainer：TRL 1.16 的 num_iterations 能表达 mu，但不暴露 per-mu 的 KL、clip 梯度份额与 micro-batch 梯度散度 sigma。正确性用独立标量实现 + 有限差分自证（tests/test_grpo.py）。"
+    status: default
+    evidence: tests/test_grpo.py
+
+  - id: D2
+    text: "复用 S1 的 counting 任务：gen_counting.py / verify.py 原样拷入本仓库，题池新建 2000 条 mixed 并冻结 sha256。"
+    status: default
+    evidence: data/MANIFEST.json
+
+  - id: D3
+    text: "LoRA r=64 / alpha=16 全线性层，与 S1 一致；bf16；无 KL 惩罚、无 entropy 正则（对齐论文配置）。"
+    status: default
+    evidence: configs/base.yaml
+
+  - id: P1
+    text: "Qwen3-1.7B-Base 在 mixed 题池上的实际通过率是否落在 10%-90% 可用区间，未知；若整体通过率为 0，则 L 档失败窗口无法测量，需先用 tools/calibrate_pool.py 校准并收窄题池。"
+    status: pending
+    note: "这是上云前无法知道的事，必须第一批跑完才知道。"
