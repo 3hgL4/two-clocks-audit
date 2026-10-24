@@ -96,9 +96,9 @@ python src/train.py --config configs/mu8.yaml --seed 0 --resume
 | 项 | 数 |
 |---|---|
 | 单 run | 32,768 responses（8 rollout × 4096），约 1.6–4 h |
-| 单价 | ¥1.50/h（4090-24G） |
-| 单 run 成本 | ¥2.4–6.0 |
-| 计划 9 run（3 个 µ × 3 seeds） | **¥22–54** |
+| 单价 | ¥1.56/h（4090-24G；48G 是 ¥2.08/h） |
+| 单 run 成本 | ¥2.5–6.2 |
+| 计划 9 run（3 个 µ × 3 seeds） | **¥23–56** |
 | 首场 session 时间盒 | 2 小时 / ¥3，强制在 T+40min 用实测 s/step 重算总预算 |
 
 价格与硬件见 `configs/base.yaml` 的 `accounting`；每个 run 的 `summary.json` 里记着实测墙钟、FLOPs 与 ¥，账不是估的，是记的。

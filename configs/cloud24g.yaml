@@ -11,7 +11,9 @@
 #    cache, so base.yaml's 0.45 caps concurrency near ~100 seqs. 0.55 / 192 seqs
 #    is the operating point here; the 48G plan (0.82 / 384) was unavailable
 #    because that SKU was sold out.
-# 3. accounting price = the price actually billed (platform page ¥2.08/h).
+# 3. accounting price = the price actually billed for THIS SKU: ¥1.56/h for
+#    4090-24G (48G is ¥2.08/h -- the first session wrote 2.08 here by mistake,
+#    corrected 2026-10-25 per the platform's own quote).
 #    Check against the invoice; a wrong price only corrupts cost_cny_cum, never
 #    the µ comparison, which is currency-free.
 #
@@ -44,5 +46,5 @@ rollout:
     # cudagraph specialization; slower decode, identical semantics.
     enforce_eager: true
 accounting:
-  price_cny_per_hour: 2.08
+  price_cny_per_hour: 1.56
   gpu_type: 4090-24G

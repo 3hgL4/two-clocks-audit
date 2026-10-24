@@ -61,7 +61,7 @@ DEFAULTS: dict[str, Any] = {
         },
     },
     "accounting": {
-        "price_cny_per_hour": 1.50,    # RTX 4090-24G
+        "price_cny_per_hour": 1.56,    # RTX 4090-24G (48G = 2.08)
         "gpu_type": "4090-24G",
     },
     "logging": {

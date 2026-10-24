@@ -10,7 +10,7 @@
 #   python src/train.py --config configs/cloud24g_smoke.yaml
 #   python tools/check_schema.py runs/cloud24g_smoke --strict
 #
-# 64 responses at ¥2.08/h is well under ¥0.15 even if a step takes a minute.
+# 64 responses at ¥1.56/h is well under ¥0.15 even if a step takes a minute.
 extends: cloud24g.yaml
 run:
   tag: cloud24g_smoke

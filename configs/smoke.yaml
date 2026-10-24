@@ -9,7 +9,7 @@
 #   python src/train.py --config configs/smoke.yaml --tag smoke
 #   python tools/check_schema.py runs/smoke --strict
 #
-# Expected cost at ¥1.50/h: well under ¥0.30.
+# Expected cost at ¥1.56/h: well under ¥0.30.
 extends: base.yaml
 run:
   tag: smoke
