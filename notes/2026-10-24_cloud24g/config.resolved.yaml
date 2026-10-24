@@ -1,0 +1,55 @@
+run:
+  tag: hfsmoke
+  seed: 0
+  out_dir: runs
+  note: ''
+data:
+  pool: data/prompts_mixed2000.jsonl
+  sha256: d781f955ad9773cc0107fd171b2371ea3bec262a2021b6e8e481da81f64a798b
+  prompt_pad_token: null
+model:
+  name: /root/rivermind-data/models/Qwen3-1.7B-Base
+  stub: false
+  dtype: bfloat16
+  attn_implementation: sdpa
+  gradient_checkpointing: true
+  lora:
+    r: 64
+    alpha: 16
+    dropout: 0.0
+train:
+  num_rollouts: 1
+  num_generations: 8
+  responses_per_rollout: 32
+  mu: 2
+  micro_batch_responses: 2
+  max_completion_length: 512
+  temperature: 1.0
+  top_p: 1.0
+  lr: 5.0e-05
+  weight_decay: 0.0
+  warmup_ratio: 0.1
+  grad_clip: 1.0
+  eps_low: 0.2
+  eps_high: 0.28
+  clip_delta: 10.0
+  loss_norm: token_mean
+rollout:
+  backend: hf
+  vllm:
+    gpu_memory_utilization: 0.28
+    max_num_seqs: 64
+    enable_lora: true
+    adapter_dir: runs/_adapter
+    offload_policy: false
+    enforce_eager: true
+    max_model_len: 1024
+accounting:
+  price_cny_per_hour: 2.08
+  gpu_type: 4090-24G
+logging:
+  flush_every: 1
+  save_state_every_rollouts: 1
+  log_rollout_samples: 8
+drift:
+  kappa: 1.0

@@ -207,7 +207,19 @@ class VLLMBackend:
             max_num_seqs=int(vcfg["max_num_seqs"]),
             enable_lora=bool(vcfg["enable_lora"]),
             max_lora_rank=int(cfg["model.lora.r"]),
-            enforce_eager=False,
+            # The non-Devel CUDA image has no nvcc, and vLLM 0.32 aborts engine
+            # startup inside its torch.compile path with "Could not find nvcc".
+            # enforce_eager skips that path entirely; it costs some decode speed
+            # but none of what this project measures. Default False keeps the
+            # fast path available on a Devel image. See DEVLOG D-10.
+            enforce_eager=bool(cfg.get("rollout.vllm.enforce_eager", False)),
+            # vLLM sizes the KV cache for max_model_len (default = the model's
+            # 32768), and refuses to start when the reservation cannot hold one
+            # such request: at gpu_memory_utilization 0.28 on 24 GiB it wanted
+            # 3.5 GiB and only had 2.61. Our sequences are prompt (~200 tokens)
+            # + max_completion_length, so 1024 is generous and keeps the cache
+            # small enough to coexist with the training policy.
+            max_model_len=cfg.get("rollout.vllm.max_model_len", None),
             trust_remote_code=True,
         )
         self.batch_size = batch_size or int(cfg["train.responses_per_rollout"])

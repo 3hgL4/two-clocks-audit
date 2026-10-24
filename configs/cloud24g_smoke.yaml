@@ -1,0 +1,31 @@
+# Cloud smoke test on the 24G box: the cheapest run that still touches real
+# weights and real vLLM. Purpose -- four numbers, not data:
+#   (a) does vLLM + LoRA weight sync work at all,
+#   (b) seconds per response on this card,
+#   (c) the real pass rate of Qwen3-1.7B-Base on this pool (feeds the P1 risk
+#       in analysis/claims.yaml: if depth 5-7 pass rate is ~0, groups have zero
+#       variance and the failure-clock measurement is dead),
+#   (d) peak VRAM.
+#
+#   python src/train.py --config configs/cloud24g_smoke.yaml
+#   python tools/check_schema.py runs/cloud24g_smoke --strict
+#
+# 64 responses at ¥2.08/h is well under ¥0.15 even if a step takes a minute.
+extends: cloud24g.yaml
+run:
+  tag: cloud24g_smoke
+  seed: 0
+train:
+  num_rollouts: 1
+  num_generations: 8
+  responses_per_rollout: 64
+  mu: 2
+  # cap=128 was too short: the pool asks "think step by step, then Answer: X",
+  # and resp_len_mean came out at 112.6/128 (truncating) with pass_rate 0.000
+  # and zero_var_group_frac 1.0 -- i.e. the instrument was measuring nothing.
+  # At cap=512 a 16-item probe gave 4/16 correct, so 512 is the honest setting;
+  # micro=2 keeps the log-prob forward small enough to coexist with vLLM.
+  micro_batch_responses: 2
+  max_completion_length: 512
+logging:
+  log_rollout_samples: 8

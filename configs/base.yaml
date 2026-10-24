@@ -55,6 +55,7 @@ rollout:
     enable_lora: true
     adapter_dir: runs/_adapter
     offload_policy: false
+    enforce_eager: false        # true on images without nvcc; see cloud24g.yaml
 
 accounting:
   price_cny_per_hour: 1.50    # RTX 4090-24G

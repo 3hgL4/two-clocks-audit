@@ -1,0 +1,41 @@
+{
+  "meta": {
+    "created": "2026-10-24T16:34:34+0000",
+    "host": "jupyter-we9h4o2bfkqfdwgs",
+    "platform": "Linux-5.15.0-94-generic-x86_64-with-glibc2.35",
+    "python": "3.11.13",
+    "torch": "2.13.0+cu130",
+    "transformers": "5.19.0",
+    "cuda": "13.0",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "argv": [
+      "src/train.py",
+      "--config",
+      "configs/cloud24g_smoke.yaml",
+      "--rollout",
+      "hf",
+      "--responses-per-rollout",
+      "32",
+      "--tag",
+      "hfsmoke"
+    ],
+    "cwd": "/root/rivermind-data",
+    "gpu_total_gb": 25.25
+  },
+  "pool": {
+    "n_items": 2000,
+    "depth_hist": {
+      "1": 318,
+      "2": 345,
+      "3": 346,
+      "4": 460,
+      "5": 259,
+      "6": 179,
+      "7": 93
+    },
+    "answer_mean": 8387.803,
+    "answer_min": -3129138,
+    "answer_max": 5055800,
+    "n_distinct_prompts": 2000
+  }
+}

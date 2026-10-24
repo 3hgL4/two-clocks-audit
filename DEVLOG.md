@@ -111,3 +111,55 @@ D-02 的哈希跟着改；题池 2000 条的 prompt / answer / depth 分布完�
 两处共同点——**校验条件本身依赖了未被显式固定的环境**（梯度范数依赖 `.grad` 的隐式语义；
 哈希依赖 OS 的换行策略）。凡"闸门"都要在**目标环境**里验一次，本机通过不算。
 
+### D-10 第一次上云（4090-24G）暴露的五个问题，全部有实测数字
+
+会话：2026-10-24 23:43–01:0x，¥2.08/h，镜像 `PyTorch/2.8.0-CUDA12.8-Py3.11-Ubuntu22`，
+数据盘挂载 `/root/rivermind-data`（49 GiB），系统盘 30 GiB overlay，cgroup 15 CPU / 100 GiB。
+
+1. **云端取不到 GitHub 也连不上 pypi.org**（`curl` 均 000 超时）。可用的是
+   清华 pypi 镜像（2.2 s）与 modelscope（0.43 s）。→ 代码改用 `scp` 上传，
+   仓库的"git = 同步通道"在云端这一侧不成立，README §4 的说法要改。
+
+2. **`modelscope.snapshot_download` 只有 1.0 MB/s**（3.44 GB 要 57 min），
+   而同一 CDN 端点上单条 range 请求 6.3 MB/s、4 路并发 22 MB/s。
+   → 写了 `tools/fetch_model.py`（并行 range + 按 API 的 sha256 校验），实测 8 路
+   ~10 MB/s，13 min 拉完，**全部文件 sha256 对得上**。瓶颈在 SDK 不在网络。
+
+3. **镜像无 nvcc，vLLM 0.32.0 起不来**：
+   `RuntimeError: Could not find nvcc and default cuda_home='/usr/local/cuda' doesn't exist`
+   （抛在它的 torch.compile 路径里）。`pip install vllm` 还把 torch 2.8.0+cu128
+   换成了 **2.13.0+cu130**（驱动 580.119.02 撑得住 cu130，所以能跑）。
+   → 加 `rollout.vllm.enforce_eager`，默认 False，云端开 True。
+   **非 Devel 镜像省了 20 GB 盘，代价是丢掉 nvcc**，这个取舍现在有据可查。
+
+4. **24 GiB 装不下 vLLM(LoRA) + HF 策略共存**（本项目最硬的一条约束）：
+   - `util=0.55`（12.9 GiB）→ 打分时 OOM（HF 侧已占 10.97 GiB）
+   - `util=0.50`（11.8 GiB）→ 仍 OOM（HF 侧涨到 13.58 GiB，因为 grad+Adam 起来了）
+   - `util=0.28`（6.9 GiB）+ `micro=2` + `cap=512` → 仍 OOM，free 仅 14 MB
+   - 另：`max_model_len` 默认取模型 32768，KV 预留 3.5 GiB，0.28 时只有 2.61 GiB 可用，
+     vLLM 直接拒启动 → 必须显式给 `max_model_len`
+   → **结论：24 GiB 上"vLLM 常驻 + HF 同卡"这条路走不通**，需要 vLLM sleep mode
+   （`enable_sleep_mode` + `llm.sleep()`）或 48G 卡。写进 REPORT 的硬件章节。
+
+5. **`cap=128` 会让整个测量归零**（本次最有价值的一条）：
+   第一次 smoke 得到 `pass_rate=0.000, zero_var_group_frac=1.0`，看着像"模型不会做"。
+   实际是题面要求"think step by step"，平均长度 112.6/128 正好卡在截断上，
+   答案行根本没输出。`cap=512` 后同池实测 **pass=0.25**（16 题探针 4/16 对得上），
+   `zero_var_group_frac` 从 1.0 掉到 **0.0**。
+
+### D-11 HF 后端跑通完整闭环（这是第一个"真权重 + 真更新"的成功运行）
+
+vLLM 与 HF 抢显存时，退到 `--rollout hf` 反而先拿到了完整链路（32 responses, µ=2, cap=512）：
+
+```
+[r0 mu00] pass=0.250 len=318 kl=+0.00e+00 ratio=1.0000 clip=0.0000 gn=0.0366 sig=0.0491 d=0.7452
+[r0 mu01] pass=0.250 len=318 kl=+1.46e-04 ratio=1.0008 clip=0.0039 gn=0.0466 sig=0.0647 d=0.7198
+[r0] done: rollout 35.8s update 3.9s cum 32 resp, 0.011 GPU-h, ¥0.02
+```
+
+三个"仪器可信"的判据同时成立：**µ-step 0 的 KL 恰好 0**、**µ-step 0 的 ratio 恰好 1.0**、
+**σ 与 d 都是有限非零数**且量级合理（σ≈0.05，d≈0.72）。这不是在 stub 上验的。
+吞吐对照：HF 后端 1.12 s/response，vLLM 后端（cap=128 那次）0.17 s/response，差 6 倍。
+
+**证据存档**：`notes/2026-10-24_cloud24g/`（metrics / samples / 两份 log / 校准探针）。
+

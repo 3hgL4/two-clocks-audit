@@ -1,0 +1,11 @@
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 6670.30it/s]
+trainable params: 69,730,304 || all params: 1,790,305,280 || trainable%: 3.8949
+[info] vocab=151669 params=1.790B trainable=69.7M
+[info] est. logits memory per micro-batch ~0.72 GiB
+[info] arm mu=2 b=16 Br=32 micro=2 M=8 rollouts=1 total_steps=2
+[transformers] `use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`.
+[r0 mu00] pass=0.250 r=+0.308 len=318 kl=+0.00e+00 clip=0.0000 gn=0.037 sig=0.04907 d=0.7452
+[r0 mu01] pass=0.250 r=+0.308 len=318 kl=+1.46e-04 clip=0.0039 gn=0.047 sig=0.06472 d=0.7198
+[r0] done: rollout 35.8s update 3.9s cum 32 resp, 0.011 GPU-h, ¥0.02
+[ckpt] runs/hfsmoke/state.pt @ rollout 0

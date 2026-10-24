@@ -1,0 +1,48 @@
+# Cloud overlay: RTX 4090-24G (24,564 MiB) on the rented box, first session 2026-10-24.
+#
+# Differs from base.yaml in exactly three ways, all forced by the machine:
+#
+# 1. model.name -> a local directory. The box cannot reach github.com at all
+#    (curl times out; pypi.org too), and the ModelScope SDK downloader measured
+#    ~1.0 MB/s for the 3.44 GB safetensors while parallel range requests on the
+#    same endpoint measured ~8 MB/s, so weights come from tools/fetch_model.py
+#    into the data disk (/root/rivermind-data) instead of a HF/ModelScope id.
+# 2. vLLM memory split retuned for 24 GiB. Qwen3-1.7B needs 112 KB/token of KV
+#    cache, so base.yaml's 0.45 caps concurrency near ~100 seqs. 0.55 / 192 seqs
+#    is the operating point here; the 48G plan (0.82 / 384) was unavailable
+#    because that SKU was sold out.
+# 3. accounting price = the price actually billed (platform page ¥2.08/h).
+#    Check against the invoice; a wrong price only corrupts cost_cny_cum, never
+#    the µ comparison, which is currency-free.
+#
+# None of this touches an arm definition (µ, Br, G, clip, lr), so the
+# pre-registered comparison is unaffected.
+extends: base.yaml
+run:
+  tag: cloud24g
+model:
+  name: /root/rivermind-data/models/Qwen3-1.7B-Base
+rollout:
+  vllm:
+    # VRAM budget on 23.52 GiB, measured 2026-10-24 (DEVLOG D-10):
+    #   HF policy, log-prob forward + backward   ~10.9 GiB  (weights 3.2 bf16,
+    #       full-vocab log_softmax in fp32 ~3 GiB, checkpointing recompute, Adam)
+    #   vLLM reservation = util x 23.52 GiB      (model 3.38 + KV cache)
+    # 0.55 -> 12.9 + 10.9 > 23.5  OOM.  0.50 -> 11.8 + 11.9 > 23.5  OOM.
+    # 0.35 -> 8.2 GiB, leaving ~15 GiB, which is what the policy actually needs.
+    # Consequence: KV cache is only ~4.8 GiB ~= 43k tokens ~= 66 seqs at 650
+    # tokens, i.e. rollout concurrency is throttled to ~65. That, not the GPU,
+    # is the reason the 9-run main line wants the 48G card.
+    gpu_memory_utilization: 0.28
+    max_num_seqs: 64
+    max_model_len: 1024   # prompt ~200 + cap 512; the default 32768 needs 3.5 GiB of KV
+    # The image PyTorch/2.8.0-CUDA12.8-Py3.11-Ubuntu22 is a *runtime* image: no
+    # nvcc, no /usr/local/cuda. vLLM 0.32.0 upgraded torch to 2.13.0+cu130 and
+    # then died at engine startup with
+    #   RuntimeError: Could not find nvcc and default cuda_home='/usr/local/cuda' doesn't exist
+    # raised from its torch.compile path. enforce_eager skips compile and the
+    # cudagraph specialization; slower decode, identical semantics.
+    enforce_eager: true
+accounting:
+  price_cny_per_hour: 2.08
+  gpu_type: 4090-24G

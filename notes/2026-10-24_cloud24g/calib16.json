@@ -1,0 +1,185 @@
+{
+  "report": {
+    "pool": "data/prompts_mixed2000.jsonl",
+    "pool_sha256": "d781f955ad9773cc0107fd171b2371ea3bec262a2021b6e8e481da81f64a798b",
+    "n_items": 16,
+    "samples_per_item": 1,
+    "backend": "hf",
+    "model": "/root/rivermind-data/models/Qwen3-1.7B-Base",
+    "elapsed_s": 32.4,
+    "responses": 16,
+    "overall_pass_rate": 0.25,
+    "zero_pass_frac": 0.75,
+    "one_pass_frac": 0.25,
+    "band": {
+      "lo": 0.1,
+      "hi": 0.9,
+      "n_items": 0,
+      "frac_of_pool": 0.0
+    },
+    "pass_rate_by_depth": {
+      "1": {
+        "n": 3,
+        "mean": 0.3333
+      },
+      "2": {
+        "n": 4,
+        "mean": 0.25
+      },
+      "3": {
+        "n": 1,
+        "mean": 1.0
+      },
+      "4": {
+        "n": 3,
+        "mean": 0.0
+      },
+      "5": {
+        "n": 3,
+        "mean": 0.3333
+      },
+      "6": {
+        "n": 1,
+        "mean": 0.0
+      },
+      "7": {
+        "n": 1,
+        "mean": 0.0
+      }
+    },
+    "histogram": {
+      "0.0": 12,
+      "1.0": 4
+    }
+  },
+  "per_item": [
+    {
+      "idx": 0,
+      "depth": 4,
+      "prompt": "Consider the integers from 20 to 116, inclusive. Then, negate each remaining number. Then, square each remaining number. Then, add 1 to each remaining number. Of these numbers, report the smallest remaining value. Think step by step, then give your final answer on a new line in the exact format 'Answer: <number>'.",
+      "answer": 401,
+      "n_correct": 0,
+      "pass_rate": 0.0
+    },
+    {
+      "idx": 1,
+      "depth": 4,
+      "prompt": "Consider the integers from 22 to 38, inclusive. Then, square each remaining number. Then, negate each remaining number. Then, add 1 to each remaining number. Of these numbers, compute the sum of the remaining values. Think step by step, then give your final answer on a new line in the exact format 'Answer: <number>'.",
+      "answer": -15691,
+      "n_correct": 0,
+      "pass_rate": 0.0
+    },
+    {
+      "idx": 2,
+      "depth": 5,
+      "prompt": "Consider the integers from 19 to 39, inclusive. First, keep only the numbers that are divisible by 5. Then, keep only the numbers that are divisible by 7. Then, keep only the numbers that are even. Then, keep only the numbers that are odd. Of these numbers, count how many distinct values remain. Think step by step, then give your final answer on a new line in the exact format 'Answer: <number>'.",
+      "answer": 0,
+      "n_correct": 0,
+      "pass_rate": 0.0
+    },
+    {
+      "idx": 3,
+      "depth": 2,
+      "prompt": "Consider the integers from 67 to 78, inclusive. First, keep only the numbers that are even. Of these numbers, compute the sum of the remaining values. Think step by step, then give your final answer on a new line in the exact format 'Answer: <number>'.",
+      "answer": 438,
+      "n_correct": 0,
+      "pass_rate": 0.0
+    },
+    {
+      "idx": 4,
+      "depth": 1,
+      "prompt": "Consider the integers from 45 to 71, inclusive. Of these numbers, count how many values remain. Think step by step, then give your final answer on a new line in the exact format 'Answer: <number>'.",
+      "answer": 27,
+      "n_correct": 0,
+      "pass_rate": 0.0
+    },
+    {
+      "idx": 5,
+      "depth": 6,
+      "prompt": "Consider the integers from 27 to 100, inclusive. First, keep only the numbers that are divisible by 5. Then, keep only the numbers that are negative. Then, keep only the numbers that are divisible by 3. Then, keep only the numbers that are divisible by 7. Then, square each remaining number. Of these numbers, count how many distinct values remain. Think step by step, then give your final answer on a new line in the exact format 'Answer: <number>'.",
+      "answer": 0,
+      "n_correct": 0,
+      "pass_rate": 0.0
+    },
+    {
+      "idx": 6,
+      "depth": 2,
+      "prompt": "Consider the integers from 77 to 93, inclusive. Then, square each remaining number. Of these numbers, report the largest remaining value. Think step by step, then give your final answer on a new line in the exact format 'Answer: <number>'.",
+      "answer": 8649,
+      "n_correct": 0,
+      "pass_rate": 0.0
+    },
+    {
+      "idx": 7,
+      "depth": 5,
+      "prompt": "Consider the integers from 56 to 82, inclusive. First, keep only the numbers that are positive. Then, add 1 to each remaining number. Then, negate each remaining number. Then, square each remaining number. Of these numbers, count how many values remain. Think step by step, then give your final answer on a new line in the exact format 'Answer: <number>'.",
+      "answer": 27,
+      "n_correct": 0,
+      "pass_rate": 0.0
+    },
+    {
+      "idx": 8,
+      "depth": 7,
+      "prompt": "Consider the integers from 7 to 85, inclusive. First, keep only the numbers that are divisible by 3. Then, keep only the numbers that are odd. Then, keep only the numbers that are positive. Then, keep only the numbers that are divisible by 7. Then, double each remaining number. Then, square each remaining number. Of these numbers, count how many distinct values remain. Think step by step, then give your final answer on a new line in the exact format 'Answer: <number>'.",
+      "answer": 2,
+      "n_correct": 0,
+      "pass_rate": 0.0
+    },
+    {
+      "idx": 9,
+      "depth": 1,
+      "prompt": "Consider the integers from 46 to 64, inclusive. Of these numbers, count how many values remain. Think step by step, then give your final answer on a new line in the exact format 'Answer: <number>'.",
+      "answer": 19,
+      "n_correct": 1,
+      "pass_rate": 1.0
+    },
+    {
+      "idx": 10,
+      "depth": 3,
+      "prompt": "Consider the integers from 70 to 87, inclusive. First, keep only the numbers that are divisible by 5. Then, negate each remaining number. Of these numbers, count how many values remain. Think step by step, then give your final answer on a new line in the exact format 'Answer: <number>'.",
+      "answer": 4,
+      "n_correct": 1,
+      "pass_rate": 1.0
+    },
+    {
+      "idx": 11,
+      "depth": 2,
+      "prompt": "Consider the integers from 55 to 78, inclusive. First, keep only the numbers that are positive. Of these numbers, report the largest remaining value. Think step by step, then give your final answer on a new line in the exact format 'Answer: <number>'.",
+      "answer": 78,
+      "n_correct": 1,
+      "pass_rate": 1.0
+    },
+    {
+      "idx": 12,
+      "depth": 5,
+      "prompt": "Consider the integers from 80 to 142, inclusive. First, keep only the numbers that are divisible by 3. Then, keep only the numbers that are even. Then, keep only the numbers that are positive. Then, keep only the numbers that are negative. Of these numbers, report the largest remaining value. Think step by step, then give your final answer on a new line in the exact format 'Answer: <number>'.",
+      "answer": 0,
+      "n_correct": 1,
+      "pass_rate": 1.0
+    },
+    {
+      "idx": 13,
+      "depth": 1,
+      "prompt": "Consider the integers from 52 to 80, inclusive. Of these numbers, count how many distinct values remain. Think step by step, then give your final answer on a new line in the exact format 'Answer: <number>'.",
+      "answer": 29,
+      "n_correct": 0,
+      "pass_rate": 0.0
+    },
+    {
+      "idx": 14,
+      "depth": 2,
+      "prompt": "Consider the integers from 39 to 57, inclusive. Then, add 1 to each remaining number. Of these numbers, report the difference between the largest and smallest remaining values. Think step by step, then give your final answer on a new line in the exact format 'Answer: <number>'.",
+      "answer": 18,
+      "n_correct": 0,
+      "pass_rate": 0.0
+    },
+    {
+      "idx": 15,
+      "depth": 4,
+      "prompt": "Consider the integers from 71 to 108, inclusive. First, keep only the numbers that are divisible by 5. Then, keep only the numbers that are even. Then, keep only the numbers that are negative. Of these numbers, count how many values remain. Think step by step, then give your final answer on a new line in the exact format 'Answer: <number>'.",
+      "answer": 0,
+      "n_correct": 0,
+      "pass_rate": 0.0
+    }
+  ]
+}
