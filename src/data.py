@@ -43,7 +43,9 @@ def write_manifest(paths: list[str | Path], out: str | Path, extra: dict | None 
     if extra:
         doc.update(extra)
     Path(out).parent.mkdir(parents=True, exist_ok=True)
-    with open(out, "w", encoding="utf-8") as f:
+    # newline="\n" as well: the manifest must hash the same bytes the loader will
+    # see on Linux after checkout, not the CRLF copy Windows text mode writes.
+    with open(out, "w", encoding="utf-8", newline="\n") as f:
         json.dump(doc, f, indent=2, ensure_ascii=False)
     return doc
 

@@ -13,8 +13,10 @@ run:
 
 data:
   pool: data/prompts_mixed2000.jsonl
-  # frozen at generation time; a mismatch aborts the run
-  sha256: "670b2854696f880dd6da9d3779419138b49f2960d3b70062cc7eb0379b437398"
+  # frozen at generation time; a mismatch aborts the run.
+  # NB: the hash is over LF-normalised bytes (`.gitattributes: * text=auto eol=lf`),
+  # so it must match the blob, not a CRLF working copy. See DEVLOG D-09.
+  sha256: "d781f955ad9773cc0107fd171b2371ea3bec262a2021b6e8e481da81f64a798b"
 
 model:
   name: Qwen/Qwen3-1.7B-Base

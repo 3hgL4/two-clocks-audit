@@ -113,7 +113,7 @@ def main() -> int:
     }
 
     Path(a.out).parent.mkdir(parents=True, exist_ok=True)
-    with open(a.out, "w", encoding="utf-8") as f:
+    with open(a.out, "w", encoding="utf-8", newline="\n") as f:
         json.dump({"report": report, "per_item": per_item}, f, indent=2, ensure_ascii=False)
 
     print(json.dumps(report, indent=2, ensure_ascii=False))

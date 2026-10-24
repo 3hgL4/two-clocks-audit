@@ -207,7 +207,10 @@ def build_dataset(kind: str, size: int, seed: int = 0, max_range_scale: int = 10
 
 
 def save_jsonl(items: list[CountingItem], path: str) -> None:
-    with open(path, "w", encoding="utf-8") as f:
+    # newline="\n" pins the byte layout on every OS: without it Windows text mode
+    # turns \n into \r\n, and the sha256 recorded in data/MANIFEST.json stops
+    # matching as soon as the file is checked out on Linux (see DEVLOG D-09).
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
         for it in items:
             f.write(it.to_json() + "\n")
 

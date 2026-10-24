@@ -1,0 +1,23 @@
+# Byte-for-byte reproducibility.
+#
+# The frozen prompt pool carries a sha256 in data/MANIFEST.json, and the cloud
+# box re-verifies it at startup (src/data.py:load_pool). A checkout that
+# rewrites line endings makes that hash differ and aborts the run, so text is
+# normalised to LF in the repo AND checked out as LF on every OS.
+#
+# See DEVLOG.md D-09: the first commit stored the pool as LF while the manifest
+# recorded the CRLF hash, which would have failed on any Linux clone.
+* text=auto eol=lf
+
+# never touch these
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.pdf  binary
+*.pt   binary
+*.bin  binary
+*.safetensors binary
+*.npz  binary
+*.gz   binary
+*.zip  binary

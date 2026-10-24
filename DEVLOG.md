@@ -22,9 +22,9 @@ per-µ-step 的 `KL(π_θ‖π_rollout)`、clip 的梯度范数份额、micro-ba
 
 ### D-02 任务复用 S1 的 counting，题池重建为 2000 条并冻结
 
-`gen_counting.py` / `verify.py` 原样拷入 `src/`，题池新建
+`gen_counting.py` / `verify.py` 拷入 `src/`（前者唯一改动见 D-09 的第 3 条），题池新建
 （`data/prompts_mixed2000.jsonl`，seed=20261024，
-sha256 `670b2854…b437398`）。
+sha256 `d781f955…a798b`，见 D-09 的哈希更正）。
 
 两个必须处理的细节：
 1. **去重**：初版 2000 条里 3 条 prompt 文本重复。同一 prompt 若在一个 rollout 内
@@ -81,3 +81,33 @@ SDK `HubApi().upload_folder(..., repo_type='dataset')`。
 
 跑之前写定 11 条（主结论 C3、其余探索性），`analysis/trace.py` 校验
 "标 verified 的必须有证据文件且字段存在"。跑完只允许改 status 和数值。
+
+### D-09 行尾符：第一次提交把题池存成 LF，却把 CRLF 的哈希写进了 MANIFEST
+
+**发现**（上推前核查）：`data/MANIFEST.json` 记录 `670b2854…`，那是**磁盘上 CRLF 版**
+的哈希；而 `git cat-file -p HEAD:data/prompts_mixed2000.jsonl` 得到的是 **LF 版**，
+哈希 `d781f955…`。本机 Windows `core.autocrlf=true`，所以 `git status` 干净、12/12 测试
+全过、干跑也正常——**这个错误只在换机器时引爆**：云端 Linux 默认 `autocrlf=false`，
+clone 出来是 LF，`src/data.py:56-67` 的 `load_pool(expect_sha256=...)` 直接
+`ValueError: prompt pool hash mismatch`，训练启动即中止。
+
+**根因不止 autocrlf**，还有一处代码：
+1. `gen_counting.save_jsonl` 与 `data.write_manifest` 都用文本模式 `open(..., "w")`，
+   Windows 下 `\n` 被翻译成 `\r\n` —— 生成端就写错了字节，git 只是把它"修"回去了。
+2. `calibrate_pool.py` 写 report 同样问题（云端会生成，必须同口径）。
+
+**修法**（内容零改动，只统一换行）：
+1. 磁盘归一 LF：`918,330 → 916,330` 字节；哈希 `670b2854…` → **`d781f955…`**。
+   这个新值**恰好等于 HEAD 里已有 blob 的 sha256**，即内容与已提交版本逐字节相同，
+   只是 MANIFEST 从"记错了"变成"记对了"。
+2. 三个写盘点加 `newline="\n"`（`gen_counting.py:save_jsonl`、`data.py:write_manifest`、
+   `calibrate_pool.py`）——这是跨 OS 可复现的前提，不是格式偏好。
+3. 新增 `.gitattributes`：`* text=auto eol=lf`；仓库级 `core.autocrlf=false`、`core.eol=lf`。
+
+**影响面**：`data/prompts_mixed2000.jsonl` 的 git blob **不变**；只 MANIFEST.json 变；
+D-02 的哈希跟着改；题池 2000 条的 prompt / answer / depth 分布完全不变。
+
+**教训（写进 REPORT）**：这是本项目第二次出现"本机全绿、换机必挂"的缺陷（D-05 是第一次）。
+两处共同点——**校验条件本身依赖了未被显式固定的环境**（梯度范数依赖 `.grad` 的隐式语义；
+哈希依赖 OS 的换行策略）。凡"闸门"都要在**目标环境**里验一次，本机通过不算。
+
