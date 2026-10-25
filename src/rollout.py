@@ -200,6 +200,19 @@ class VLLMBackend:
         vcfg = cfg["rollout.vllm"]
         self.adapter_dir = vcfg["adapter_dir"]
         self._lora_id = 0
+        # D-16 determinism knobs. All unset (None) means "vLLM default", which is
+        # what every measurement before 2026-10-25 ran on: prefix caching on,
+        # chunked prefill on, no explicit token budget. Setting them is how the
+        # L1 probe asks whether a fixed batch shape makes the sampler repeat.
+        knobs = {}
+        if vcfg.get("enable_prefix_caching") is not None:
+            knobs["enable_prefix_caching"] = bool(vcfg["enable_prefix_caching"])
+        if vcfg.get("enable_chunked_prefill") is not None:
+            knobs["enable_chunked_prefill"] = bool(vcfg["enable_chunked_prefill"])
+        if vcfg.get("max_num_batched_tokens") is not None:
+            knobs["max_num_batched_tokens"] = int(vcfg["max_num_batched_tokens"])
+        self.max_num_batched_tokens = knobs.get("max_num_batched_tokens")
+        self.seed_per_request = bool(vcfg.get("seed_per_request", False))
         self.llm = LLM(
             model=cfg["model.name"],
             dtype=cfg["model.dtype"],
@@ -221,6 +234,7 @@ class VLLMBackend:
             # small enough to coexist with the training policy.
             max_model_len=cfg.get("rollout.vllm.max_model_len", None),
             trust_remote_code=True,
+            **knobs,
         )
         self.batch_size = batch_size or int(cfg["train.responses_per_rollout"])
 
@@ -232,17 +246,30 @@ class VLLMBackend:
     def generate(self, items: list[dict], G: int, rollout_idx: int, seed: int = 0) -> Rollout:
         t0 = time.perf_counter()
         expanded = _expand(items, G)
-        sp = self._SamplingParams(
-            temperature=float(self.cfg["train.temperature"]),
-            top_p=float(self.cfg["train.top_p"]),
-            max_tokens=int(self.cfg["train.max_completion_length"]),
-            seed=int(seed * 7919 + rollout_idx),
-            n=1,
-        )
+        base_seed = int(seed * 7919 + rollout_idx)
+
+        def _params(s: int):
+            return self._SamplingParams(
+                temperature=float(self.cfg["train.temperature"]),
+                top_p=float(self.cfg["train.top_p"]),
+                max_tokens=int(self.cfg["train.max_completion_length"]),
+                seed=int(s),
+                n=1,
+            )
+
         req = self._sync()
         texts_all, pids_all, cids_all = [], [], []
         for i in range(0, len(expanded), self.batch_size):
             chunk = expanded[i : i + self.batch_size]
+            # `seed_per_request` is off by default because every measurement
+            # before 2026-10-25 ran with one shared seed. Whether that shared
+            # seed also makes the G samples of one prompt share a random stream
+            # is the open question the diversity check answers; if it does, the
+            # effective sample size is prompts, not responses.
+            if self.seed_per_request:
+                sp = [_params(base_seed * 1_000_003 + i + j) for j in range(len(chunk))]
+            else:
+                sp = _params(base_seed)
             outs = self.llm.generate([c["prompt"] for c in chunk], sp, lora_request=req, use_tqdm=False)
             for o in outs:
                 cids_all.append(list(o.outputs[0].token_ids))

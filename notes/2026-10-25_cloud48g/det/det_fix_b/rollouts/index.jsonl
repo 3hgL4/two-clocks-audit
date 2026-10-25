@@ -1,0 +1,1 @@
+{"rollout_idx": 0, "seed": 0, "backend": "vllm", "n_responses": 512, "prompt_tokens": 36136, "completion_tokens": 154099, "max_seq_len": 614, "sha256": "eaacf2ad9f2770cbf6bf27f01f7386e6974f76c08d5675ae82ca76d66169eeb0", "npz": "r000.npz", "variant": 0, "bytes": 35116}

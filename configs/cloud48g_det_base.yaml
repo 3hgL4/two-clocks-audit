@@ -1,0 +1,24 @@
+# L1 determinism probe, baseline arm: vLLM defaults (prefix cache ON, chunked
+# prefill ON, no explicit token budget), 512 responses, one rollout.
+#
+# Purpose: D-16 said the sampler does not repeat across processes (pass rate
+# 0.188 vs 0.238 with a byte-identical engine config), but those two runs did
+# not archive their token ids, so the claim rests on aggregates. Run this arm
+# TWICE (different --tag, same --seed) and diff the archives:
+#
+#   python src/train.py --config configs/cloud48g_det_base.yaml --tag det_base_a --num-rollouts 1 --seed 0
+#   python src/train.py --config configs/cloud48g_det_base.yaml --tag det_base_b --num-rollouts 1 --seed 0
+#   python tools/audit_rollout_ids.py runs/det_base_a/rollouts/r000.npz \
+#          --compare runs/det_base_b/rollouts/r000.npz --group 8
+#
+# 512 responses ~ 2 min ~ CNY 0.07 per run.
+extends: cloud48g_main.yaml
+run:
+  tag: cloud48g_det_base
+  seed: 0
+train:
+  num_rollouts: 1
+  responses_per_rollout: 512
+  mu: 1
+logging:
+  log_rollout_samples: 8

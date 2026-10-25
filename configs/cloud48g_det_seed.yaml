@@ -1,0 +1,22 @@
+# L1c: does giving each request its own seed restore within-group diversity?
+#
+# Everything identical to cloud48g_det_base.yaml except `seed_per_request`. The
+# shared-seed behaviour is not a vLLM quirk to work around: with one seed for
+# all 4096 requests of a rollout, two requests that see the same prompt and the
+# same weights produce the same tokens, so a "group of G=8 samples" is really one
+# sample counted eight times. Measured on the 512-response runs of 2026-10-25:
+# the first 8 responses of every vLLM run are byte-identical, and
+# `zero_var_group_frac` runs 0.875 -- i.e. 87.5% of groups carry no advantage
+# signal at all, which is also why sigma and pass_rate move so much between runs.
+#
+# This arm measures the fix directly: same config, 512 responses, distinct
+# completions per group and zero_var_group_frac should both move.
+#
+#   python src/train.py --config configs/cloud48g_det_seed.yaml --tag det_seed_a --num-rollouts 1 --seed 0
+#   python tools/audit_rollout_ids.py runs/det_seed_a/rollouts/r000.npz --group 8
+extends: cloud48g_det_base.yaml
+run:
+  tag: cloud48g_det_seed
+rollout:
+  vllm:
+    seed_per_request: true

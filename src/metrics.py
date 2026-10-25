@@ -61,6 +61,9 @@ SCHEMA: dict[str, tuple[type | tuple[type, ...], bool]] = {
     "n_groups": (int, True),
     "n_forward_chunks": (int, True),
     "n_micro_batches": (int, True),  # legacy alias of n_forward_chunks
+    # digest of rollouts/r{idx}.npz (DEVLOG D-17). Optional: records written
+    # before the archive existed have no such field.
+    "rollout_data_sha": (str, False),
     "drift_d": ((float, type(None)), True),
     "wall_ms_update": (float, True),
     # cumulative

@@ -1,0 +1,13 @@
+# L1e: the same candidate config at 2x the probe batch (1024 responses, 128
+# prompts). Reproducibility was proven at 512 responses, i.e. two scheduler
+# waves; the campaign runs Br=4096, i.e. sixteen. A fixed shape only helps if
+# the scheduler's decisions stay a function of the input, so the claim needs at
+# least one larger batch before a 16-hour campaign leans on it. 1024 is the
+# cheapest point that is no longer a single/double wave and still costs ~CNY 0.1.
+#
+#   python src/train.py --config configs/cloud48g_det_seedfix1024.yaml --tag det_sf1024_a --num-rollouts 1 --seed 0
+extends: cloud48g_det_seedfix.yaml
+run:
+  tag: cloud48g_det_seedfix1024
+train:
+  responses_per_rollout: 1024

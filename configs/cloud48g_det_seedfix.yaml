@@ -1,0 +1,23 @@
+# L1d: the candidate campaign config -- per-request seed AND fixed batch shape.
+#
+# The two fixes are independent and each was measured on its own first:
+#   det_base_a/b  (shared seed, vLLM defaults)    -> 355/512 rows differ between
+#                                                    two identical runs; groups
+#                                                    1.22-1.25/8 distinct
+#   det_fix_a/b   (shared seed, fixed shape)      -> 0/512 rows differ, i.e. the
+#                                                    sampler repeats exactly
+#   det_seed_a    (per-request seed, defaults)    -> 8.00/8 distinct, zero_var
+#                                                    0.000, sigma 0.0659
+#
+# So: fixed shape buys cross-run reproducibility, per-request seed buys the G
+# independent samples that GRPO's advantage assumes. This arm checks they
+# compose -- two runs must be BOTH diverse and identical.
+#
+#   python src/train.py --config configs/cloud48g_det_seedfix.yaml --tag det_sf_a --num-rollouts 1 --seed 0
+#   python src/train.py --config configs/cloud48g_det_seedfix.yaml --tag det_sf_b --num-rollouts 1 --seed 0
+extends: cloud48g_det_fixed.yaml
+run:
+  tag: cloud48g_det_seedfix
+rollout:
+  vllm:
+    seed_per_request: true

@@ -1,0 +1,54 @@
+# Main-line configuration for the 9-run campaign on one 48G card (option A).
+#
+# Decision (2026-10-25, user): A = micro 4 / group 8 / util 0.45 / max_num_seqs 256.
+#
+# Measured on this card, 512 responses, mu=1, seed 0
+# (notes/2026-10-25_cloud48g/g8c.log, HEADROOM.md §8.3):
+#   rollout 56.0 s + update 47.3 s -> 0.2018 s/response
+#   peak 40,172 MiB with PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+#   (45,140 MiB without it -- the env var is mandatory, see scripts/run_9.sh)
+#   extrapolated 8 x 4096 responses per run -> 1.84 h -> 9 runs 16.5 h ~= CNY 34
+#
+# Why micro=4 while `base.yaml` says 8: on 48 GiB the pre-registered 8 cannot
+# coexist with vLLM (probe: 31.98 GiB of policy at the structural worst case
+# L_max=712 against 47.37 GiB usable). micro is a *forward chunk size* only; the
+# sigma group stays at the pre-registered 8, so sigma/d keep the design ruler:
+# the stub ablation gives ||g_bar|| 0.03697, sigma 0.06405, d 0.57724 for BOTH
+# (group 8, micro 8) and (group 8, micro 4), identical to 4 steps. See D-15.
+#
+# This is the ONE deviation to declare in REPORT.md: micro 8 -> 4, forward
+# chunking only, sigma口径 untouched. metrics.jsonl records both n_groups (=b/8)
+# and n_forward_chunks (=b/4) so the two are never confused after the fact.
+#
+# 2026-10-25 late: two sampler settings added after the L1 probe (D-18/D-19).
+# Both are mandatory, not tuning:
+#   seed_per_request: true      -- one seed for the whole rollout made the G=8
+#                                  samples of a prompt identical (measured: 1.2/8
+#                                  distinct, zero_var_group_frac 0.875). With
+#                                  per-request seeds: 8.0/8 distinct and
+#                                  zero_var 0.000, sigma 0.0209 -> 0.0659.
+#   prefix cache / chunked prefill off, max_num_batched_tokens fixed
+#                              -- with vLLM defaults two identical runs differed
+#                                  in 355/512 rows; with a fixed batch shape
+#                                  0/512 rows differ, i.e. the run repeats.
+extends: cloud48g.yaml
+run:
+  tag: cloud48g_main
+model:
+  logit_chunk: 64
+train:
+  num_rollouts: 8
+  num_generations: 8
+  responses_per_rollout: 4096
+  micro_batch_responses: 4      # forward chunk (VRAM)
+  micro_group_responses: 8      # sigma group = pre-registered value
+rollout:
+  vllm:
+    gpu_memory_utilization: 0.45
+    max_num_seqs: 256
+    max_model_len: 1024
+    enforce_eager: true
+    seed_per_request: true
+    enable_prefix_caching: false
+    enable_chunked_prefill: false
+    max_num_batched_tokens: 2048

@@ -1,0 +1,31 @@
+# L1 determinism probe, fixed-shape arm: everything identical to
+# cloud48g_det_base.yaml except the three knobs that make vLLM's batch shape
+# depend on scheduling rather than on our input.
+#
+# Hypothesis being tested (D-16 follow-up): the G=8 generations of one prompt
+# share a ~100-token prefix. With prefix caching on, whether each of them hits
+# the cache depends on eviction order, and a cache hit runs a different
+# attention path than a full prefill -> different logits -> tokens flip near
+# ties -> trajectories diverge. Chunked prefill adds a second source of shape
+# variation. Neither is needed here: prefill is ~100 tokens against ~512 decode
+# steps, so the throughput cost of turning both off should be a few percent.
+#
+# max_num_batched_tokens must be >= max_model_len when chunked prefill is off,
+# hence 2048 rather than something tighter.
+#
+#   python src/train.py --config configs/cloud48g_det_fixed.yaml --tag det_fix_a --num-rollouts 1 --seed 0
+#   python src/train.py --config configs/cloud48g_det_fixed.yaml --tag det_fix_b --num-rollouts 1 --seed 0
+#   python tools/audit_rollout_ids.py runs/det_fix_a/rollouts/r000.npz \
+#          --compare runs/det_fix_b/rollouts/r000.npz --group 8
+#
+# PASS = completion ids identical, row for row. Anything else means the batch
+# shape is not the cause and D-16 goes into the limitations as a backend
+# property, with the rollout archives as the fallback audit trail.
+extends: cloud48g_det_base.yaml
+run:
+  tag: cloud48g_det_fixed
+rollout:
+  vllm:
+    enable_prefix_caching: false
+    enable_chunked_prefill: false
+    max_num_batched_tokens: 2048

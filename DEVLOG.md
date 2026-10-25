@@ -309,6 +309,11 @@ logits（bf16 一份 + fp32 一份 + 反传梯度）。
 **合计 ≈ 11.8 GPU-h ≈ ¥25**（¥2.08/h），保守取整 **12–16 h / ¥25–33**。对照 D-12 的 HF 口径
 （93 h / ¥194）：**预算从"超 94%"变成"用掉 1/3"**。
 
+**⚠️ 修正（D-17，2026-10-25 晚）**：上表 `M/rollout` 与 `update` 两列在 mu=8 / mu=16 上算错了，
+`合计 11.8 h / ¥25` 因此偏低。每 rollout 的前向块数是 `Br/micro = 1024`，**与 mu 无关**（mu 只改
+"每步几块"和"几步"，乘积不变），表里却拿 `b/micro` 当作每 rollout 块数、只算了一步。修正后三臂
+单 run 都 ≈1.83 h，**9 run ≈16.5 h ≈ ¥34**。预算结论（<¥100）不变，差的 4.7 h 记在 D-17。
+
 **这次为了跑通付出的代价，必须记进 deviation**：
 
 1. **micro 8 → 4 是一处偏离预注册**。`base.yaml` 写的是 8。σ 依赖微批大小（σ ∝ 1/√m），
@@ -408,3 +413,160 @@ metrics。单步估计下比值在 1.33–1.39 之间波动，是 σ 的有限�
 未做的验证：不确定这是 vLLM 版本/`max_num_batched_tokens`/前缀缓存中的哪一个造成的。
 若论文要声称可复现，只有两个选择：固定 vLLM 内部批次形状，或改用 HF 后端（`torch.manual_seed`
 在 `rollout.py:127` 已设，代价是慢 5.8 倍）。
+
+**→ 2026-10-25 晚已结案：见 D-19。** 根因是前缀缓存 + chunked prefill + 未固定的 token
+预算共同让批次形状随调度漂移；三者关掉后两次运行 0/512、0/1024 行 token 完全相同。
+本条的三条影响里，第 1 条（跨运行不可比）随之失效，第 2、3 条仍成立但原因要改成
+"每请求独立 seed"（D-18）而非"后端不可复现"。
+
+### D-17 9 run 定档：选 A（micro 4 / group 8），修一处外推错误，把"可复现"落到数据层（2026-10-25）
+
+三件事一起记，因为它们互相依赖：选哪套配置决定钱，钱决定能不能先做探针，探针决定 D-16 怎么写。
+
+**一、外推错误（改 D-13 的表）**
+
+D-13 的 9 run 外推表把 update 成本记成"随 `M = b/micro` 变"，于是 mu=8 记 44 s、mu=16 记 22 s。
+错在分子：**每 rollout 的前向块数 = `mu × (b/micro) = Br/micro = 1024`，与 mu 无关**。表里只算了
+一步的块数，漏乘 mu。修正：
+
+| arm | 块数/rollout | rollout | update | 单 run | 3 seeds |
+|---|---|---|---|---|---|
+| mu=1 / mu=8 / mu=16 | 都 1024 | 446 s | 378 s | **1.83 h** | 5.5 h |
+
+单块成本取实测 0.37 s（`g8c.log`：47.3 s / 128 块）。**9 run = 16.5 h ≈ ¥34**（原记 11.8 h / ¥25）。
+预算结论不变（<¥100，留 66% 余量给校准门与重跑），但差 4.7 h，不能留在文档里。
+教训：凡"每 rollout / 每 step"的量，写表时必须把分母写出来，否则 mu 一进表就错。
+
+**二、配置定档：A**
+
+用户 2026-10-25 拍板用 A。三套候选的实测与取舍：
+
+| | A micro4/group8/util .45/mns256 | B micro8/group8/util .32/mns128 | C micro8/group8/util .45 |
+|---|---|---|---|
+| rollout / update（512 条） | 56.0 / 47.3 s | 83.1 / 49.3 s | 四次全 OOM |
+| s/resp | **0.2018** | 0.2586 (+28%) | — |
+| 峰值 | **40,172 MiB** | 46,344 MiB | — |
+| 余量 | **8.9 GiB** | 2.8 GiB | — |
+| σ 口径 | group=8 = 设计值 | 同 | — |
+| 9 run | **16.5 h ≈ ¥34** | 21.2 h ≈ ¥44 | 死路 |
+
+- C 是死路：探针 micro=8 在 L_max 712 下训练侧 31.98 GiB，util .45 的 vLLM 占 21.31 GiB，
+  合计超可用量 5.9 GiB。除非 logits 降 bf16（已否决：与 fp32 差 0.03–0.12 nats）。
+- B 唯一的好处是字面上不用写 micro 偏离，代价是 +4.7 h / +¥10 / 余量掉到 2.8 GiB / 并发砍半，
+  而 σ 口径 A 已经保住了。**用"字面一致"换"少 3 倍余量"不划算。**
+- A 要申报的偏离只有一条：`micro 8 → 4`，且仅指前向块大小；`micro_group_responses: 8` 保持
+  预注册值，`metrics.jsonl` 同时记 `n_groups`（=b/8）与 `n_forward_chunks`（=b/4），事后不会混。
+  等价性证据见 D-15 §三（stub 上 g8m8 与 g8m4 逐位相同；真机 ‖ḡ‖ 三位小数不变）。
+
+落地文件：`configs/cloud48g_main.yaml`（A 本体，8×4096）、`scripts/run_9.sh`（9 次循环 + 三个前置门，
+含 `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` 与每次清空 `runs/_adapter`）。**未启动。**
+
+**三、"可复现"落到数据层（L0）**
+
+D-16 说采样不可复现。但"跑完发现不可复现"真正的杀伤力不是采样随机，而是**事后无法回答
+"这个 σ 是从哪批 response 算出来的"**：`samples.jsonl` 每 rollout 只写 8 条
+（`train.py` `log_rollout_samples`），32768 条里 8 条。
+
+`train.py:save_rollout_ids()` 现在把每 rollout 的完整 `prompt_ids` / `completion_ids` 写进
+`runs/<tag>/rollouts/r{idx}.npz`（ragged → flat uint32 + lengths，压缩后约 25–30 MiB/run），
+`rollouts/index.jsonl` 记 sha256，同一 sha 也进每行 metrics（`rollout_data_sha`，schema 里可选）。
+**同一指数第二次写不覆盖第一次**：resume 会重新采样，那是不同数据，必须让它可见而不是被盖掉。
+
+`tools/audit_rollout_ids.py` 提供两件查询：`--compare` 逐行比两份 archive（L1 探针的判据），
+`--group G` 量组内多样性（见四）。
+
+测试：`tests/test_rollout_archive.py`（5 条，纯 numpy），全套 21/21 通过。
+
+**四、D-16 的两个待验假设，和 L1 探针**
+
+1. **批次形状**（最可能）：`enable_prefix_caching=True` + `enable_chunked_prefill=True` 是
+   `det_a`/`det_b` 逐字相同的引擎配置。一个 prompt 的 G=8 条共享 ~100 token 前缀，命中缓存与
+   否取决于调度顺序，两条路径的 attention 数值不同 → 平局附近翻 token → 轨迹发散。
+   `VLLMBackend` 现在能透传三件事：`enable_prefix_caching` / `enable_chunked_prefill` /
+   `max_num_batched_tokens`（默认全不设 = 老行为）。探针配置 `configs/cloud48g_det_fixed.yaml`
+   全关 + 2048，与 `cloud48g_det_base.yaml` 各跑两次（4×512 条 ≈ ¥0.4），`--compare` 逐位判。
+2. **组内样本相关性**（比 1 更该先查）：`rollout.py` 给一次 rollout 的所有请求传**同一个**
+   `SamplingParams.seed`。若 vLLM 按请求独立播种同值，同 prompt 的 G 条会共享随机流，
+   有效样本从 512 掉到 64 个 prompt，σ 与所有 pass 的置信区间都要重算。
+   独立证据：三次 512 条 pilot 的 pass = **0.188 / 0.238 / 0.357**，固定 n 时二项 sd 只有 0.019，
+   实测散布 ≈ 9σ → 不是抽样噪声，是分布真变了。
+   `--group 8` 直接量：组内 distinct 完成数、首 token 不同数、组内长度 sd / 总体 sd。
+   `seed_per_request` 开关（默认关 = 老行为）已加，等证据再决定是否翻。
+
+含义（若假设 2 成立）：`σ` 的绝对量级要重标定，`claims.yaml` C3 的 CI 要按 prompt 数而非
+response 数算，且 pilot 阶段（512 条）的 pass 不能当结论——正式 run 每 rollout 4096 条，
+同一个效应被稀释 8 倍。
+
+**五、开销账**
+
+L0 代码 + 测试：0 元。L1 探针 4×512 条 ≈ ¥0.4。云端测试与同步 ≈ ¥0.2。9 run 未启动。
+
+### D-18 vLLM 的 G 条样本其实只有 1 条：共享 `SamplingParams.seed` 让组内退化（2026-10-25）
+
+**这是一条比 D-16 严重的 bug，而且它一直在所有 vLLM 运行里。**
+
+现象（`det_base_a`，512 条 = 64 组，全量 archive 而非 8 条样本）：
+组内互不相同的完成平均 **1.25/8**（min 1），首 token 平均 **1.016 种**，组内长度 sd 6.77 /
+总体 163.58（ratio 0.041）。旧 run 的 `samples.jsonl`（前 8 条正好是 p0×8）在**每个** vLLM run
+都是逐字相同的 8 条；同一实验的 HF 后端是 8 条各不相同。
+
+后果不是"样本少一点"，而是设计本身被抽空：
+
+- `group_advantages` 对零方差组直接把 advantage 置 0（`grpo.py:43`），
+  实测 `zero_var_group_frac = 0.875` → **87.5% 的 response 对梯度零贡献**；
+- σ 是在"一个样本重复 8 次"的组上量的，所以它既不反映采样噪声、也不反映 micro-batch 之间的差异；
+- `pass_rate` 的有效样本是 64 个 prompt，不是 512 条 response。
+
+原因：`rollout.py` 给一次 rollout 的所有请求同一个 `SamplingParams.seed`。同 prompt + 同权重 +
+同 seed → 同一条轨迹。少数组会有差异，只是批内位置不同带来的浮点微扰在平局处岔开。
+
+修法：`rollout.vllm.seed_per_request: true`，每请求 `seed*1_000_003 + 行号`；默认 `false`
+保留旧行为，便于已跑数据仍能解释（它们都是 `false` 跑的）。
+
+| | 共享 seed（旧） | 每请求 seed（新） |
+|---|---|---|
+| 组内 distinct | 1.22–1.36 / 8 | **8.00 / 8**（min 8） |
+| 首 token 种数 | 1.02 | 7.05 |
+| 组内/总体长度 sd | 0.04–0.06 | 0.93 |
+| `zero_var_group_frac` | 0.797–0.875 | **0.000–0.016** |
+| σ | 0.0204–0.0306 | **0.0635–0.0685** |
+| d | 0.12–0.18 | 0.10–0.14 |
+
+σ 涨 3.15×，`d` 相应降到约 1/3。**清单里所有 pilot 的 σ/d 绝对值都与新口径不可比**——
+以前的 σ 量的不是它声称的东西。`claims.yaml` C4 只比 µ 之间的方向与比值，方向性不受影响；
+但"σ 的量级"这类叙述要全部重写。
+
+### D-19 D-16 结案：不可复现的根因是批次形状，固定形状后可逐位复现（2026-10-25）
+
+D-16 记"同配置同 seed 两次跑出 0.188 / 0.238，原因未定位"。现在有了 token 级判据
+（`tools/audit_rollout_ids.py --compare`）：
+
+| 配置 | 两次运行逐行比较 | pass |
+|---|---|---|
+| vLLM 默认（前缀缓存 on、chunked prefill on、无 token 预算） | **355 / 512 行不同（69.3%）** | 0.238 vs 0.188 |
+| `enable_prefix_caching: false` + `enable_chunked_prefill: false` + `max_num_batched_tokens: 2048` | **0 / 512 行不同** | 0.334 vs 0.334 |
+| 再加 `seed_per_request`（512 条） | **0 / 512 行不同** | 0.205 vs 0.205 |
+| 再加 `seed_per_request`（1024 条） | **0 / 1024 行不同** | 0.225 vs 0.225 |
+
+机制：一个 prompt 的 G 条共享 ~100 token 前缀，前缀缓存命中与否由调度顺序决定，命中与全量
+prefill 走不同 attention 路径 → 数值不同 → 平局翻 token → 轨迹整条岔开。三者都关掉后，
+调度器对同一份输入的决策成为确定函数。
+
+为什么补测了 1024：512 条只铺满两个调度波次，正式 run 是 Br=4096（十六个波次）。
+"固定形状"只有在调度决策仍是输入的确定函数时才有用，所以要在更大的批上验一次没有退化。
+**Br=4096 仍未验**（单次 1.8 h）；机制与批大小无关，且 512→1024 没有退化，接受这个残余风险，
+写进方法节。
+
+吞吐：1024 条 rollout 84.8 s + update 89.8 s = 0.1705 s/response（512 条时 0.189），
+单 run 外推 ≈1.6 h，9 run 14–16 h ≈ ¥30–34，与 D-17 一致。
+
+**D-16 因此降级**：不再写"vLLM 采样不可复现"这条 limitation，改成"vLLM 默认批次形状让采样
+不可复现，固定形状后逐位复现"。`rollouts/r{idx}.npz` 全量落盘保留，身份从"唯一退路"变成常规保障。
+
+**证据**：`notes/2026-10-25_cloud48g/DETERMINISM.md`、`det/*/`（九个运行的 archive、audit、
+metrics、samples）、`probe_det1.log`、`probe_det2.log`；配置
+`configs/cloud48g_det_{base,fixed,seed,seedfix,seedfix1024}.yaml`。
+
+### 会话开销（2026-10-25 第三会话）
+
+九个探针运行 ≈ ¥1.3（6.1k responses 含引擎启动）。9 run **未启动**，等用户放行。

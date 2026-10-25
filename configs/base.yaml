@@ -65,6 +65,13 @@ logging:
   flush_every: 1
   save_state_every_rollouts: 1
   log_rollout_samples: 8
+  # DEVLOG D-17. vLLM's sampler does not reproduce across processes (D-16), so
+  # the responses a run was scored on are archived rather than assumed: without
+  # them nobody can re-derive sigma / d from the run after the fact. ~25-30 MiB
+  # per run after compression; `rollouts/index.jsonl` carries the sha256 that
+  # also lands in every metrics row.
+  save_rollout_ids: true
+  rollout_id_dir: rollouts
 
 drift:
   kappa: 1.0                  # unit convention only; cancels in every ratio

@@ -1,0 +1,22 @@
+{
+  "npz": "runs/det_sf_b/rollouts/r000.npz",
+  "n_responses": 512,
+  "sha256_recomputed": "b02e084bbe096f0d79ff3d68e2b5e1abe1e3b926393ccfe9200706fa56a55342",
+  "prompt_tokens": 36136,
+  "completion_tokens": 146107,
+  "mean_completion_len": 285.37,
+  "sha256_recorded": "b02e084bbe096f0d79ff3d68e2b5e1abe1e3b926393ccfe9200706fa56a55342",
+  "sha_matches_record": true,
+  "diversity": {
+    "groups": 64,
+    "group_size": 8,
+    "mean_unique": 8.0,
+    "min_unique": 8,
+    "groups_with_duplicates": 0,
+    "groups_all_identical": 0,
+    "mean_unique_first_token": 7.047,
+    "len_sd_within_group_mean": 148.21,
+    "len_sd_overall": 168.83,
+    "within_over_total_len_sd": 0.878
+  }
+}
