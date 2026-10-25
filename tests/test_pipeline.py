@@ -108,6 +108,53 @@ def test_config_derived_quantities() -> None:
     assert cfg.micro_batches_per_step == 64
 
 
+def test_plan_partition_micro_is_batch_size_not_count() -> None:
+    """`micro_batch_responses` is a chunk SIZE; plan_partition must not invert it.
+
+    Regression for the 48G OOM of 2026-10-25. The old body was
+    `np.array_split(s, micro)`, which yields `micro` chunks of b/micro responses
+    each. With micro=8 and b=512 that put 64 rows through score() while
+    `score_memory_bytes(micro=8, 640)` had promised room for 8 -- 21.99 GiB
+    requested against a 2.89 GiB pre-flight, so every vLLM arm died in
+    score(). Nothing caught it because the only existing assertion
+    (test_config_derived_quantities) checks config's arithmetic, never the
+    chunking that actually runs.
+
+    Two independent invariants, both derived from config rather than hard-coded:
+    the chunk count must equal `cfg.micro_batches_per_step`, and every chunk must
+    hold exactly `micro` responses.
+    """
+    import numpy as np
+
+    import train as train_mod
+
+    cfg = config_mod.Config({"train": {"responses_per_rollout": 4096, "mu": 8,
+                                       "micro_batch_responses": 8, "num_generations": 8}})
+    cfg.validate()
+    micro = int(cfg["train.micro_batch_responses"])
+
+    parts = train_mod.plan_partition(4096, mu=8, micro=micro,
+                                     rng=np.random.default_rng(1))
+    assert len(parts) == 8, f"mu=8 must give 8 optimizer steps, got {len(parts)}"
+    for si, step in enumerate(parts):
+        assert len(step) == cfg.micro_batches_per_step, (
+            f"step {si}: expected {cfg.micro_batches_per_step} micro-batches per config, "
+            f"got {len(step)} -- micro was probably treated as a count, not a size")
+        sizes = [len(c) for c in step]
+        assert sizes == [micro] * cfg.micro_batches_per_step, (
+            f"step {si}: every micro-batch must hold exactly {micro} responses, got {sizes}")
+
+    # mu only moves step boundaries; the union must still be a permutation,
+    # otherwise the arms are not paired (the whole audit depends on that).
+    seen = sorted(int(i) for step in parts for c in step for i in c)
+    assert seen == list(range(4096)), "partition must cover every response exactly once"
+
+    # and the degenerate case: mu=1 collapses to a single step, chunking unchanged.
+    one = train_mod.plan_partition(512, mu=1, micro=8, rng=np.random.default_rng(0))
+    assert len(one) == 1 and len(one[0]) == 64
+    assert [len(c) for c in one[0]] == [8] * 64
+
+
 def test_config_extends() -> None:
     with tempfile.TemporaryDirectory() as td:
         (Path(td) / "base.yaml").write_text(

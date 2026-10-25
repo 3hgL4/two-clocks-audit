@@ -1,0 +1,31 @@
+# Post-D-13 vLLM smoke on 48G: 64 responses, mu=1, micro_batch_responses=4.
+#
+# Purpose: is the *fixed* chunking enough to let vLLM and the training step
+# coexist, and what is the per-response time? Before D-13 this exact shape OOM'd,
+# because plan_partition turned micro=8 into 8 chunks of 64 rows, so score()
+# allocated 21.99 GiB where score_memory_bytes had budgeted 2.89.
+#
+# Shape note: mu=1 / micro=8 gives M = Br/mu/micro = 8 micro-batches per step --
+# the same chunking as cloud48g_throughput.yaml, just 8x fewer responses. So this
+# run doubles as a correctness check on the new partition at the production shape.
+#
+#   python src/train.py --config configs/cloud48g_vllm64.yaml
+#
+# Cost at ¥2.08/h: roughly 2-4 min including engine start, i.e. ~¥0.1.
+#
+# micro=4, not the pre-registered 8: measured on this card 2026-10-25 (D-14),
+# score() peaks at 29.0 GiB forward / 33.0 GiB with backward for micro=8 --
+# it does not fit next to vLLM on 48 GiB at any util. micro=4 is 16.2 / 18.2 GiB.
+extends: cloud48g.yaml
+run:
+  tag: cloud48g_vllm64
+  seed: 0
+train:
+  num_rollouts: 1
+  num_generations: 8
+  responses_per_rollout: 64
+  mu: 1
+  micro_batch_responses: 4
+  max_completion_length: 512
+logging:
+  log_rollout_samples: 8

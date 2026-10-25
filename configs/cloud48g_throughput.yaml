@@ -1,0 +1,28 @@
+# Throughput probe on 48G: not a correctness run, a stopwatch.
+#
+# Why a second smoke instead of extrapolating from cloud48g_smoke.yaml: that one
+# uses 64 responses with max_num_seqs 256 and micro=2, i.e. it never fills the
+# vLLM scheduler and its per-response time includes engine warm-up amortised over
+# only 64 samples. The production shape is Br=4096 streaming through 256 slots.
+# 512 responses at micro_batch_responses 4 with mu=1 is the cheapest shape that
+# (i) saturates the scheduler for most of the rollout and (ii) matches the real
+# run's rollout:update ratio closely enough to split the two costs.
+#
+# Cost: 512 responses x ~0.2 s ~ 100 s of GPU, i.e. ~¥0.06. Not worth economising.
+#
+# micro=4, not the pre-registered 8: measured on this card 2026-10-25 (D-14),
+# score() peaks at 29.0 GiB forward / 33.0 GiB with backward for micro=8 --
+# it does not fit next to vLLM on 48 GiB at any util. micro=4 is 16.2 / 18.2 GiB.
+extends: cloud48g.yaml
+run:
+  tag: cloud48g_throughput
+  seed: 0
+train:
+  num_rollouts: 1
+  num_generations: 8
+  responses_per_rollout: 512
+  mu: 1
+  micro_batch_responses: 4
+  max_completion_length: 512
+logging:
+  log_rollout_samples: 8

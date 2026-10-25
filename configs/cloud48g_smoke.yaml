@@ -1,0 +1,23 @@
+# 48G smoke, shape-identical to cloud24g_smoke.yaml so the two sessions are
+# directly comparable: 64 responses, mu=2, micro=2, cap 512.
+#   python src/train.py --config configs/cloud48g_smoke.yaml
+#
+# Answers the same four questions as the 24G smoke, of which (a) is the open one:
+#   (a) does real vLLM start on 48 GiB and produce a numeric step (the 24G box
+#       OOM'd at 0.55 / 0.50 / 0.28 and never got a vLLM number at all),
+#   (b) seconds per response, comparable to the 1.12 s/resp HF anchor,
+#   (c) pass rate on this pool (feeds P1 in analysis/claims.yaml),
+#   (d) peak VRAM, which is what decides util 0.60 vs higher.
+extends: cloud48g.yaml
+run:
+  tag: cloud48g_smoke
+  seed: 0
+train:
+  num_rollouts: 1
+  num_generations: 8
+  responses_per_rollout: 64
+  mu: 2
+  micro_batch_responses: 2
+  max_completion_length: 512
+logging:
+  log_rollout_samples: 8

@@ -69,7 +69,19 @@ def plan_partition(n: int, mu: int, micro: int, rng: np.random.Generator) -> lis
     """
     perm = rng.permutation(n)
     steps = np.array_split(perm, mu)
-    return [list(np.array_split(s, micro)) for s in steps]
+    # `micro` is a chunk SIZE, not a chunk COUNT. Passing it straight to
+    # array_split (the pre-2026-10-25 code) produced `micro` chunks of b/micro
+    # responses each, i.e. a forward pass over b/micro rows where the pre-flight
+    # `score_memory_bytes(micro, ...)` had budgeted `micro` rows. On the 48G box
+    # that meant 64 rows instead of 8: 21.99 GiB allocated against a 2.89 GiB
+    # estimate, which is why all four vLLM attempts OOM'd in score() and why
+    # lowering gpu_memory_utilization never helped. See DEVLOG D-13.
+    #
+    # config.validate() guarantees b % micro == 0, so every chunk below is
+    # exactly `micro` long and _accumulate's 1/len(step_parts) weighting stays
+    # uniform across chunks.
+    micro = max(1, int(micro))
+    return [[s[i : i + micro] for i in range(0, len(s), micro)] for s in steps]
 
 
 def _trainable(policy: Policy):

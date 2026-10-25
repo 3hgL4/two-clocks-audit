@@ -164,7 +164,7 @@ vLLM 与 HF 抢显存时，退到 `--rollout hf` 反而先拿到了完整链路�
 **证据存档**：`notes/2026-10-24_cloud24g/`（metrics / samples / 两份 log / 校准探针）。
 
 
-### D-11 单价记错了：24G 不是 2.08（2026-10-25 用户核实）
+### D-12 单价记错了：24G 不是 2.08（2026-10-25 用户核实）
 
 D-10 与 `configs/cloud24g*.yaml` 把单价写成 **¥2.08/h**，那是 **48G** 的价；
 **4090-24G 实为 ¥1.56/h**。代码侧已改（`base.yaml` / `cloud24g.yaml` / `src/config.py`
@@ -182,3 +182,143 @@ D-10 与 `configs/cloud24g*.yaml` 把单价写成 **¥2.08/h**，那是 **48G** 
 **故意没改**：`analysis/claims.yaml` C7（"单 run ≤¥6，九次 ≤¥55"，写在 ¥1.50/h 的假设下）。
 按 1.56 重算，区间上限是 ¥6.2 / ¥56 —— 这条预注册会因为价格口径而不是科学原因证伪。
 改预注册要留痕（加 revision 行），等用户拍板，AI 不代改。
+
+
+### D-13 `micro_batch_responses` 被当成"切几块"，导致四次 vLLM OOM（2026-10-25）
+
+**现象**：48G 上 vLLM 四次尝试全 OOM，失败点都在策略侧（`model.py:196` / `:199`），
+且降 `gpu_memory_utilization`（0.60 → 0.45 → 0.35）完全无效——策略侧占用"给多少用多少"
+（18.11 → 25.25 → 30.20 GiB）。
+
+**根因**：`train.py:72` 写的是 `np.array_split(s, micro)`，把每个 optimizer step 切成
+**micro 份**。但 `micro_batch_responses` 的语义是**每块多大**，这一点在另外三处都有明证：
+`config.py:40` 注释（`logits memory ~ micro*len*vocab`）、`train.py` 的预检
+`score_memory_bytes(micro, ...)`、以及 `config.py:125`
+`micro_batches_per_step = responses_per_step // micro`（这里算的是**块数**）。
+
+**可复算的算术闭合**（V=151669）：
+
+| | 公式 | 值 | 日志 |
+|---|---|---|---|
+| 预检 | `8 × 640 × V × 4` | 2.89 GiB | `est. logits memory ~2.89 GiB` |
+| 实际 | `64 × 608 × V × 4` | **21.99 GiB** | `Tried to allocate 21.99 GiB` |
+| 比值 | B 从 8 变 64 | **7.60** | — |
+
+`plan_partition(512, mu=1, micro=8)` 旧实现给出 **8 块 × 64 个**，应是 **64 块 × 8 个**。
+所以"策略侧需要 19–25 GiB"是假象，真实需求约 11 GiB。
+
+**修复**（`train.py`，一行）：按每块 `micro` 切，块数由 `b // micro` 决定。
+
+**修复不改梯度，只改 σ**。同一份 `configs/dryrun.yaml`（Br=64, mu=2, micro=4, b=32）在
+旧/新实现下各跑一次，CPU，同 seed=7：
+
+| | n_micro_batches | grad_norm_raw | sigma（4 个 step） | drift_d |
+|---|---|---|---|---|
+| 旧（4 块 × 8 个） | 4 | 0.037 / 0.027 | 0.0641 0.0536 0.0610 0.0557 | 0.5772 0.5083 0.5225 0.4742 |
+| 新（8 块 × 4 个） | 8 | **0.037 / 0.027** | 0.0875 0.0764 0.0874 0.0822 | 0.4236 0.3563 0.3665 0.3226 |
+
+**`grad_norm_raw` 逐位相同**，确认梯度数值等价；σ 放大 **1.365×**（理论 √(8/4)=1.414，
+差额来自 σ 本身的估计噪声），d 按同一因子反向缩放（实测 0.734，理论 0.707）。
+
+这个缩放是物理必然，不是可选：σ 本来就是"当前 minibatch 大小的梯度噪声"，改 m 就改 σ。
+48G 真实场景 m 从 64 变 8，σ 约放大 **√8 = 2.83**，d 同比缩小。因此：
+
+- `codes/` 与 `notes/` 里任何修复前的 d/sigma 绝对数值**作废**，不再引用；
+- `claims.yaml` C1（"d 随 mu 增大而下降"）是**相对趋势**，所有 arm 用同一 micro=8，
+  缩放因子对所有 arm 相同，**结论不受影响**；
+- 与论文报的 d 数值做跨文献绝对值比较时需要论文也报 micro 大小，否则口径不可比。
+
+**连带作废的旧结论**：D-10 那张"24G 上 vLLM 三档（0.55/0.50/0.28）全 OOM"的表，
+失败原因同样是这个 bug，**不能作为"24G 跑不动 vLLM"的证据**。24G 能否跑通需重新实测。
+
+**为什么 12/12 测试没抓到**：`tests/test_pipeline.py` 原有断言只检查
+`cfg.micro_batches_per_step == 64`（配置层算术），从未断言 `plan_partition` 真实切出的块
+大小，于是"配置说 64 块、代码给 8 块"长期并存。已补
+`test_plan_partition_micro_is_batch_size_not_count`，同时锁块数与块大小，并验证 mu 只移动边界、并集仍是全排列（arm 配对的前提）。现 13/13。
+
+
+### D-14 D-13 之后仍然 OOM：`score()` 的真实显存是每行 ~3.2 GiB，micro 必须从 8 降到 4（2026-10-25）
+
+**第一层（已修）**：D-13 的切分 bug 让 `score()` 跑 64 行而不是 8 行，这是四次 OOM 的直接原因，
+修完预检和实际一致（2.89 GiB）。
+
+**第二层（本次暴露）**：修好切分后，48G 上 vLLM 仍然起不来，而且症状反过来了——
+vLLM 拿得越少，策略占得越多：
+
+| util | vLLM | 策略 OOM 时 allocated |
+|---|---|---|
+| 0.60 | 28.41 GiB | 18.37 GiB |
+| 0.45 | 21.31 GiB | 25.08 GiB |
+
+差值 6.71 GiB 对 vLLM 的 7.10 GiB，看起来像"分配器自适应"，其实**不是**：单跑一个不含 vLLM 的
+探针（`notes/2026-10-25_cloud48g/probe_micro_batch.py`，全 47 GiB 可用），B=8 照样要 29.01 GiB。
+两次 OOM 的区别只是**在哪一点撞墙**：util 0.60 时在 18.37 就没了，util 0.45 时撑到 25.08。
+
+**探针实测**（L_max=584，`requires_grad=True`，逐 B 重置 peak）：
+
+| micro (B) | 前向峰值 | 含反传峰值 | 该图形的 fp32 logits |
+|---|---|---|---|
+| 8 | 29.01 GiB | 32.96 GiB | 2.64 GiB |
+| 4 | 16.22 GiB | 18.20 GiB | 1.32 GiB |
+| 2 | 9.93 GiB | 10.92 GiB | 0.66 GiB |
+
+拟合 `peak ≈ 3.5 + 3.19·B`：3.5 GiB 是 1.7B 参数（bf16），**每行 response 约 3.2 GiB**。
+这不是显存泄漏，也不是 gradient checkpointing 没生效——探针确认
+`is_gradient_checkpointing=True` 且 `.model._gradient_checkpointing_func` 已是
+`partial(checkpoint, use_reentrant=False)`。成本来自 1.7B 模型的逐层激活加上 151,669 词表的
+logits（bf16 一份 + fp32 一份 + 反传梯度）。
+
+**结论**：48 GiB 减去 vLLM 的 21.3 GiB，只剩 26 GiB，装不下 micro=8 的 33 GiB。
+**micro 必须降到 4**（18.2 GiB，util 0.45 下余 ~7.8 GiB）。micro=2 也测得可行（10.9 GiB），
+保留为 util 0.60 时的备选。
+
+**首次跑通**（`configs/cloud48g_vllm64.yaml`，util 0.45，micro=4，Br=64/mu=1 → M=16）：
+
+```
+[r0 mu00] pass=0.125 r=+0.150 len=291 kl=+0.00e+00 clip=0.0000 gn=0.000 sig=0 d=None
+[r0] done: rollout 27.9s update 5.5s cum 64 resp, 0.009 GPU-h, ¥0.02
+峰值 44,734 MiB
+```
+
+`gn=0 / sig=0 / d=None` 是数据巧合，不是故障：64 个 response = 8 prompt × G=8，pass=0.125 恰好
+是"其中 1 个 prompt 全对、其余全错"，8 个组内都没有混合，GRPO 的组内优势全为 0。判据是
+`_accumulate` 没抛"no gradient"，即梯度张量存在但数值为 0。
+
+**吞吐（512 responses，`configs/cloud48g_throughput.yaml`，已足以让 256 槽调度器饱和）**：
+
+```
+[r0 mu00] pass=0.238 r=+0.273 len=322 kl=+0.00e+00 clip=0.0000 gn=0.004 sig=0.0306 d=0.1323
+[r0] done: rollout 56.4s update 43.5s cum 512 resp, 0.028 GPU-h, ¥0.06
+峰值 46,034 MiB（余 3.1 GiB）
+```
+
+- rollout **0.110 s/response**（HF 后端在 48G 上是 ~1.03 → **快 9.4 倍**）
+- update **0.085 s/response**（M=128 块，0.34 s/块）
+- 合计 **0.195 s/response**，对照 HF 的 1.14 → **5.8 倍**
+
+三条仪器判据同时成立：µ-step0 的 **KL 恰好 +0.00e+00**、**clip=0**、**σ=0.0306 与 d=0.1323 有限非零**。
+
+**9 run 外推**（单 run 32,768 responses；update 成本随 M=b/micro 变，故三个 mu 不同）：
+
+| arm | M/rollout | rollout | update | 单 run | 3 seeds |
+|---|---|---|---|---|---|
+| mu=1 (b=4096) | 1024 | 451 s | 348 s | 1.78 h | 5.33 h |
+| mu=8 (b=512) | 128 | 451 s | 44 s | 1.10 h | 3.30 h |
+| mu=16 (b=256) | 64 | 451 s | 22 s | 1.05 h | 3.15 h |
+
+**合计 ≈ 11.8 GPU-h ≈ ¥25**（¥2.08/h），保守取整 **12–16 h / ¥25–33**。对照 D-12 的 HF 口径
+（93 h / ¥194）：**预算从"超 94%"变成"用掉 1/3"**。
+
+**这次为了跑通付出的代价，必须记进 deviation**：
+
+1. **micro 8 → 4 是一处偏离预注册**。`base.yaml` 写的是 8。σ 依赖微批大小（σ ∝ 1/√m），
+   相对设计值放大 **√2 = 1.41**，与 D-13 那次（√8）方向相同、量级更小。因为所有 arm 共用同一
+   micro，`claims.yaml` C1 的**相对趋势仍然成立**，但 d 的绝对值不可与 micro=8 的旧数比较。
+2. **update 成本随 M 线性增长**。micro 减半 → 块数翻倍 → update 时间翻倍，mu=1 尤其明显
+   （348 s/rollout，占总时长 44%）。这是 micro=4 的直接代价，已含在上表里。
+3. **余量只剩 3.1 GiB**（peak 46,034 / 49,140）。主实验的 completion 若普遍接近 cap 512，
+   L_max 会从 322 升到 ~712，峰值约再涨 20%。这一条**尚未实测**，9 run 首跑必须盯第一轮的峰值。
+
+**证据**：`notes/2026-10-25_cloud48g/` 下 `vllm_util060_oom.log`、`vllm_util045_oom.log`、
+`vllm_micro4_pass.log`、`vllm_micro4_512_throughput.log`、`vram_throughput.csv`、
+`probe_micro_batch.py`。

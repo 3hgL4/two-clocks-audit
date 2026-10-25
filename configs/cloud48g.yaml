@@ -1,0 +1,36 @@
+# Cloud overlay: RTX 4090-48G (49,140 MiB) on the rented box, 2026-10-25.
+#
+# Why this file exists: cloud24g.yaml was tuned for 23.52 GiB, and its ~65-seq
+# concurrency ceiling is what the 9-run main line cannot afford. On 48 GiB the
+# same weights get several times the KV cache, so this overlay only re-splits
+# VRAM. No arm definition (mu, Br, G, clip, lr) is touched, so the pre-registered
+# comparison is unaffected.
+#
+# MEASURED after the DEVLOG D-13 partition fix (notes/2026-10-25_cloud48g/):
+#   util 0.60 -> vLLM 28.41 GiB, and the policy step still OOM'd at 18.37 GiB
+#   allocated. Sum 46.78 of 47.37 usable, i.e. 0.6 GiB short. The fix moved the
+#   policy's demand from 25.25 to 18.37 GiB (M=8 micro-batches of 8 rows, exactly
+#   as config asked) but did not get it under the 19 GiB that util 0.60 leaves.
+#   What remains is dominated by the fp32 logits copy in model.py:199: 2.75 GiB
+#   retained for backward plus its 2.75 GiB gradient. That is the next lever if
+#   a higher util is ever needed -- lower micro instead, it is free.
+#
+# => util 0.45: vLLM 21.31 GiB (weights 3.38 + KV 17.19), 26 GiB left against an
+#    18.4 GiB policy, so ~7.6 GiB of headroom instead of 0.6.
+#    KV 17.19 GiB ~ 164k tokens ~ 250 seqs at 650 tokens/seq, still at
+#    max_num_seqs 256, so the scheduler stays saturated: the lower util costs
+#    concurrency headroom we do not use, not throughput.
+extends: base.yaml
+run:
+  tag: cloud48g
+model:
+  name: /root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base
+rollout:
+  vllm:
+    gpu_memory_utilization: 0.45
+    max_num_seqs: 256
+    max_model_len: 1024   # prompt ~200 + cap 512; the default 32768 needs 3.5 GiB of KV
+    enforce_eager: true   # this image has no nvcc; see cloud24g.yaml
+accounting:
+  price_cny_per_hour: 2.08
+  gpu_type: 4090-48G
