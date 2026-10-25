@@ -4,6 +4,21 @@
 > 这是**测量记录**，不是结论报告；判读归用户。
 > 数字口径：〔实测〕= 本次真卡跑出来；〔推算〕= 由实测外推，未验证。
 
+> **[同日后两轮更正 —— 先读这段]** 本文档是**当天第一轮**的测量，其中两条结论已被推翻。
+> 正文按当时原样保留（作为证据），但下面这两条不要再引用：
+>
+> - 第 80 行「"48G 就能跑 vLLM" 这个假设，本次实测不成立」**已作废**。四轮 OOM 的真因是
+>   `plan_partition` 把 `micro_batch_responses` 当成"切几块"而不是"每块多大"，`score()`
+>   因此跑了 64 行而非 8 行（21.99 GiB 对 2.89 GiB 的预检）——**与卡的大小无关**。见 DEVLOG **D-13**。
+> - 「策略侧需要 ~19 GiB」**已作废**：那是同一个 bug 造出的 64 行/批。真实成本是**每行 response
+>   约 3.2 GiB**，与 micro 成正比：B=8 → 33.0 GiB（含反传）、B=4 → 18.2、B=2 → 10.9。
+>   见 DEVLOG **D-14** 与同目录 `probe_micro_batch.py`。
+>
+> **当前有效结论**：48G + vLLM + **micro=4** + util 0.45 **已跑通**。512 responses 实测
+> **0.195 s/response**（rollout 0.110 + update 0.085），峰值 46,034 MiB；9 run 外推
+> ≈ **12–16 GPU-h ≈ ¥25–33**（HF 口径是 93 h / ¥194）。证据：`vllm_micro4_512_throughput.log`、
+> `vllm_micro4_pass.log`、`vram_throughput.csv`、`vllm_util060_oom.log`、`vllm_util045_oom.log`。
+
 ## 0. 一句话
 
 48G 上 **vLLM 引擎本身健康**，但**训练步跑不起来**——卡在 `src/model.py:199` 的
