@@ -297,6 +297,9 @@ logits（bf16 一份 + fp32 一份 + 反传梯度）。
 - 合计 **0.195 s/response**，对照 HF 的 1.14 → **5.8 倍**
 
 三条仪器判据同时成立：µ-step0 的 **KL 恰好 +0.00e+00**、**clip=0**、**σ=0.0306 与 d=0.1323 有限非零**。
+（σ=0.0306 / d=0.1323 这两个数值**作废，口径已变（D-18）**：当时整次 rollout 共享一个
+`SamplingParams.seed`，组内 G=8 条退化成 1 条，σ 是在"一个样本重复 8 次"上算的；
+新口径 σ≈0.0659、d≈0.13/3。KL=0 与 clip=0 这两条判据不受影响。）
 
 **9 run 外推**（单 run 32,768 responses；update 成本随 M=b/micro 变，故三个 mu 不同）：
 
@@ -341,6 +344,8 @@ D-14 记了 micro 8→4 的三笔代价。三笔现在都有实测结论，其�
 
 数值：`full vs chunk` 的 logp 差 **max 1.9e-06 / mean 2.5e-08 nats**（探针），
 真实 512 响应运行里 σ 0.0306→0.03063、d 0.1323→0.1322。
+（这两个值的**绝对值作废，口径已变（D-18）**，但"改 chunk 后两位小数不变"这个**差值**判据仍成立——
+两次运行都在同一套退化采样下，chunk 只改归约顺序。）
 `score(fp32=False)` 那条路**已被删除**：它与 fp32 差 max 0.122 nats，且 `grpo_loss` 的
 `quantile()` 直接拒绝 bf16 张量。
 
@@ -570,3 +575,139 @@ metrics、samples）、`probe_det1.log`、`probe_det2.log`；配置
 ### 会话开销（2026-10-25 第三会话）
 
 九个探针运行 ≈ ¥1.3（6.1k responses 含引擎启动）。9 run **未启动**，等用户放行。
+
+### D-20 14–16 h 是怎么算出来的，缺哪些项，以及数据完整性审计（2026-10-25）
+
+用户问"14–16 h / ¥30–34 确定吗"。答：**不确定，它是一条外推带，不是余量。** 下面把推导摊开，
+并列出四类没有计入的开销。
+
+**一、两个实测点（mu=1 / seed=0 / 固定批次形状 / 每请求 seed / step 0，resp_len 283）**
+
+| 条数 | rollout | update | 合计 | s/resp |
+|---|---|---|---|---|
+| 512 | 50.7 / 49.6 s | 46.1 / 46.1 s | 96.8 / 95.7 s | 0.1891 |
+| 1024 | 84.8 / 83.2 s | 89.8 / 89.5 s | 174.6 / 172.7 s | **0.1705** |
+
+两次同配置逐位可复现，所以这四组数的重复精度 <2%（`probe_det2.log`；1024 那发的
+`summary.json` 记 `wall_hours_measured = 0.048523` h = 174.7 s，与日志一致）。
+
+拆成固定项 + 边际项（N = responses）：
+`rollout = 16.6 + 0.0666·N`，`update = 2.4 + 0.0854·N`（s）。
+update 里含"old-policy logprob 整遍前向 + 梯度遍"两次全量前向，所以边际 0.085 s 是两次，
+不是一次。两次前向的块数都是 `Br/micro`，**与 mu 无关**——这就是 D-17 修正的依据。
+
+**二、单 run 时长**
+
+* 只用边际（对 4096 条外推）：`32768 × 0.1705 = 5587 s = 1.55 h`
+* 带固定项：`8 × (16.6 + 0.1520×4096) = 5120 s = 1.42 h`
+* 每 run 未进 meter 的开销：启动 ~70 s（两次 probe run 的间隔 252 s − 174.6 s）、
+  `state.pt` 8×~2 s（837 MB，`dd` 实测盘速 730 MB/s）、rollout npz 8×0.3 s、
+  adapter 导出+重载 8×~5 s ≈ **130 s**
+* ⇒ 单 run **≈1.59 h**，九次 **≈14.3 h ≈ ¥29.7**（¥2.08/h）
+* 悲观口径：取本卡 A 配置上**最慢的一次实测** 0.2018 s/resp（`g8c`，512 条，
+  那是固定形状之前的采样器，比新口径慢 6%），即假设 4096 条完全退回小批效率：
+  **1.87 h/run → 16.9 h → ¥35**
+
+所以 `14–16 h` 的区间 = 「1024 条边际外推」到「512 条最慢点外推」，**中间没有人为预留**。
+
+**三、四类未计入的开销**
+
+1. **长度漂移**。成本与 `resp_len` 成正比（rollout 是 decode、update 是 token 前向）。现在 283；
+   旧 run 实测 283–322（+14%）→ 单 run ±0.2 h。训练推进后长度会变，方向未知。
+2. **持续负载**。探针只跑 3 分钟。16 h 连续跑的温度/时钟与邻租户影响**完全没测**，
+   按 5–10% 记 1–1.6 h（这是估计，不是测量）。
+3. **mu=8/16 与 mu=1 同价**是假设：块数 `Br/micro` 与 mu 无关（已由代码确认），
+   但每 step 的 `zero_grad` + 梯度范数（66 M 个 LoRA 参数）+ `opt.step` 会多出 120 步，
+   量级应是分钟级。**这一条没有任何实测**——三臂都只在 mu=1 上报过吞吐。
+4. **重跑与掉线**：0 计入。单 run 全重跑 +1.6 h；掉线有 `state.pt`（每 rollout 写）兜底，
+   最坏损失一个 rollout ≈ 11.6 分钟。
+
+**四、数据完整性审计（当前代码跑完一次，能不能做完全部事后检查）**
+
+已落盘（每 run）：`config.resolved.yaml`、`run_meta.json`、`metrics.jsonl`（每 optimizer step 一
+行，39 字段）、`rollouts/r{idx}.npz`（全量 prompt/completion ids，1024 条 = 0.26 MiB，
+4096 条 ≈1 MiB）、`rollouts/index.jsonl`（sha256/字节数，重复采样写 `_v1` 不覆盖）、
+`samples.jsonl`（8 条文本）、`state.pt`（837 MB）、`summary.json`。
+
+可事后重建：每条 response 的 reward / correct（`completion_ids` → decode → `verify`，
+用 prompt ids 反查题池取答案）⇒ **pass_rate 的 prompt 级自助 CI 可以算**，不依赖落盘的 8 条样本。
+
+拿不全的四项：
+
+1. **`metrics.jsonl` 的 `wall_ms_update` 恒为 0**（`train.py:534` 写死 `0.0`，真实值在
+   `train.py:550` 之后才算出，只进了 tee 的文本日志与 meter）。⇒ 结构化的每步耗时缺失，
+   事后"这一步为什么慢"查不到，只能 grep 日志。
+2. **`run_meta.json` 没有 git commit、没有 vLLM 版本**（`_run_meta` 只记
+   torch / transformers / cuda / python / gpu / argv / cwd / platform）。D-17 里写过"补 git
+   commit 与 vllm 版本"，**实际没落地**；vLLM 版本只以 `v0.32.0` 存在于引擎初始化那行日志里。
+3. **没有 per-rollout 权重快照**：`state.pt` 每 rollout 覆盖，`runs/_adapter` 每 run 清。
+   ⇒ 事后无法重放某一步的 logprob / ratio（只能看聚合值）。
+4. **C6 的后半句测不了**：claims 要求"被 clip 的梯度范数份额高于其 token 份额"，
+   但 `grpo.py` 只返回 `clip_frac_low/high/any`（token 份额），没有按 token 计的梯度范数份额，
+   metrics 里也没有这个字段。要么加仪器，要么在 REPORT 里把 C6 后半句标为未测。
+
+第 1、2 项各约 10 行改动，第 3 项要把 adapter 按 rollout 落盘（+1.3 GB/run），
+第 4 项要额外一次 backward hook。**四项都未改**，等拍板。
+
+### D-21 开跑前补三个观测缺口：每步墙钟、溯源信息、C6 的后半句（2026-10-25）
+
+D-20 审计出四个缺口，用户拍板"现在补"。补了三个，第四个（per-rollout 权重快照）没补。
+
+**一、`wall_ms_update` 恒为 0（结构性 bug）**
+
+旧代码在 mu 循环**内部**就写 metrics 行（`train.py` rec 字面量里 `"wall_ms_update": 0.0`），
+而这一步的墙钟要等整轮 rollout 的 update 跑完才算得出来（`upd_ms` 在循环之后）。
+后果不止一列是 0：`cost_cny_cum` 也是在同一位置取的 `meter.totals()`，那时 meter 里的
+update 墙钟还是 0，所以**每一行都少算了它所在 rollout 的 update 成本**，只有 `summary.json`
+是对的。
+
+修法：每 rollout 的 rec 先放进 `pending`，等 `upd_ms` 出来后按 `(k+1)/mu` 补进
+`wall_ms_update` 与 `cost_cny_cum`，再一次性 flush。第 k 行在自己的时间点上确实只吸收了
+`(k+1)/mu` 的 update 墙钟，与 meter 的分摊口径一致，所以 `cost_cny_cum` 单调且末行等于 summary。
+
+代价（必须说清）：崩溃发生在 rollout 中途时，这一轮的 mu 行**整批丢失**，而旧行为是留下半批。
+但 resume 本来就会 `truncate_to_rollout(start_rollout)` 把这一轮的行全删掉，所以丢失的行
+不会污染账本，只是少了一段"半途观测"。mu=1 时两者等价。
+
+**二、`run_meta.json` 没有溯源**（D-17 说要补但没落地）
+
+新增 `git_commit` / `git_dirty` / `vllm` / `numpy` / `nvidia_driver`。全部走失败即空的兜底
+（`_sh()` 5 秒超时，`_pkg_version()` 捕获异常），provenance 不值得让 16 小时的 run 死掉。
+
+**三、C6 后半句（"0.5% token 占 50–70% 梯度范数"）**
+
+先确认原方案是错的：`grad_norm_clipped/grad_norm_raw` 是**整步**的裁剪前后范数比，不是
+"被 clip 的 token 占了多少范数"，两者不能互相代替。
+再确认一个更根本的事实：**被 clip 的 token 在 PPO/GRPO 里梯度恰为 0**（`min` 走了 clamp 那支），
+所以"被 clip 的 token 的梯度范数份额"只能对**未 clip 的代理损失**发问：
+每 token 的 `dL/dlogp` 在未裁剪处正是 `|ratio·adv|`，被 clip 的那些 token 占这份质量的多少，
+就是裁剪丢掉了多少。
+
+实现：`grpo.py` 在已有的 `no_grad` 诊断块里多算一个 `clip_grad_mass_share`
+（`Σ_clip|ratio·adv| / Σ_all|ratio·adv|`），纯读已有张量，不加 forward、不改图。
+metrics 里是**可选**字段（老行仍过 schema）。REPORT 第 16 行改了定义，并写明
+**参数空间范数份额没测**（要逐 token 反传），报告里不得等同。
+
+顺带记一个会影响 C6 解释的事实：`mu=1` 时整轮只有一步，`old_lp` 就是当步策略，`ratio ≡ 1`，
+所以 **mu=1 的 clip_frac 结构性为 0**（实测 0.0），C6 的数据只会来自 mu=8/16 的 `mu_step>0` 行。
+
+**四、验证（云端，¥0.1）**
+
+* 本地与云端 `tests/run_all.py` **22/22**（新增 `test_clip_grad_mass_share`：无裁剪→0、
+  全裁剪→1、padding 不计入）。
+* 回归探针 `det_sf_c` 用 `det_sf_a` 的**同一份配置**重跑 512 条：
+  `prompts_identical: true`、`completions_identical: true`、**rows_differing 0 / 512**、
+  `pass_rate 0.205078 → 0.205078`、`resp_len 285.3652 → 285.3652`。
+  即插桩对采样与结果透明。
+* 残留差异：σ 0.06346013 → 0.06345711（相对 4.7e-05）、d 0.13586728 → 0.13585257。
+  这**不是补丁造成的**（mass 计算在 `no_grad` 里、在 loss 之后、不碰计算图），是 update
+  路线上浮点归约本身不逐位（与 D-19 记的 0.06852/0.06853 同一现象）。所以口径要改：
+  **采样可逐位复现，训练侧度量复现到 ~1e-5 相对**。
+* 新字段实测落盘：`wall_ms_update = 46434.411`（旧 0.0）、`cost_cny_cum = 0.0559`、
+  `clip_grad_mass_share = 0.0`（mu=1 结构上就是 0，符合上面第三条）、
+  `meta.git_commit / git_dirty / vllm=0.32.0 / numpy=2.3.2 / nvidia_driver=580.119.02` 全部有值。
+
+**五、没补的一项**
+
+per-rollout 权重快照（+1.3 GB/run，9 run +12 GB，盘上剩 32 GB）。目前"重放某一步"做不到，
+但 token 级 archive 已经能支撑数据层复现，暂不需要。
