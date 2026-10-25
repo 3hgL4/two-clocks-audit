@@ -1,0 +1,13 @@
+# Ablation arm 2/3: the pre-D-15 behaviour, where group == chunk == 4.
+#
+# 8 sigma groups, 8 forward chunks per step. sigma is measured over 4-response
+# gradients instead of 8-response ones, so it should come out sqrt(2) larger than
+# arm 1 while ||g_bar|| stays put -- that is the "changed the ruler" cost of
+# shrinking the forward chunk.
+extends: dryrun.yaml
+run:
+  tag: ab_g4m4
+  seed: 7
+train:
+  micro_batch_responses: 4
+  micro_group_responses: 4

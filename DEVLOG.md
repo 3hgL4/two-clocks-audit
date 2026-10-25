@@ -322,3 +322,89 @@ logits（bf16 一份 + fp32 一份 + 反传梯度）。
 **证据**：`notes/2026-10-25_cloud48g/` 下 `vllm_util060_oom.log`、`vllm_util045_oom.log`、
 `vllm_micro4_pass.log`、`vllm_micro4_512_throughput.log`、`vram_throughput.csv`、
 `probe_micro_batch.py`。
+
+### D-15 logits 归约分块 + σ 的组边界与前向块解绑（2026-10-25，本条作废 D-14 的第 1–3 条代价）
+
+D-14 记了 micro 8→4 的三笔代价。三笔现在都有实测结论，其中两笔是错的、一笔可以消掉。
+
+**一、code：`score()` 不再把整块 logits 升 fp32**
+
+`model.py` 新增模块级 `chunked_logsumexp(logits, chunk)`：每 `chunk`（默认 64，配置
+`model.logit_chunk`）个位置升 fp32 归约一次，backward 用 `torch.utils.checkpoint` 重算
+而不是留着。`score(chunk=0)` 保留旧的整块路径，只用于等价性测试。
+`score_memory_bytes` 跟着改成按切片的峰值，预检数字重新和代码一致。
+
+数值：`full vs chunk` 的 logp 差 **max 1.9e-06 / mean 2.5e-08 nats**（探针），
+真实 512 响应运行里 σ 0.0306→0.03063、d 0.1323→0.1322。
+`score(fp32=False)` 那条路**已被删除**：它与 fp32 差 max 0.122 nats，且 `grpo_loss` 的
+`quantile()` 直接拒绝 bf16 张量。
+
+显存（探针，全卡单跑，含优化器与梯度缓冲）：
+
+| | micro=4 Lmax=712 | micro=8 Lmax=712 | micro=8 Lmax=584 |
+|---|---|---|---|
+| 旧整块 | 21.99 GiB | 39.89 | 28.73 (reserved) |
+| 分块 | **18.04** | 31.98 | 27.04 |
+
+**二、code：σ 只看组边界，不看一次前向能装几条**
+
+`sigma² = (Σ‖g_i‖² − M‖ḡ‖²)/(M−1)` 只依赖组怎么切，不依赖前向块多大。所以新增
+`train.micro_group_responses`（默认 = micro，即 D-15 之前的行为），前向块仍由
+`micro_batch_responses` 决定。组内把各块的梯度**按 token 数加回未归一的和**、组末除一次
+（`grpo_loss` 用 `token_mean`，每块已被自己的 token 数除过，必须乘回来），得到与
+"一次前向塞 group 条"数学等价的 g_i。
+
+`metrics.jsonl` 现在**同时记两个数**：`n_groups`（σ 的 M）与 `n_forward_chunks`（实际前向块数），
+`n_micro_batches` 保留为 `n_forward_chunks` 的旧别名。
+
+**三、ablation（`configs/ab_g8m8 / ab_g4m4 / ab_g8m4`，stub + fake rollout，CPU，同一份数据）**
+
+| arm | group | micro | M | chunks | ‖ḡ‖ | σ | d |
+|---|---|---|---|---|---|---|---|
+| ab_g8m8 | 8 | 8 | 4 | 4 | 0.03697 | 0.06405 | 0.57724 |
+| **ab_g8m4** | 8 | 4 | 4 | 8 | **0.03697** | **0.06405** | **0.57724** |
+| ab_g4m4 | 4 | 4 | 8 | 8 | 0.03705 | 0.08745 | 0.42362 |
+
+`σ(ab_g8m4)/σ(ab_g8m8) = 1.0000`（4 步全等，‖ḡ‖ 逐位相同）；
+`σ(ab_g4m4)/σ(ab_g8m8) = 1.4249`（√2 = 1.414，4 步）。**解耦是精确的，不是近似。**
+
+真实模型上（同一份 rollout，只改 group）：σ 0.02772 → 0.02087（比 1.328）、d 0.1192 → 0.1606、
+‖ḡ‖ 不变（0.003）；另一次采样 σ 0.03063 → 0.02209（比 1.386）。M=64 / chunks=128 已落进
+metrics。单步估计下比值在 1.33–1.39 之间波动，是 σ 的有限样本误差，不是口径错。
+
+**四、D-14 三笔代价的现判**
+
+1. ~~σ ∝ 1/√m 放大 1.41，d 不可比~~ → **已消除**：group 保持 8，σ 回到设计口径（ratio 1.0000）。
+2. ~~update 随 M 翻倍变慢、mu=1 占 44%~~ → **测错了**。同卡同数据：micro=4 的 update 46.8–49.4 s，
+   micro=8 的 update 49.3 s，micro=4 反而略快。代价不在 update 侧。
+3. ~~余量 3.1 GiB、L_max 可能到 712 未实测~~ → **虚警 + 已实测**。prompt 只有 72–102 token，
+   completion 被 cap 512 硬截断，所以 L_max 的结构上界是 `prompt_max + 512 ≈ 614`；实测
+   128 次调用的 max 就是 614（p50 586、p90 610）。那次 46,034 MiB 本来就是最坏长度下测的。
+   并且加上 `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True` 后峰值 **40,172 MiB**
+   （同一份数据不开是 43,650），余量从 3.1 GiB 变成 8.9 GiB。
+
+**五、micro=8 在 48G 上仍可跑，只是不值**
+
+`util 0.32 + max_num_seqs 128 + expandable_segments` 能过（见 D-14 后续会话），
+但 rollout 83.1 s vs 56.5 s，总时长 +28%。既然 σ 可以零成本解耦，没有理由付这 28%。
+
+**证据**：`notes/2026-10-25_cloud48g/HEADROOM.md`、`reg_g4.log`、`g8.log`、`g4b.log`、`g8c.log`、
+`chunk512.log`、`vram_*.csv`；探针 `tools/probe_memory.py`；对照 `tools/compare_runs.py`。
+
+### D-16 vLLM 后端的 rollout 不可复现：同配置同 seed 两次跑出不同数据（2026-10-25）
+
+`rollout.py:239` 确实把 seed 传给了 `SamplingParams(seed=seed*7919+rollout_idx)`，但
+**同配置、同 seed 连跑两次，pass_rate 0.188 vs 0.238**（`det_a.log` 与 `det_b.log`，
+512 responses，仅差每次运行的调度批次）。所以这个 seed 不足以让 rollout 逐位重现。
+
+影响三条，都要写进方法节或限制说明：
+
+1. **跨运行的 σ/d 不可直接相减**。两边数据不同，差异里混着采样噪声。D-15 的对照因此
+   只能在 stub + fake rollout（数据由 rng 构造、逐位相同）上做，那是唯一干净的仪器。
+2. **臂内配对仍然成立**。`plan_partition` 让所有 mu 臂共用同一次 rollout，所以 `claims.yaml`
+   的配对比较不受影响——受影响的是"重跑一次验证"这种跨运行复现。
+3. **3 seed 实际是 3 次独立抽样**，比"3 个可控种子"的方差更大，估 σ 的离散时应按此解释。
+
+未做的验证：不确定这是 vLLM 版本/`max_num_batched_tokens`/前缀缓存中的哪一个造成的。
+若论文要声称可复现，只有两个选择：固定 vLLM 内部批次形状，或改用 HF 后端（`torch.manual_seed`
+在 `rollout.py:127` 已设，代价是慢 5.8 倍）。

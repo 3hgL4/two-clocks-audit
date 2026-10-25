@@ -58,7 +58,9 @@ SCHEMA: dict[str, tuple[type | tuple[type, ...], bool]] = {
     "grad_norm_raw": (float, True),
     "grad_norm_clipped": (float, True),
     "grad_noise_sigma": (float, True),
-    "n_micro_batches": (int, True),
+    "n_groups": (int, True),
+    "n_forward_chunks": (int, True),
+    "n_micro_batches": (int, True),  # legacy alias of n_forward_chunks
     "drift_d": ((float, type(None)), True),
     "wall_ms_update": (float, True),
     # cumulative

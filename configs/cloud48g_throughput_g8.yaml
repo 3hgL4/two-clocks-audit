@@ -1,0 +1,13 @@
+# Regression + decoupling check on the real model (D-15).
+#
+# Same everything as cloud48g_throughput.yaml (micro=4, util 0.45, max_num_seqs 256,
+# 512 responses, seed 0) except the sigma group: 8 instead of the chunk's 4.
+# Sampling is therefore identical between the two runs, so
+#   ||g_bar||  must be identical
+#   sigma      must be sqrt(2) smaller here than in the group=4 run
+# which is the real-model version of the CPU ablation (tools/compare_runs.py).
+extends: cloud48g_throughput.yaml
+run:
+  tag: cloud48g_throughput_g8
+train:
+  micro_group_responses: 8

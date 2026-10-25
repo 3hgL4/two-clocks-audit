@@ -30,6 +30,7 @@ DEFAULTS: dict[str, Any] = {
         "dtype": "bfloat16",
         "attn_implementation": "sdpa",
         "gradient_checkpointing": True,
+        "logit_chunk": 64,             # positions per log-sum-exp slice; 0 = pre-D-15 whole-T upcast
         "lora": {"r": 64, "alpha": 16, "dropout": 0.0},
     },
     "train": {
@@ -38,6 +39,7 @@ DEFAULTS: dict[str, Any] = {
         "responses_per_rollout": 4096,  # Br
         "mu": 1,                       # optimizer steps per rollout
         "micro_batch_responses": 8,    # forward/backward chunk; logits memory ~ micro*len*vocab
+        "micro_group_responses": None,  # sigma's group size; None = same as the chunk (D-15)
         "max_completion_length": 512,
         "temperature": 1.0,
         "top_p": 1.0,
@@ -123,13 +125,31 @@ class Config:
 
     @property
     def micro_batches_per_step(self) -> int:
+        """Forward/backward chunks per optimizer step (an execution detail)."""
         return self.responses_per_step // int(self["train.micro_batch_responses"])
+
+    @property
+    def micro_group_responses(self) -> int:
+        """Size of one gradient group, i.e. what sigma is measured over.
+
+        sigma^2 = (sum_i ||g_i||^2 - M||g_bar||^2)/(M-1) only depends on where the
+        group boundaries fall, not on how many responses one forward pass can
+        hold. Keeping the group at the pre-registered size while shrinking the
+        forward chunk separates the statistics from the memory budget (D-15).
+        """
+        v = self["train.micro_group_responses"]
+        return int(v) if v is not None else int(self["train.micro_batch_responses"])
+
+    @property
+    def groups_per_step(self) -> int:
+        return self.responses_per_step // self.micro_group_responses
 
     def validate(self) -> None:
         G = int(self["train.num_generations"])
         Br = int(self["train.responses_per_rollout"])
         mu = int(self["train.mu"])
         mb = int(self["train.micro_batch_responses"])
+        grp = self.micro_group_responses
         errs: list[str] = []
         if G < 2:
             errs.append("num_generations must be >= 2 (GRPO group baseline)")
@@ -140,9 +160,16 @@ class Config:
         b = Br // mu
         if b % mb:
             errs.append(f"b = Br/mu ({b}) must be divisible by micro_batch_responses ({mb})")
-        if b // mb < 2:
+        if grp % mb:
             errs.append(
-                f"b/micro = {b // mb} micro-batches per step; need >= 2 to estimate the "
+                f"micro_group_responses ({grp}) must be a multiple of "
+                f"micro_batch_responses ({mb}); a group is split into whole chunks"
+            )
+        if b % grp:
+            errs.append(f"b = Br/mu ({b}) must be divisible by micro_group_responses ({grp})")
+        if b // grp < 2:
+            errs.append(
+                f"b/group = {b // grp} groups per step; need >= 2 to estimate the "
                 "gradient-noise scale sigma (otherwise the drift clock is undefined)"
             )
         if str(self["train.loss_norm"]) not in {"token_mean", "rollout_token"}:

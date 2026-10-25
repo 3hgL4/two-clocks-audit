@@ -1,0 +1,32 @@
+# Can the pre-registered micro=8 be restored on one 48G card, with vLLM alongside?
+#
+# Measured 2026-10-25 (tools/probe_memory.py, whole card, Lmax = prompt+completion):
+#   shipped score   micro=8 Lmax=712 -> 39.89 GiB peak / 45.45 reserved   (no room for vLLM)
+#   chunked score   micro=8 Lmax=712 -> 31.98 GiB peak / 33.73 reserved
+#   chunked score   micro=8 Lmax=584 -> 27.04 GiB peak / 28.73 reserved
+# Real 512-response runs put per-micro-batch Lmax at p50 586 / max 614, so the
+# operating point is ~29 GiB. Add ~2.4 GiB of CUDA context and allocator on top of
+# the reservation and the policy needs ~31-32 GiB, leaving <= 15.5 GiB for vLLM:
+# that is util 0.32, not 0.45.
+#
+# util 0.32 -> 15.2 GiB to vLLM = weights 3.38 + KV 11.8 GiB ~= 105k tokens.
+# 256 seqs x ~650 tokens would not fit, so max_num_seqs drops to 128 (83k tokens).
+# This is a deliberate trade: fewer concurrent sequences, in exchange for the
+# pre-registered micro-batch size.
+extends: cloud48g.yaml
+run:
+  tag: cloud48g_m8
+  seed: 0
+train:
+  num_rollouts: 1
+  num_generations: 8
+  responses_per_rollout: 512
+  mu: 1
+  micro_batch_responses: 8
+  max_completion_length: 512
+rollout:
+  vllm:
+    gpu_memory_utilization: 0.32
+    max_num_seqs: 128
+logging:
+  log_rollout_samples: 8

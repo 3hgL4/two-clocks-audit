@@ -95,8 +95,8 @@ def test_config_rejects_undefined_sigma() -> None:
         "train": {"responses_per_rollout": 64, "mu": 16, "micro_batch_responses": 8,
                   "num_generations": 8},
     })
-    with raises(ValueError, "micro-batches per step"):
-        cfg.validate()   # b = 4 < micro = 8 -> M = 0, sigma undefined
+    with raises(ValueError, "groups per step"):
+        cfg.validate()   # b = 4 < group = 8 -> M = 0, sigma undefined
 
 
 def test_config_derived_quantities() -> None:
@@ -153,6 +153,107 @@ def test_plan_partition_micro_is_batch_size_not_count() -> None:
     one = train_mod.plan_partition(512, mu=1, micro=8, rng=np.random.default_rng(0))
     assert len(one) == 1 and len(one[0]) == 64
     assert [len(c) for c in one[0]] == [8] * 64
+
+
+def test_chunked_logsumexp_agrees_with_full() -> None:
+    """D-15 moved the fp32 (B, T, V) upcast into per-slice reductions.
+
+    The reduction must be numerically the same thing, otherwise the log-probs feed
+    a different ratio into GRPO. Checked on values and on gradients: the fp32
+    upcast path is the reference.
+    """
+    import torch
+
+    import model as model_mod
+
+    torch.manual_seed(0)
+    B, T, V = 2, 40, 97
+    x = torch.randn(B, T, V, dtype=torch.float32, requires_grad=True)
+    ref = torch.logsumexp(x, dim=-1)
+    got = model_mod.chunked_logsumexp(x, 7)
+    assert got.shape == ref.shape
+    assert torch.allclose(got, ref, atol=1e-6), (got - ref).abs().max().item()
+
+    # the gradient is what flows back to the LM head; a chunking bug there would
+    # still produce plausible log-probs but wrong updates.
+    g_ref = torch.autograd.grad(ref.sum(), x, retain_graph=False)[0]
+    g_got = torch.autograd.grad(got.sum(), x, retain_graph=False)[0]
+    assert torch.allclose(g_ref, g_got, atol=1e-6), (g_ref - g_got).abs().max().item()
+
+    # a chunk larger than T must degrade to the single-shot path, not crash
+    assert torch.allclose(model_mod.chunked_logsumexp(x, 10_000), ref, atol=1e-6)
+
+
+def test_config_group_and_chunk_are_separable() -> None:
+    """The sigma group may be larger than the forward chunk (D-15).
+
+    micro is a memory budget, group is a statistics budget: sigma only sees group
+    boundaries, so a group of 8 can be run as two chunks of 4. Config must reject
+    combinations that do not tile.
+    """
+    cfg = config_mod.Config({"train": {
+        "responses_per_rollout": 512, "mu": 1,
+        "micro_batch_responses": 4, "micro_group_responses": 8,
+        "num_generations": 8,
+    }})
+    cfg.validate()
+    assert cfg.responses_per_step == 512
+    assert cfg.micro_batches_per_step == 128, "forward chunks are an execution detail"
+    assert cfg.micro_group_responses == 8
+    assert cfg.groups_per_step == 64, "M in sigma must stay at the pre-registered 64"
+
+    # default: group == chunk, i.e. the pre-D-15 behaviour
+    same = config_mod.Config({"train": {"responses_per_rollout": 512, "mu": 1,
+                                        "micro_batch_responses": 4, "num_generations": 8}})
+    same.validate()
+    assert same.micro_group_responses == 4 and same.groups_per_step == 128
+
+    # a group that is not a whole number of chunks cannot be assembled
+    bad = config_mod.Config({"train": {"responses_per_rollout": 512, "mu": 1,
+                                       "micro_batch_responses": 8,
+                                       "micro_group_responses": 12, "num_generations": 8}})
+    with raises(ValueError, "must be a multiple"):
+        bad.validate()
+
+    # nor can a step that does not tile into whole groups
+    bad2 = config_mod.Config({"train": {"responses_per_rollout": 100, "mu": 1,
+                                        "micro_batch_responses": 4,
+                                        "micro_group_responses": 8, "num_generations": 8}})
+    with raises(ValueError, "divisible by micro_group_responses"):
+        bad2.validate()
+
+
+def test_group_accumulation_reproduces_the_group_mean() -> None:
+    """Chunks are normalised individually by grpo_loss; a group must undo that.
+
+    grpo_loss divides by its own chunk's token count, so summing two chunk
+    gradients with equal weight gives a mean of means, not the group mean. The
+    loop in train.py therefore scales each chunk by its token count and divides
+    once per group. This checks that algebra directly, and that the equal-weight
+    alternative really does differ (otherwise the weighting would be pointless).
+    """
+    import torch
+
+    import train as train_mod
+
+    torch.manual_seed(0)
+    per_token = [torch.randn(5, dtype=torch.float64) for _ in range(6)]
+    counts = [2, 4]                                  # unequal on purpose
+    chunks = [sum(per_token[:2]) / counts[0], sum(per_token[2:]) / counts[1]]
+
+    buf = [torch.zeros(5, dtype=torch.float64)]
+    for g, n in zip(chunks, counts):
+        train_mod._add_into(buf, [g], float(n))
+    train_mod._rescale(buf, 1.0 / sum(counts))
+
+    expected = sum(per_token) / sum(counts)
+    assert torch.allclose(buf[0], expected, atol=1e-12)
+
+    equal = (chunks[0] + chunks[1]) / 2.0
+    assert not torch.allclose(equal, expected, atol=1e-6), (
+        "with unequal chunk sizes the unweighted mean must differ, otherwise the "
+        "token weighting in train.py is a no-op")
+
 
 
 def test_config_extends() -> None:

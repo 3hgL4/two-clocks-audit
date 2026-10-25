@@ -1,0 +1,11 @@
+# Ablation arm 1/3: the pre-registered statistics, one forward per group.
+#
+# group = chunk = 8  ->  4 sigma groups, 4 forward chunks per step.
+# This is the reference the other two arms are judged against.
+extends: dryrun.yaml
+run:
+  tag: ab_g8m8
+  seed: 7
+train:
+  micro_batch_responses: 8
+  micro_group_responses: 8

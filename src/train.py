@@ -104,6 +104,16 @@ def _write_back(buf, policy: Policy) -> None:
         p.grad = b.to(dtype=p.dtype).clone()
 
 
+def _rescale(buf, scale: float) -> None:
+    for b in buf:
+        b.mul_(scale)
+
+
+def _add_into(dst, src, scale: float) -> None:
+    for d, s in zip(dst, src):
+        d.add_(s, alpha=scale)
+
+
 def _grad_norm(params_or_tensors) -> float:
     """L2 norm of parameter gradients (or of raw tensors).
 
@@ -218,11 +228,14 @@ def main(argv: list[str] | None = None) -> int:
     est = policy.score_memory_bytes(
         int(cfg["train.micro_batch_responses"]),
         int(cfg["train.max_completion_length"]) + 128,
-        fp32=True,
     )
     print(f"[info] vocab={len(policy.tokenizer)} params={n_params/1e9:.3f}B "
           f"trainable={policy.n_params_trainable/1e6:.1f}M")
-    print(f"[info] est. logits memory per micro-batch ~{est/2**30:.2f} GiB")
+    print(f"[info] est. logits memory per micro-batch ~{est/2**30:.2f} GiB "
+          f"(logit_chunk={policy.logit_chunk})")
+    print(f"[info] micro={cfg['train.micro_batch_responses']} "
+          f"group={cfg.micro_group_responses} -> {cfg.micro_batches_per_step} forward "
+          f"chunks / {cfg.groups_per_step} sigma groups per step")
 
     params = _trainable(policy)
     opt = torch.optim.AdamW(params, lr=float(cfg["train.lr"]),
@@ -258,8 +271,11 @@ def main(argv: list[str] | None = None) -> int:
     Br = int(cfg["train.responses_per_rollout"])
     mu = int(cfg["train.mu"])
     micro = int(cfg["train.micro_batch_responses"])
+    group = cfg.micro_group_responses
+    chunks_per_group = group // micro
     eps_low = float(cfg["train.eps_low"])
     eps_high = float(cfg["train.eps_high"])
+    norm_name = str(cfg["train.loss_norm"])
     clip_delta = cfg["train.clip_delta"]
     kappa = float(cfg["drift.kappa"])
     max_len = int(cfg["train.max_completion_length"])
@@ -315,43 +331,69 @@ def main(argv: list[str] | None = None) -> int:
             trained_tokens = 0
             for si, step_parts in enumerate(parts):
                 buf = _grad_buffer(policy)
-                g_of_micro: list[float] = []
+                g_of_group: list[float] = []
                 n_tok_step = 0
                 loss_w = kl_w = cl_low_w = cl_high_w = cl_any_w = ratio_w = p95_w = 0.0
-                for mi, idxs in enumerate(step_parts):
-                    idx_list = [int(i) for i in idxs]
-                    pids = [rb.prompt_ids[i] for i in idx_list]
-                    cids = [rb.completion_ids[i] for i in idx_list]
-                    mask = policy.mask_for(cids)
-                    lp = policy.score(pids, cids, requires_grad=True)
-                    old = old_lp[(si, mi)].to(policy.device)
-                    a = adv[torch.tensor(idx_list, device=policy.device)]
-                    loss, stats = grpo.grpo_loss(
-                        lp, old, a, mask,
-                        eps_low=eps_low, eps_high=eps_high,
-                        clip_delta=clip_delta, norm=str(cfg["train.loss_norm"]),
-                    )
-                    opt.zero_grad(set_to_none=True)
-                    loss.backward()
-                    _accumulate(buf, policy, 1.0 / len(step_parts))
-                    g_of_micro.append(_grad_norm(_trainable(policy)))
-                    n_tok = int(mask.sum().item())
-                    loss_w += stats["loss"] * n_tok
-                    kl_w += stats["kl_per_rollout_policy"] * n_tok
-                    cl_low_w += stats["clip_frac_low"] * n_tok
-                    cl_high_w += stats["clip_frac_high"] * n_tok
-                    cl_any_w += stats["clip_frac_any"] * n_tok
-                    ratio_w += stats["ratio_mean"] * n_tok
-                    p95_w += stats["ratio_p95"] * n_tok
-                    n_tok_step += n_tok
-                    del lp, loss, mask
+                n_groups = len(step_parts) // chunks_per_group
+                n_chunks = len(step_parts)
+                mi = -1
+                for _gi in range(n_groups):
+                    # D-15: the sigma group keeps the pre-registered size while the
+                    # forward pass is split into smaller chunks. Accumulating the
+                    # chunks unnormalised and dividing by the group's token count
+                    # reproduces the gradient one `group`-row micro-batch would
+                    # have produced, so M and sigma stay on the designed scale
+                    # without needing the group to fit in one forward.
+                    grp_buf = _grad_buffer(policy)
+                    grp_tokens = grp_rows = grp_tmax = 0
+                    for _ci in range(chunks_per_group):
+                        mi += 1
+                        idxs = step_parts[mi]
+                        idx_list = [int(i) for i in idxs]
+                        pids = [rb.prompt_ids[i] for i in idx_list]
+                        cids = [rb.completion_ids[i] for i in idx_list]
+                        mask = policy.mask_for(cids)
+                        lp = policy.score(pids, cids, requires_grad=True)
+                        old = old_lp[(si, mi)].to(policy.device)
+                        a = adv[torch.tensor(idx_list, device=policy.device)]
+                        loss, stats = grpo.grpo_loss(
+                            lp, old, a, mask,
+                            eps_low=eps_low, eps_high=eps_high,
+                            clip_delta=clip_delta, norm=norm_name,
+                        )
+                        opt.zero_grad(set_to_none=True)
+                        loss.backward()
+                        n_tok = int(mask.sum().item())
+                        # grpo_loss already divided by this chunk's own normaliser,
+                        # so undo it here; the group divides once at the end.
+                        if norm_name == "token_mean":
+                            _accumulate(grp_buf, policy, float(n_tok))
+                        else:  # rollout_token: normaliser is rows x Tc
+                            _accumulate(grp_buf, policy, float(len(idx_list) * lp.size(1)))
+                        grp_tokens += n_tok
+                        grp_rows += len(idx_list)
+                        grp_tmax = max(grp_tmax, int(lp.size(1)))
+                        loss_w += stats["loss"] * n_tok
+                        kl_w += stats["kl_per_rollout_policy"] * n_tok
+                        cl_low_w += stats["clip_frac_low"] * n_tok
+                        cl_high_w += stats["clip_frac_high"] * n_tok
+                        cl_any_w += stats["clip_frac_any"] * n_tok
+                        ratio_w += stats["ratio_mean"] * n_tok
+                        p95_w += stats["ratio_p95"] * n_tok
+                        n_tok_step += n_tok
+                        del lp, loss, mask
+
+                    denom_g = grp_tokens if norm_name == "token_mean" else grp_rows * grp_tmax
+                    _rescale(grp_buf, 1.0 / max(1, denom_g))
+                    g_of_group.append(_grad_norm(grp_buf))
+                    _add_into(buf, grp_buf, 1.0 / n_groups)
+                    del grp_buf
 
                 _write_back(buf, policy)
-                n_mb = len(step_parts)
                 # sum of grad norms is not the norm of the sum; recompute ||g_bar||
                 g_bar_norm = _grad_norm(_trainable(policy))
                 gs = grpo.GradStats()
-                for norm_i in g_of_micro:
+                for norm_i in g_of_group:
                     gs.add(norm_i)
                 sigma = gs.sigma(g_bar_norm)
                 lr_now = _lr_at(si + r_idx * mu, total_steps, float(cfg["train.lr"]),
@@ -404,7 +446,9 @@ def main(argv: list[str] | None = None) -> int:
                     "grad_norm_raw": raw,
                     "grad_norm_clipped": clipped,
                     "grad_noise_sigma": float(sigma if sigma is not None else -1.0),
-                    "n_micro_batches": n_mb,
+                    "n_groups": n_groups,
+                    "n_forward_chunks": n_chunks,
+                    "n_micro_batches": n_chunks,  # legacy alias; M for sigma is n_groups
                     "drift_d": grpo.drift_clock(g_bar_norm, sigma, kappa),
                     "wall_ms_update": 0.0,
                     "responses_cum": tot["responses"],

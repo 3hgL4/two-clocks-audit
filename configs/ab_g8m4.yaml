@@ -1,0 +1,13 @@
+# Ablation arm 3/3: the decoupling this whole exercise is about (D-15).
+#
+# group = 8 (pre-registered), chunk = 4 (what fits next to vLLM on 48 GiB).
+# 4 sigma groups, 8 forward chunks per step. If the token-weighted group
+# accumulation is right, every number here except the chunk count should match
+# arm 1 exactly: same ||g_bar||, same sigma, same d.
+extends: dryrun.yaml
+run:
+  tag: ab_g8m4
+  seed: 7
+train:
+  micro_batch_responses: 4
+  micro_group_responses: 8
