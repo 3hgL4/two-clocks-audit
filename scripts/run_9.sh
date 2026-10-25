@@ -36,6 +36,9 @@ FORCE=0
 
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 export TOKENIZERS_PARALLELISM=false
+# Without this every line sits in Python's block buffer until 8 KiB accumulate,
+# so an 8-rollout run looks frozen for ten minutes at a time (D-23).
+export PYTHONUNBUFFERED=1
 mkdir -p runs/_logs
 
 if [[ -n "$MU" ]]; then MUS="$MU"; fi
@@ -79,16 +82,25 @@ if [[ "$FREE_GB" -lt 28 ]]; then
 fi
 
 echo "=== pre-flight: provenance ==="
-# D-21: run_meta.json records the commit; on a box without .git (code arrives by
-# scp) it reads this file instead. Write it here so the campaign is traceable
-# even though the checkout is not a repository.
-if git rev-parse --git-dir >/dev/null 2>&1; then
-  git rev-parse HEAD > COMMIT
-  echo "  COMMIT=$(cat COMMIT) (from .git)"
-elif [[ -f COMMIT ]]; then
-  echo "  COMMIT=$(cat COMMIT) (from file; no .git on this box)"
+# D-21/D-23: run_meta.json records the commit that actually ran. The code gets
+# here by scp, so the stamped COMMIT file is the authority -- a .git left on the
+# box can name a commit that is not what is deployed (it did: 0fe107b, while the
+# deployed tree was a73dc91). Never let a stale .git overwrite the stamp.
+if [[ -f COMMIT ]]; then
+  stamp=$(cat COMMIT)
+  if [[ ! "$stamp" =~ ^[0-9a-f]{40}$ || "$stamp" =~ ^0{40}$ ]]; then
+    echo "  [error] COMMIT file is '$stamp' -- stamp it: git rev-parse HEAD > COMMIT" >&2
+    exit 1
+  fi
+  echo "  COMMIT=$stamp (from file)"
 else
-  echo "  [warn] neither .git nor COMMIT: run_meta.json cannot name the code version" >&2
+  echo "  [error] no COMMIT file: run_meta.json could not name the code version" >&2
+  exit 1
+fi
+if [[ -d .git ]]; then
+  head=$(git rev-parse HEAD 2>/dev/null || echo "?")
+  [[ "$head" == "$(cat COMMIT)" ]] || \
+    echo "  [warn] .git HEAD is $head, differs from COMMIT: the stamp wins" >&2
 fi
 
 for mu in $MUS; do

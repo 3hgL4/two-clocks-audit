@@ -766,3 +766,34 @@ sha256、adapter 版本号）。同一 idx 二次快照写 `_v1` 不覆盖，与
   只记录不致命），全套 **25/25**。
 * 代价：为改这一版，13:03 启动的战役在跑完第一个 rollout 前被停掉，浪费约 **¥0.05 / 2 分钟**。
   重跑前删掉 `runs/mu1_s0`（否则 `run_9.sh` 会因"有目录无 state.pt"拒绝启动）。
+
+### D-23 第一次重启后 25 分钟：run_meta 记了一个错的 commit，改完再启动（2026-10-25）
+
+**症状**：campaign 跑完第一个 rollout 后，`runs/mu1_s0/run_meta.json` 写
+`git_commit = 0fe107b…`、`git_commit_source = "git"`、`git_dirty = true`。
+0fe107b 是**几轮前的提交**，实际部署的代码是 a73dc91。也就是说溯源字段在说谎——
+比没有这个字段更糟。
+
+**根因**：机器上还留着一个**过期的 `.git`**（早前某次整仓拷贝留下的），而
+(a) `_run_meta` 优先信 `git rev-parse`，(b) `run_9.sh` 的 preflight 会把
+`git rev-parse HEAD` 写回 `COMMIT` 文件。两步都把过期值当权威。
+我之前的生产笔记记的是"云端无 .git"——**错了**，这次实测确认有。
+
+**修法**（三处）：
+1. `_run_meta` 改成**文件优先**：COMMIT 与 git HEAD 不一致时取文件，并把两者都记下来
+   （`git_commit` / `git_commit_source` / `git_head_in_checkout`），让分歧可见而不是被静默解决。
+2. `run_9.sh` preflight：COMMIT 必须是 40 位十六进制且非全零，否则**直接拒绝启动**；
+   若 `.git` 存在且与其不一致，打警告并声明"以 stamp 为准"，不再回写。
+3. 顺手修日志：`export PYTHONUNBUFFERED=1`。上一次重启时日志停在 `[info] arm …` 十分钟不动，
+   我一开始怀疑 tee 死了，其实是 stdout 接管道后是**块缓冲**，8 KiB 才刷一次；
+   而 `metrics.jsonl` 是逐行落盘的，所以"数据在走、日志不动"。监控要以 metrics 为准。
+
+**代价**：这一轮又停了，浪费约 25 分钟 / ¥0.9（首个 rollout 已完成：rollout 290.3 s、
+update 367.1 s、¥0.38）。删掉 `runs/mu1_s0` 与过期 `.git` 后重启。
+
+**顺带拿到的真实数字**（首个 rollout，Br=4096、micro=4、group=8、mu=1）：
+`rollout 290.3 s`（D-20 预测 289.4 s，误差 0.3%）、`update 367.1 s`（预测 351.8 s，+4.3%）、
+合计 **657.4 s/rollout**、`resp_len 292.9`（预测用的 283，+3.5%，正好解释 update 那 4%）、
+`pass 0.218`、`zero_var 0.0`、`σ 0.0663`、`d 0.0723`、`¥0.38/rollout`。
+按 8 rollouts + 93 s 固定开销外推：**单 run ≈1.49 h，九次 ≈13.4 h ≈ ¥28**——
+落在 14–16 h 区间的下沿（因为 rollout 完全命中、update 只慢 4%）。

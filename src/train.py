@@ -307,8 +307,19 @@ def _commit_from_file() -> str:
 def _run_meta(cfg) -> dict:
     import transformers
 
-    git_commit = _sh("git", "rev-parse", "HEAD")
-    dirty = bool(_sh("git", "status", "--porcelain")) if git_commit else None
+    # Provenance rule (D-23): the code on the rented box arrives by scp, so a
+    # stale .git there can name a commit that is NOT what ran. The stamped
+    # COMMIT file is the authority when the two disagree; both are recorded so
+    # the disagreement stays visible instead of being resolved silently.
+    commit_file = _commit_from_file()
+    git_head = _sh("git", "rev-parse", "HEAD")
+    if commit_file and commit_file != git_head:
+        commit, source = commit_file, "file"
+    elif git_head:
+        commit, source = git_head, "git"
+    else:
+        commit, source = commit_file, ("file" if commit_file else "")
+    dirty = bool(_sh("git", "status", "--porcelain")) if git_head else None
     meta = {
         "created": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "host": platform.node(),
@@ -324,8 +335,9 @@ def _run_meta(cfg) -> dict:
         "vllm": _pkg_version("vllm"),
         "numpy": np.__version__,
         "nvidia_driver": _sh("nvidia-smi", "--query-gpu=driver_version", "--format=csv,noheader"),
-        "git_commit": git_commit or _commit_from_file(),
-        "git_commit_source": "git" if git_commit else ("file" if _commit_from_file() else ""),
+        "git_commit": commit,
+        "git_commit_source": source,
+        "git_head_in_checkout": git_head,
         "git_dirty": dirty,
         "argv": sys.argv,
         "cwd": os.getcwd(),
