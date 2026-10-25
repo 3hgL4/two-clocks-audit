@@ -1002,3 +1002,30 @@ B `cloud48g_util042`、C `lowmem`），**只是文本，不执行**。
 必须重新拍板，不能援引“当时没说不要”。
 
 `32420f0` 已推 `origin/main`（push 从 WSL 执行，GitHub 密钥只在 WSL；Windows 侧仓库无密钥）。
+
+---
+
+### D-27 `clip_grad_mass_share` 全 0 是真 0：µ=1 臂结构上不可裁剪（2026-10-25）
+
+用户要求当场核验 16:15 报告里的疑点（mu1_s0 八行 `clip_grad_mass_share` 全 0.0000）。
+
+**结论：不是指标坏，是 µ=1 臂的结构性恒等。** 证据链三层：
+
+1. **实现有护栏**（`tests/test_grpo.py:137`，25/25 里）：ratio=1 → 0.0；全体越界 → 1.0；
+   padding 不带质量。恒 0 的坏表过不了这三条。
+2. **真机数据**（mu1_s0 全 8 行）：`ratio_mean = 1 ± 9.6e-9`、`ratio_p95 = 1.00000000`、
+   `kl_per_rollout_policy = 0.00e+00`、`clip_frac_any = 0`。ratio 贴着 1 到浮点噪声量级，
+   离裁剪带（0.80 / 1.28）差 8 个数量级。
+3. **结构性原因**（`src/train.py` update 循环）：µ=1 每 rollout 只有一次 `opt.step()`，
+   且全部 micro-batch 前向都发生在 step 之前 → loss 前向权重 ≡ 算 `old_logp` 的权重 →
+   `ratio = exp(logp − old_logp) ≡ 1`（仅浮点噪声）。KL 同理恒 0。
+
+**对解读的影响**：
+- µ=1 臂（run1–3, 6–9）里 PPO 裁剪与 KL 正则是**空操作**，唯一约束步长的是
+  `grad_clip`（norm 剪裁）与 lr——这不是 bug，是该臂定义（每 rollout 一步）的直接推论。
+- `clip_grad_mass_share` / `clip_frac_*` / `kl_per_rollout_policy` 只在 **µ=8 臂**（run4–5）
+  有信息量：一个 rollout 内第 2 步起的权重已更新、与 `old_logp`（θ₀）不同，ratio 才会离开 1。
+  预期这三列在 µ=8 行非零；若届时仍全 0 才需要回头怀疑实现。
+- 对 drift/stability 时钟无影响：σ 与 d 只依赖梯度统计，不经过 ratio。
+
+**验证时间**：2026-10-25 08:20Z（真机 mu1_s0 metrics 全列）。
