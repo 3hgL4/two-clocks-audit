@@ -507,6 +507,14 @@ def main(argv: list[str] | None = None) -> int:
             adv, adv_stats = grpo.group_advantages(rewards, G)
             adv = adv.to(policy.device)
 
+            # D-24: the clock starts *before* the old-policy forward pass. That
+            # pass is Br/micro forward chunks over the whole rollout (~128 s at
+            # Br=4096) and the campaign pays for it, so leaving it outside upd_t0
+            # made every row under-report wall time and cost by 17%. It stays
+            # visible on its own as wall_ms_old_logp, so the gradient pass can
+            # still be isolated after the fact.
+            upd_t0 = time.perf_counter()
+
             # -- old policy log-probs (once per rollout) ---------------------
             part_rng = np.random.default_rng((seed * 1_000_003) ^ (r_idx * 9_176 + 1))
             parts = plan_partition(Br, mu, micro, part_rng)
@@ -526,12 +534,16 @@ def main(argv: list[str] | None = None) -> int:
                       "train.micro_batch_responses (currently %d)" % micro)
                 raise
 
+            # D-24: what the old-policy forward alone cost. Everything after this
+            # point is the mu gradient passes plus optimizer steps.
+            oldlp_ms = (time.perf_counter() - upd_t0) * 1000.0
+
             prompt_tokens = sum(len(p) for p in rb.prompt_ids)
             completion_tokens = sum(len(c) for c in rb.completion_ids)
             mean_resp_len = completion_tokens / max(1, rb.n_responses)
 
             # -- one pass of mu optimizer steps ------------------------------
-            upd_t0 = time.perf_counter()
+            # (upd_t0 already started before the old-policy forward; see D-24)
             trained_tokens = 0
             # D-21: a step's record cannot be written when it is produced -- the
             # rollout's total update wall time is only known after the last step,
@@ -646,6 +658,9 @@ def main(argv: list[str] | None = None) -> int:
                     "zero_var_group_frac": adv_stats["zero_var_group_frac"],
                     "adv_abs_mean": adv_stats["adv_abs_mean"],
                     "wall_ms_rollout": round(rb.wall_ms if si == 0 else 0.0, 3),
+                    # D-24: book the old-policy pass once per rollout, on row 0,
+                    # so summing the column gives the rollout total.
+                    "wall_ms_old_logp": round(oldlp_ms if si == 0 else 0.0, 3),
                     "loss": loss_w / denom,
                     "lr": lr_now,
                     "ratio_mean": ratio_w / denom,
@@ -697,7 +712,9 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 writer.write(rec)
             pending.clear()
-            print(f"[r{r_idx}] done: rollout {rb.wall_ms/1000:.1f}s update {upd_ms/1000:.1f}s "
+            print(f"[r{r_idx}] done: rollout {rb.wall_ms/1000:.1f}s "
+                  f"oldlogp {oldlp_ms/1000:.1f}s "
+                  f"grad {(upd_ms - oldlp_ms)/1000:.1f}s update {upd_ms/1000:.1f}s "
                   f"cum {tot['responses']} resp, {tot['gpu_hours_billed']:.3f} GPU-h, "
                   f"¥{tot['cost_cny']:.2f}")
 

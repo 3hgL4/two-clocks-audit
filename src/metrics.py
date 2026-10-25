@@ -46,6 +46,9 @@ SCHEMA: dict[str, tuple[type | tuple[type, ...], bool]] = {
     "zero_var_group_frac": (float, True),
     "adv_abs_mean": (float, True),
     "wall_ms_rollout": (float, True),
+    # D-24: old-policy forward time, booked once per rollout on row 0. Part of
+    # wall_ms_update; optional so rows written before the fix still validate.
+    "wall_ms_old_logp": (float, False),
     # update-side
     "loss": (float, True),
     "lr": (float, True),

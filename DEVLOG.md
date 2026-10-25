@@ -797,3 +797,106 @@ update 367.1 s、¥0.38）。删掉 `runs/mu1_s0` 与过期 `.git` 后重启。
 `pass 0.218`、`zero_var 0.0`、`σ 0.0663`、`d 0.0723`、`¥0.38/rollout`。
 按 8 rollouts + 93 s 固定开销外推：**单 run ≈1.49 h，九次 ≈13.4 h ≈ ¥28**——
 落在 14–16 h 区间的下沿（因为 rollout 完全命中、update 只慢 4%）。
+
+### D-24 首个 rollout 落地：链路全通，但成本记账少记 17%（old-policy 前向在计时之外）（2026-10-25）
+
+**一、实测两行（mu1_s0，Br=4096 / micro=4 / group=8 / mu=1）**
+
+| | r0 | r1 |
+|---|---|---|
+| rollout | 288.35 s | 291.57 s |
+| update（`wall_ms_update`） | 368.21 s | 373.99 s |
+| `resp_len_mean` | 292.93 | 299.52 |
+| `pass_rate` | 0.218018 | 0.229980 |
+| `zero_var_group_frac` | **0.000** | 0.003906 |
+| σ / d | 0.06627 / 0.07232 | 0.06550 / 0.07144 |
+| `cost_cny_cum` | 0.3793 | 0.7639 |
+| `ts` | 1792906736.708 | 1792907530.212 |
+
+链路全部验证通过：`rollout_data_sha` 两行不同（不同批数据）、`n_groups=512` / `n_forward_chunks=1024`
+（D-15 的解耦口径如实落盘）、`adapters/r000` 267 MB 落盘（`sha256=88f2b66c…`，源 `_adapter` 的
+`adapter_model.safetensors` mtime 05:25:54 = 训练起始，即"生成这批 response 的那一版"，语义正确）、
+`state.pt` 799 MB、`zero_var ≈ 0` 说明 D-18 的 per-request seed 修复在真机上成立。
+
+**二、发现：`wall_ms_update` 不含 old-policy logprob 前向，成本少记 17%**
+
+`train.py:513-527` 的 old_lp 整遍前向在 `upd_t0`（`:534`）**之前**，所以不在 `wall_ms_update` 里。
+用 `ts` 反推：`Δts = 793.504 s`，减去 rollout 291.57 与 update 373.99，**剩 128.0 s** 是
+old_lp 前向（1024 块 × 4096 条）+ npz/adapter 落盘。r1 也是 128 s，**不是首次编译开销，
+是每轮常驻**。
+
+后果：`[r0] done` 打的 `0.182 GPU-h`、`cost_cny_cum`、以及 meter 都只按 rollout+update 计，
+**每 rollout 真实墙钟 793.5 s 而不是 657 s，成本少记 17%**（0.3793 vs 实际 0.4584）。
+
+**三、ETA 修正**
+
+| | 旧 | 新 |
+|---|---|---|
+| 单 rollout | 657 s | **793.5 s** |
+| 单 run | 1.49 h | **1.775 h** |
+| 9 run | 13.4 h | **15.98 h** |
+| 完赛 | 北京次日 02:49 | **北京次日 05:22** |
+| 成本 | ¥28 | **¥33.2**（仍 < C7 的 ¥55/9、¥6/单 run） |
+
+**四、为什么不回改（用户拍板前）**
+
+`ts` 是每行真实写入时刻，相邻差就是真实墙钟，**这批 run 的成本可以事后精确重算**，
+所以不需要为了记账停掉 16 小时的战役。D-20 里"update 含 old-policy 整遍前向 + 梯度遍
+两次前向"的说法被证伪：`wall_ms_update` 只含**梯度遍 + opt.step**（一次前向）；D-20 由
+512/1024 两点拟合的 update 斜率（0.0854 s/resp）本身是对的（368 s vs 预测 352 s，+4.5%），
+漏的是**拟合之外**的 old_lp 那一项。
+
+### D-25 把 old-policy 前向纳入计时，并给 16 小时战役装一个显存安全阀（2026-10-25）
+
+用户拍板两件事：D-24 的记账 bug 现在就改（接受停机损失）；`resp_len` 继续涨时，余量跌破
+阈值允许自动降级。
+
+**一、计时口径（改 `upd_t0` 位置）**
+
+`upd_t0` 从 old_lp 段之后（原 `:534`）移到之前，于是 `wall_ms_update` 现在包含
+"old-policy 整遍前向 + mu 次梯度遍 + opt.step"，与 meter、`cost_cny_cum`、`[rN] done`
+的 GPU-h 全部对齐。
+
+同时新增 `wall_ms_old_logp`（只记在每 rollout 的第 0 行，schema 里是**可选**字段，老行仍过
+校验）。理由：不单记的话，"update 496 s"里混着两个性质不同的东西——一次 no_grad 前向和一次
+梯度前向+step。这两项随 mu 变化的规律不同（old_lp 每 rollout 一次、与 mu 无关；梯度遍是 mu 次），
+混在一起会让 mu=1/8/16 三臂的耗时无法拆解，而"mu 是否同价"正是 D-17 里唯一没有实测的假设。
+所以既纳入计时（成本准），又单独可见（可拆解）。
+
+`[rN] done` 打印改成三段：`rollout 288.3s oldlogp 128.0s grad 368.2s update 496.2s`。
+
+**二、"降 max_num_seqs"单独不解决问题（改了方案）**
+
+涨的是**训练侧**：vLLM 在 Br=4096 下按 util 0.45 预留 21,317 MiB 并一直占着；峰值的其余
+约 19.7 GiB 是策略侧（logits 按 64 分块的 T×151,669 + attention 的 T²）。实测 `resp_len`
+292.9 → 299.5 时峰值 40,172 → 40,974 MiB，增量全在训练侧。**`max_num_seqs` 只缩小 KV 的
+工作集，不缩小预留**，单独降它在这个 OOM 路径上几乎无效；真正把内存还回去的是
+`gpu_memory_utilization`。
+
+所以 `configs/cloud48g_lowmem.yaml` 同时降两项：util 0.45 → **0.38**（还 3.3 GiB），
+mns 256 → **192**（让调度器不超额使用变小的 KV 预算）。代价预估 rollout 慢 10–20%
+（288 s → 320–345 s），九次多约 1.5 h——作为应急可以，不值得预防性采用。
+
+**三、安全阀 `tools/vram_guard.sh`**
+
+每 20 s 读一次 `nvidia-smi memory.free`，**连续 2 次**低于 2048 MiB 才动作（单次抖动不动手）。
+动作：停 `run_9.sh` → 停 `train.py` → 停 `EngineCore` → 用 `CFG=cloud48g_lowmem.yaml`
+重启 `run_9.sh`。因为 `run_9.sh` 会 skip 有 `summary.json` 的、resume 有 `state.pt` 的，
+所以这是**续跑**而不是重跑，最坏丢一个 rollout（`state.pt` 每 rollout 写一次）。
+
+**只降级一次**：降完若又触底，只记日志然后退出，不允许把 16 小时的战役拖进重启循环。
+`runs/_vram_guard_downgraded` 是那个一次性标记。日志 `runs/_logs/vram_guard.log`。
+
+**四、丢掉的三个 rollout**
+
+为统一账本口径，`runs/mu1_s0` 删掉从头跑（已完成的 3 行是旧口径，混在一起会让
+`cost_cny_cum` 出现一段台阶）。这不损失任何科学信息：D-19 已证明同配置两次运行
+0/512 行不同，重跑得到的是同一批 response，只是重花约 30 分钟 / ¥1。
+
+本次停机总代价：3 个 rollout（05:53 → 06:13，约 ¥0.7）+ 重跑 30 分钟。
+
+**五、未验证项**
+
+本地 `conda ai` 环境的 `transformers` 坏了（`import transformers` 抛
+`NameError: name 'nn' is not defined`，与本次改动无关），所以本地 CPU dryrun 跑不了，
+新字段的落盘验证放在云端做。单元测试本地 25/25 通过（纯 numpy，不碰 transformers）。

@@ -1,0 +1,27 @@
+# Fallback for the 9-run campaign: only used if the VRAM guard trips (D-25).
+#
+# NOT the plan of record. configs/cloud48g_main.yaml is. This file exists so the
+# guard has somewhere to go instead of just stopping 16 hours of work.
+#
+# Why util 0.38 and not just a smaller max_num_seqs:
+#   the headroom that shrinks is the *training* side. At Br=4096 vLLM reserves
+#   0.45 x 47,370 = 21,317 MiB up front and holds it; the other ~19,657 MiB is
+#   the policy (logits T x 151,669 chunked at 64, attention ~T^2). resp_len grew
+#   292.9 -> 299.5 over two rollouts and the peak grew 40,172 -> 40,974 MiB with
+#   it, i.e. the growth is entirely on the training side. Lowering max_num_seqs
+#   shrinks the KV-cache working set, not the reservation, so on its own it buys
+#   almost nothing here; lowering gpu_memory_utilization is what hands memory back.
+#   max_num_seqs comes down with it so that the smaller KV budget is not
+#   oversubscribed by the scheduler.
+#
+# Cost of switching: 0.45 -> 0.38 is 15.6% less KV, 256 -> 192 is 25% fewer
+# concurrent sequences, so the rollout leg is expected to be 10-20% slower
+# (288 s -> ~320-345 s). That is a ~1.5 h surcharge on nine runs. Acceptable as
+# an emergency; not worth taking pre-emptively.
+extends: cloud48g_main.yaml
+run:
+  tag: cloud48g_lowmem
+rollout:
+  vllm:
+    gpu_memory_utilization: 0.38
+    max_num_seqs: 192
