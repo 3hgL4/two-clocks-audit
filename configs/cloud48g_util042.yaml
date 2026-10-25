@@ -1,0 +1,39 @@
+# Middle setting between cloud48g_main.yaml (util 0.45) and cloud48g_lowmem.yaml
+# (util 0.38). Exists so that whoever reads runs/_vram_guard_halt.md has a
+# third option that is priced before it is needed, instead of a hand-edit under
+# pressure. NOT the plan of record; main is.
+#
+# Why 0.42 and not 0.38: the reservation is util x 47,370 MiB, so
+#   0.45 -> 21,317 MiB  (main)
+#   0.42 -> 19,895 MiB  (-1,422 MiB)
+#   0.38 -> 18,001 MiB  (-3,316 MiB)
+# A trip at 2,048 MiB free means the campaign needed a few hundred MiB, not
+# three GiB. 0.42 returns ~1.4 GiB, which covers the measured growth of the
+# training side (resp_len 292.9 -> 299.5 moved the peak 40,172 -> 40,974 MiB,
+# i.e. ~100 MiB per rollout-step) for several more rollouts, and costs less
+# rollout throughput than 0.38. If one trip at 0.42 is not enough, 0.38 is the
+# next step, not a fourth config.
+#
+# max_num_seqs 256 -> 224 to match: the KV budget is 6.7% smaller, and leaving
+# the cap at 256 invites vLLM preemption once the cache fills. Preemption
+# changes batch shape mid-run, which is the one thing D-19 was about -- a fixed
+# batch shape is what made two runs agree on 512/512 rows.
+#
+# Cost, measured basis: util 0.45 -> 0.38 with mns 256 -> 192 was priced at
+# 10-20% slower rollout (288 s -> 320-345 s), ~1.5 h over nine runs. This is
+# roughly one third of that move, so expect ~5-7% slower rollout, ~+0.5 h over
+# nine runs, ~CNY 1.
+#
+# Declaration cost, which is the real price: switching config mid-run means the
+# rollouts before and after the switch ran under different KV reservations and
+# different concurrency caps. That does not touch sigma's definition (it depends
+# only on group boundaries) but it does mean "this run used one vLLM shape" is
+# no longer true, and REPORT.md has to say so. Cheaper to declare at the run
+# boundary than mid-run.
+extends: cloud48g_main.yaml
+run:
+  tag: cloud48g_util042
+rollout:
+  vllm:
+    gpu_memory_utilization: 0.42
+    max_num_seqs: 224

@@ -930,3 +930,66 @@ ETA 用本次实测（每 rollout 285.5 + 492.2 + 落盘 ≈ 783 s）：单 run 
    `Connection closed` 轮替，一分钟内多次），`scp` 会直接失败。改用
    `ssh ... "bash -s" < script.sh` 单连接送脚本后稳定；`setsid -w` + `ServerAliveInterval`
    是必需的。
+
+---
+
+### D-26 显存安全阀改为“停机取证、不自动降级”（2026-10-25）
+
+用户指令原话：**“guard 触发降级后停下来判断”**。
+
+**一、旧行为为什么必须改**
+
+D-25 的 guard 在余量跌破 2 GiB 时做两件事：停战役，然后**自动用
+`configs/cloud48g_lowmem.yaml`（util 0.38 / mns 192）重启 `run_9.sh`**，把剩下 8 个 run 跑完。
+问题不在降级本身，在于**谁做这个决定**：一个脚本，在无人值守的时段，替人决定了“剩下八个 run
+换一套配置跑完”。后果是同一个战役里 µ 臂不再同配置可比，而唯一的痕迹是
+`runs/_logs/vram_guard.log` 里一行字。16 小时的产物如果中途换过仪器，事后无法证伪——
+这正是本项目的核心指控对象。显存安全阀的职责是**保护已有数据**，不是挑下一个实验。
+
+**二、新行为**
+
+```
+余量 < 2048 MiB 连续 2 次
+  -> tools/guard_snapshot.py 落一份现场快照（runs/_vram_guard_halt.md + .json）
+  -> 停 run_9.sh（先掐循环，防止 train.py 一死就进下一个 run）
+  -> SIGTERM train.py，25 s 不退则 SIGKILL
+  -> 停 EngineCore
+  -> HALTED，退出。**不重启、不改配置、不推进任何 run**
+```
+
+快照内容（决策真正需要的）：free/used/total + 每进程显存、四个进程的 pid/etime/完整命令行、
+每个 run 的 summary 有无 / metrics 行数 / rollout npz 数 / state.pt 大小与年龄 / 最后一行的
+resp_len·pass_rate·zero_var·cost、当前 run 最近 4 个 rollout 轨迹与 **resp_len 斜率**、
+当前 run 日志尾 12 行、磁盘余量、代码 commit。文件末尾列出三个续跑命令（A 原配置、
+B `cloud48g_util042`、C `lowmem`），**只是文本，不执行**。
+
+**三、新增两个文件，都只是给选项，不改现状**
+
+- `tools/guard_snapshot.py`（只读，训练中可跑）。斜率算不出来时明说“只有 N 个 rollout，
+  趋势还不可观测”，而不是含糊成“flat”——这条是干跑时发现的措辞 bug，已修。
+- `configs/cloud48g_util042.yaml`：util 0.45→0.42（预留 21,317→19,895 MiB，返 1.4 GiB）、
+  mns 256→224（KV 少 6.7%，上限不降会招 preempt，preempt 改批次形状正好撞 D-19）。
+  预期 rollout 慢 5–7%，九次约 +0.5 h / +¥1。**不生效，除非有人在报告上选 B。**
+
+**四、验证（全部在真机，06:42–06:44Z）**
+
+| 检查 | 结果 |
+|---|---|
+| `bash -n tools/vram_guard.sh` | OK |
+| 三配置解析 | main 0.45/256、util042 **0.42/224**、lowmem 0.38/192，micro=4 group=8 均不变 |
+| `DRY_RUN=1 THRESH_MIB=99999` 干跑 | 快照正常生成到 `/tmp`，**没有杀任何进程**，战役继续 |
+| 真实路径写入 | `runs/_vram_guard_halt.md` 3,373 B / `.json` 3,119 B 生成→核对→删除 |
+| 三文件 md5 | 与本地**逐一相等**（`e8f60dda` / `5a01e99a` / `bfc48714`） |
+| 换阀 | 旧 guard 49863 停，新 guard **55457** 起，日志三行 banner 含 `NO auto-relaunch (D-26)` |
+| 训练未受影响 | 换阀前后 `mu1_s0` 同一 pid 50313 / EngineCore 50836 未重启，free 7,583 MiB |
+
+**五、代价，写在明处**
+
+触发后机器**空转且按小时计费**（¥1.56/h），直到有人看到 `runs/_vram_guard_halt.md` 并选一条
+续跑命令。旧行为不会空转，但它会用一个未经批准的配置把剩下 8 个 run 跑完——那是更贵的错误。
+若长时间无人，正确处置是关机，不是让它挂着。
+
+**六、训练代码没动**
+
+本次只改 guard（独立脚本）+ 新增工具/配置，`src/train.py` 与 `src/rollout.py` 一字未改，
+所以云端 `COMMIT=f04df9ff697d0d4fb22d39a31f405a1def0789c1` 对 `run_meta.json` 仍然准确。
