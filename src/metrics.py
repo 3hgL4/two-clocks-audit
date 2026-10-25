@@ -55,6 +55,9 @@ SCHEMA: dict[str, tuple[type | tuple[type, ...], bool]] = {
     "clip_frac_low": (float, True),
     "clip_frac_high": (float, True),
     "clip_frac_any": (float, True),
+    # C6 second half: share of the *logprob-space* gradient mass |ratio*adv| that
+    # the clipped tokens would have carried. Optional so pre-D-21 rows still pass.
+    "clip_grad_mass_share": (float, False),
     "grad_norm_raw": (float, True),
     "grad_norm_clipped": (float, True),
     "grad_noise_sigma": (float, True),

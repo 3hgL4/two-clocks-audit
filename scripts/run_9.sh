@@ -63,7 +63,21 @@ assert cfg.get("rollout.vllm.enable_prefix_caching") is False, "prefix cache off
 assert cfg.get("rollout.vllm.enable_chunked_prefill") is False, "chunked prefill off (D-19)"
 assert cfg.get("rollout.vllm.max_num_batched_tokens"), "fixed token budget (D-19)"
 assert cfg.get("logging.save_rollout_ids") is True, "rollout archive must stay on (D-17)"
+assert cfg.get("rollout.vllm.seed_per_request") is True, "per-request seeds (D-18)"
 EOF
+
+echo "=== pre-flight: provenance ==="
+# D-21: run_meta.json records the commit; on a box without .git (code arrives by
+# scp) it reads this file instead. Write it here so the campaign is traceable
+# even though the checkout is not a repository.
+if git rev-parse --git-dir >/dev/null 2>&1; then
+  git rev-parse HEAD > COMMIT
+  echo "  COMMIT=$(cat COMMIT) (from .git)"
+elif [[ -f COMMIT ]]; then
+  echo "  COMMIT=$(cat COMMIT) (from file; no .git on this box)"
+else
+  echo "  [warn] neither .git nor COMMIT: run_meta.json cannot name the code version" >&2
+fi
 
 for mu in $MUS; do
   for seed in $SEEDS; do

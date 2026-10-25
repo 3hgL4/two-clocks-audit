@@ -105,6 +105,15 @@ def grpo_loss(
         kl = ((old_logp - logp).detach() * mask).sum() / n
         vals = ratio[valid]
         p95 = torch.quantile(vals, 0.95) if vals.numel() > 1 else vals.new_tensor(1.0)
+        # C6, second half. Clipping zeroes the gradient of the tokens it clips, so
+        # "how much gradient norm do clipped tokens carry" has to be asked of the
+        # unclipped surrogate: the per-token dL/dlogp magnitude there is
+        # |ratio * adv| exactly, and this share is how much of that mass the clip
+        # dropped. NOTE: this is the logprob-space mass, not the parameter-space
+        # norm share (which would need a per-token backward and is NOT measured).
+        mass = (ratio * adv).abs() * mask
+        mass_total = mass.sum().clamp(min=1e-12)
+        mass_clipped = (mass * (is_low | is_high)).sum()
         stats = {
             "loss": float(loss.detach().item()),
             "ratio_mean": float(vals.mean().item()) if vals.numel() else 1.0,
@@ -113,6 +122,7 @@ def grpo_loss(
             "clip_frac_low": float((is_low.sum() / n).item()),
             "clip_frac_high": float((is_high.sum() / n).item()),
             "clip_frac_any": float(((is_low | is_high).sum() / n).item()),
+            "clip_grad_mass_share": float((mass_clipped / mass_total).item()),
         }
     return loss, stats
 

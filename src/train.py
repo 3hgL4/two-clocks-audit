@@ -29,6 +29,7 @@ import json
 import os
 import platform
 import random
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -207,9 +208,44 @@ def _lr_at(step: int, total: int, base_lr: float, warmup_ratio: float) -> float:
     return base_lr * 0.5 * (1.0 + np.cos(np.pi * min(1.0, prog)))
 
 
+def _sh(*args: str) -> str:
+    """Run a short command and return stdout, or "" on any failure.
+
+    Provenance is worth having but never worth killing a 16-hour run over, so
+    every failure mode (binary missing, not a git repo, timeout) degrades to "".
+    """
+    try:
+        p = subprocess.run(args, capture_output=True, text=True, timeout=5)
+        return p.stdout.strip() if p.returncode == 0 else ""
+    except Exception:
+        return ""
+
+
+def _pkg_version(name: str) -> str:
+    try:
+        from importlib.metadata import version
+
+        return version(name)
+    except Exception:
+        return ""
+
+
+def _commit_from_file() -> str:
+    """The rented box has no .git (code arrives by scp), so the commit is also
+    dropped into a plain `COMMIT` file next to README.md."""
+    for name in ("COMMIT", "COMMIT.txt"):
+        p = Path(__file__).resolve().parents[1] / name
+        if p.exists():
+            lines = p.read_text(encoding="utf-8").strip().splitlines()
+            return lines[0][:40] if lines else ""
+    return ""
+
+
 def _run_meta(cfg) -> dict:
     import transformers
 
+    git_commit = _sh("git", "rev-parse", "HEAD")
+    dirty = bool(_sh("git", "status", "--porcelain")) if git_commit else None
     meta = {
         "created": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "host": platform.node(),
@@ -219,6 +255,15 @@ def _run_meta(cfg) -> dict:
         "transformers": transformers.__version__,
         "cuda": torch.version.cuda,
         "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu",
+        # D-21: the code that produced this run, and the sampler library that
+        # produced its data. Both were missing, so a run could not be traced
+        # back to a commit without reading the shell history.
+        "vllm": _pkg_version("vllm"),
+        "numpy": np.__version__,
+        "nvidia_driver": _sh("nvidia-smi", "--query-gpu=driver_version", "--format=csv,noheader"),
+        "git_commit": git_commit or _commit_from_file(),
+        "git_commit_source": "git" if git_commit else ("file" if _commit_from_file() else ""),
+        "git_dirty": dirty,
         "argv": sys.argv,
         "cwd": os.getcwd(),
     }
@@ -409,11 +454,17 @@ def main(argv: list[str] | None = None) -> int:
             # -- one pass of mu optimizer steps ------------------------------
             upd_t0 = time.perf_counter()
             trained_tokens = 0
+            # D-21: a step's record cannot be written when it is produced -- the
+            # rollout's total update wall time is only known after the last step,
+            # and `wall_ms_update` / `cost_cny_cum` depend on it. Rows are held
+            # for one rollout (<= mu of them) and flushed with the real numbers.
+            pending: list[dict] = []
             for si, step_parts in enumerate(parts):
                 buf = _grad_buffer(policy)
                 g_of_group: list[float] = []
                 n_tok_step = 0
                 loss_w = kl_w = cl_low_w = cl_high_w = cl_any_w = ratio_w = p95_w = 0.0
+                mass_w = 0.0
                 n_groups = len(step_parts) // chunks_per_group
                 n_chunks = len(step_parts)
                 mi = -1
@@ -458,6 +509,7 @@ def main(argv: list[str] | None = None) -> int:
                         cl_low_w += stats["clip_frac_low"] * n_tok
                         cl_high_w += stats["clip_frac_high"] * n_tok
                         cl_any_w += stats["clip_frac_any"] * n_tok
+                        mass_w += stats["clip_grad_mass_share"] * n_tok
                         ratio_w += stats["ratio_mean"] * n_tok
                         p95_w += stats["ratio_p95"] * n_tok
                         n_tok_step += n_tok
@@ -523,6 +575,7 @@ def main(argv: list[str] | None = None) -> int:
                     "clip_frac_low": cl_low_w / denom,
                     "clip_frac_high": cl_high_w / denom,
                     "clip_frac_any": cl_any_w / denom,
+                    "clip_grad_mass_share": mass_w / denom,
                     "grad_norm_raw": raw,
                     "grad_norm_clipped": clipped,
                     "grad_noise_sigma": float(sigma if sigma is not None else -1.0),
@@ -536,7 +589,7 @@ def main(argv: list[str] | None = None) -> int:
                     "flops_cum": tot["flops_total"],
                     "cost_cny_cum": tot["cost_cny"],
                 }
-                writer.write(rec)
+                pending.append(rec)
                 print(
                     f"[r{r_idx} mu{si:02d}] pass={rec['pass_rate']:.3f} "
                     f"r={rec['reward_mean']:+.3f} len={rec['resp_len_mean']:.0f} "
@@ -551,6 +604,20 @@ def main(argv: list[str] | None = None) -> int:
             for m in meter.rollouts[-mu:]:
                 m.wall_ms_update += upd_ms / mu
             tot = meter.totals()
+            # Flush this rollout's rows with the wall time they actually cost.
+            # Row k of the rollout has, at its own point in time, absorbed
+            # (k+1)/mu of the update wall time -- that is exactly how the meter
+            # books it, so cost_cny_cum stays monotone and the last row matches
+            # the run summary.
+            price = float(meter.price_cny_per_hour)
+            share_ms = upd_ms / max(1, len(pending))
+            for k, rec in enumerate(pending):
+                rec["wall_ms_update"] = round(share_ms, 3)
+                rec["cost_cny_cum"] = round(
+                    float(rec["cost_cny_cum"]) + (k + 1) * share_ms / 3_600_000.0 * price, 4
+                )
+                writer.write(rec)
+            pending.clear()
             print(f"[r{r_idx}] done: rollout {rb.wall_ms/1000:.1f}s update {upd_ms/1000:.1f}s "
                   f"cum {tot['responses']} resp, {tot['gpu_hours_billed']:.3f} GPU-h, "
                   f"¥{tot['cost_cny']:.2f}")

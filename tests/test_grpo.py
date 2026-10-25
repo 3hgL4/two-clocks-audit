@@ -134,6 +134,30 @@ def test_masked_tokens_are_ignored() -> None:
     assert abs(float(lb) - float(lc)) < 1e-9
 
 
+def test_clip_grad_mass_share() -> None:
+    """C6 second half: mass share must be 0 with no clipping and 1 when every
+    valid token is clipped, and it must ignore padded positions."""
+    logp = torch.zeros(1, 6)
+    mask = torch.tensor([[1.0, 1.0, 1.0, 1.0, 0.0, 0.0]])
+    adv = torch.tensor([[1.0]])
+
+    # ratio == 1 everywhere -> nothing clipped -> no mass dropped
+    _, stats = grpo.grpo_loss(logp, torch.zeros(1, 6), adv, mask)
+    assert stats["clip_frac_any"] == 0.0
+    assert abs(stats["clip_grad_mass_share"] - 0.0) < 1e-12
+
+    # ratio way above 1 + eps_high with adv > 0 -> all four valid tokens clipped
+    _, stats = grpo.grpo_loss(logp, torch.full((1, 6), -2.0), adv, mask)
+    assert stats["clip_frac_any"] == 1.0
+    assert abs(stats["clip_grad_mass_share"] - 1.0) < 1e-6
+
+    # padded positions carry no mass: same result whether they are noisy or not
+    old = torch.full((1, 6), -2.0)
+    old[0, 4:] = -50.0
+    _, stats2 = grpo.grpo_loss(logp, old, adv, mask)
+    assert abs(stats2["clip_grad_mass_share"] - 1.0) < 1e-6
+
+
 def test_group_advantages() -> None:
     rewards = torch.tensor([1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0])
     adv, stats = grpo.group_advantages(rewards, G=4)
