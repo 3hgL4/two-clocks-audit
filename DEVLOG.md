@@ -993,3 +993,12 @@ B `cloud48g_util042`、C `lowmem`），**只是文本，不执行**。
 
 本次只改 guard（独立脚本）+ 新增工具/配置，`src/train.py` 与 `src/rollout.py` 一字未改，
 所以云端 `COMMIT=f04df9ff697d0d4fb22d39a31f405a1def0789c1` 对 `run_meta.json` 仍然准确。
+
+**七、拍板（2026-10-25 14:45 北京）**
+
+用户选定**「只报告，等你定」**：guard 触发后落盘即止，**不按任何默认值续跑**。
+另一个选项（“报告 + 自动按 A/B/C 里某个默认值续跑”）被明确排除。因此 `vram_guard.sh` 里
+**没有** `AUTO_RESUME` 分支，这不是“暂时没实现”，而是拍板结果——将来若要加强自动续跑，
+必须重新拍板，不能援引“当时没说不要”。
+
+`32420f0` 已推 `origin/main`（push 从 WSL 执行，GitHub 密钥只在 WSL；Windows 侧仓库无密钥）。
