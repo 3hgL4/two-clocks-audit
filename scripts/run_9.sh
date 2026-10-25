@@ -49,7 +49,7 @@ echo "=== pre-flight: config resolves ==="
 import sys
 sys.path.insert(0, "src")
 import config as config_mod
-cfg = config_mod.load(sys.argv[1])
+cfg = config_mod.load_config(sys.argv[1])
 print(f"  micro={cfg['train.micro_batch_responses']} group={cfg.micro_group_responses} "
       f"Br={cfg['train.responses_per_rollout']} rollouts={cfg['train.num_rollouts']} "
       f"util={cfg['rollout.vllm.gpu_memory_utilization']} "
