@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>TwoClocks · 9-run campaign</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --line:#2b3444;
+    --fg:#e6edf3; --dim:#8b949e; --accent:#58a6ff;
+    --ok:#3fb950; --warn:#d29922; --bad:#f85149; --pnl:#bc8cff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+       font:13px/1.45 -apple-system,"Segoe UI",system-ui,"Microsoft YaHei",sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:14px 16px 40px}
+  .num{font-family:"SF Mono",Consolas,"Cascadia Mono",monospace;font-variant-numeric:tabular-nums}
+
+  header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+         padding-bottom:10px;border-bottom:1px solid var(--line);margin-bottom:14px}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--dim);flex:none}
+  .dot.armed{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+  .dot.warn{background:var(--warn);box-shadow:0 0 8px var(--warn)}
+  .dot.halt{background:var(--bad);box-shadow:0 0 10px var(--bad)}
+  .dot.stale{background:#484f58}
+  h1{font-size:14px;margin:0;font-weight:600;letter-spacing:.2px}
+  .spacer{flex:1}
+  .clock{color:var(--dim);font-size:12px}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:10px;margin-bottom:14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;position:relative;overflow:hidden}
+  .card .k{color:var(--dim);font-size:11px;letter-spacing:.4px;text-transform:uppercase}
+  .card .v{font-size:23px;font-weight:600;margin-top:3px}
+  .card .s{color:var(--dim);font-size:11px;margin-top:2px}
+  .bar{height:4px;background:var(--panel2);border-radius:2px;margin-top:8px;overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:2px;transition:width .4s}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:860px){.grid2{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+  .panel h2{font-size:12px;margin:0 0 8px;color:var(--dim);font-weight:600;
+            letter-spacing:.5px;text-transform:uppercase;display:flex;gap:8px;align-items:baseline}
+  .panel h2 em{font-style:normal;color:var(--fg);font-size:12px;letter-spacing:0}
+  svg{display:block;width:100%;height:auto}
+
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{text-align:right;color:var(--dim);font-weight:500;padding:4px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  td{text-align:right;padding:4px 6px;border-bottom:1px solid #1e242e;white-space:nowrap}
+  tr.live td{background:#132030}
+  .tag{display:inline-block;padding:1px 6px;border-radius:4px;background:var(--panel2);color:var(--accent);font-size:11px}
+
+  pre{margin:0;font-family:"SF Mono",Consolas,monospace;font-size:11px;color:var(--dim);
+      white-space:pre-wrap;word-break:break-all;line-height:1.5}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--dim);margin-top:6px}
+  .legend b{font-weight:600}
+  .sw{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:middle}
+  .banner{background:#3a1a1a;border:1px solid var(--bad);color:#ffb4ad;padding:9px 12px;
+          border-radius:8px;margin-bottom:12px;font-size:12px}
+  .empty{color:var(--dim);font-size:12px;padding:8px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="dot" id="dot"></span>
+    <h1>TwoClocks · 9-run campaign</h1>
+    <span class="tag num" id="commit">—</span>
+    <span class="spacer"></span>
+    <span class="clock num" id="clock">—</span>
+  </header>
+
+  <div id="banner"></div>
+
+  <div class="cards">
+    <div class="card">
+      <div class="k">显存余量</div>
+      <div class="v num" id="free">—</div>
+      <div class="s" id="freesub">—</div>
+      <div class="bar"><i id="freebar" style="width:0%"></i></div>
+    </div>
+    <div class="card">
+      <div class="k">当前 run · rollout</div>
+      <div class="v num" id="cur">—</div>
+      <div class="s" id="cursub">—</div>
+      <div class="bar"><i id="runbar" style="width:0%;background:var(--accent)"></i></div>
+    </div>
+    <div class="card">
+      <div class="k">已运行 · 已花</div>
+      <div class="v num" id="spent">—</div>
+      <div class="s" id="spentsub">—</div>
+    </div>
+    <div class="card">
+      <div class="k">预计完赛 · 预计总费</div>
+      <div class="v num" id="eta">—</div>
+      <div class="s" id="etasub">—</div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h2>resp_len <em id="lenlast"></em></h2>
+      <svg id="cslen" viewBox="0 0 560 150" preserveAspectRatio="none"></svg>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--accent)"></i>每 rollout 均值</span>
+        <span id="lenslope"></span>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>σ (grad_noise_sigma) <em id="siglast"></em></h2>
+      <svg id="cssig" viewBox="0 0 560 150" preserveAspectRatio="none"></svg>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--pnl)"></i>预注册口径 group=8</span>
+        <span id="sigrange"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h2>累计成本 <em id="costlast"></em></h2>
+      <svg id="cscost" viewBox="0 0 560 130" preserveAspectRatio="none"></svg>
+      <div class="legend"><span>¥ / 每 rollout，@¥2.08/h 平台口径</span></div>
+    </div>
+    <div class="panel">
+      <h2>显存分解 <em id="vramsub"></em></h2>
+      <svg id="csvram" viewBox="0 0 560 130" preserveAspectRatio="none"></svg>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--accent)"></i>train.py</span>
+        <span><i class="sw" style="background:var(--pnl)"></i>vLLM EngineCore</span>
+        <span><i class="sw" style="background:#30363d"></i>free</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>rollout 明细 <em>最近 10 条</em></h2>
+    <table id="tbl"><thead><tr>
+      <th>run</th><th>r</th><th>µ步</th><th>resp_len</th><th>pass</th><th>σ</th><th>d</th>
+      <th>ratio</th><th>clip</th><th>rollout s</th><th>oldlogp s</th><th>update s</th><th>¥</th>
+    </tr></thead><tbody></tbody></table>
+    <div class="empty" id="tblempty" style="display:none">还没有完成的 rollout</div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <h2>guard 日志</h2>
+      <pre id="guard">—</pre>
+    </div>
+    <div class="panel">
+      <h2>训练日志尾</h2>
+      <pre id="logtail">—</pre>
+    </div>
+  </div>
+</div>
+
+<script>
+const PRICE = 2.08, FREE_TRIP = 2048, FREE_WARN = 4096;
+const TOTAL_RUNS = 9, ROLLOUTS_PER_RUN = 8;
+const ORDER = [];
+for (const mu of [1,8,16]) for (let s=0;s<3;s++) ORDER.push(`mu${mu}_s${s}`);
+
+let D = null, STALE = false, LAST_OK = 0;
+
+const $ = id => document.getElementById(id);
+const fmt = (v,d=1) => (v===null||v===undefined||Number.isNaN(v)) ? "—" : Number(v).toFixed(d);
+
+function svgChart(el, series, opts){
+  const W=560,H=opts.h||150,P={l:38,r:8,t:8,b:16};
+  const xs=[], ys=[];
+  series.forEach(s=>s.pts.forEach(p=>{xs.push(p[0]);ys.push(p[1]);}));
+  if(!ys.length){el.innerHTML='';return;}
+  let y0=Math.min(...ys),y1=Math.max(...ys);
+  if(opts.zero) y0=Math.min(0,y0);
+  if(y1-y0<1e-9){y1=y0+1;}
+  const pad=(y1-y0)*0.12; y0-=pad; y1+=pad;
+  const x0=Math.min(...xs), x1=Math.max(...xs)||1;
+  const sx=v=>P.l+(x1===x0?0.5:(v-x0)/(x1-x0))*(W-P.l-P.r);
+  const sy=v=>H-P.b-(v-y0)/(y1-y0)*(H-P.t-P.b);
+  let g='';
+  for(let i=0;i<=3;i++){
+    const v=y0+(y1-y0)*i/3, y=sy(v);
+    g+=`<line x1="${P.l}" y1="${y}" x2="${W-P.r}" y2="${y}" stroke="#222a35" stroke-width="1"/>
+        <text x="${P.l-5}" y="${y+3}" fill="#6e7681" font-size="9" text-anchor="end">${opts.fmtY?opts.fmtY(v):fmt(v,2)}</text>`;
+  }
+  let body='';
+  series.forEach(s=>{
+    if(!s.pts.length) return;
+    const d=s.pts.map((p,i)=>(i?'L':'M')+sx(p[0]).toFixed(1)+' '+sy(p[1]).toFixed(1)).join(' ');
+    body+=`<path d="${d}" fill="none" stroke="${s.color}" stroke-width="${s.w||1.6}" stroke-linejoin="round"/>`;
+    const last=s.pts[s.pts.length-1];
+    body+=`<circle cx="${sx(last[0]).toFixed(1)}" cy="${sy(last[1]).toFixed(1)}" r="2.4" fill="${s.color}"/>`;
+  });
+  if(opts.hlines) opts.hlines.forEach(h=>{
+    if(h.v<y0||h.v>y1) return;
+    const y=sy(h.v);
+    body+=`<line x1="${P.l}" y1="${y}" x2="${W-P.r}" y2="${y}" stroke="${h.color}" stroke-width="1" stroke-dasharray="4 3" opacity=".85"/>
+           <text x="${W-P.r-2}" y="${y-3}" fill="${h.color}" font-size="9" text-anchor="end">${h.label}</text>`;
+  });
+  if(opts.vlines) opts.vlines.forEach(v=>{
+    const x=sx(v);
+    body+=`<line x1="${x}" y1="${P.t}" x2="${x}" y2="${H-P.b}" stroke="#30363d" stroke-width="1"/>`;
+  });
+  el.innerHTML=g+body;
+}
+
+function render(){
+  if(!D) return;
+  const now = D.epoch*1000 + (Date.now()-LAST_OK);
+  $('commit').textContent = D.commit ? D.commit.slice(0,8) : '—';
+  const bj = new Date(now + (8*3600e3 + new Date(now).getTimezoneOffset()*60e3));
+  $('clock').textContent = bj.toISOString().replace('T',' ').slice(0,19) + ' 北京';
+
+  // ---- guard state ----
+  const free = D.vram.free, gt = (D.guard_tail||[]).join('\n');
+  let state='armed';
+  if(D.halt && D.halt.flag) state='halt';
+  else if(free!==null && free<FREE_WARN) state='warn';
+  if(STALE) state='stale';
+  $('dot').className='dot '+state;
+
+  let banner='';
+  if(D.halt && D.halt.flag){
+    banner = `<div class="banner"><b>guard 已停机。</b>runs/_vram_guard_halt.md 里有现场快照与三条续跑命令，
+              按拍板「只报告等你定」，campaign 不会自己继续。当前每个小时都在计费。</div>`;
+  } else if(STALE){
+    banner = `<div class="banner">连不上云（最后成功 ${Math.round((Date.now()-LAST_OK)/1000)} s 前）。
+              训练可能仍在跑，但也可能已停 —— 先别据此判断。</div>`;
+  } else if(free!==null && free<FREE_WARN){
+    banner = `<div class="banner" style="background:#3a2d12;border-color:var(--warn);color:#f0d38a">
+              余量已低于 4 GiB 预警线（${free} MiB）。距 2 GiB 停机线还剩 ${free-FREE_TRIP} MiB。</div>`;
+  }
+  $('banner').innerHTML = banner;
+
+  // ---- cards ----
+  $('free').textContent = free===null?'—':free.toLocaleString();
+  $('free').style.color = free===null?'':(free<FREE_TRIP?'var(--bad)':free<FREE_WARN?'var(--warn)':'var(--ok)');
+  $('freesub').textContent = D.vram.total ? `已用 ${D.vram.used.toLocaleString()} / ${D.vram.total.toLocaleString()} MiB` : '—';
+  const fpct = D.vram.total ? Math.max(0,Math.min(100,(free-FREE_TRIP)/(D.vram.total-FREE_TRIP)*100)) : 0;
+  $('freebar').style.width = fpct+'%';
+  $('freebar').style.background = free<FREE_TRIP?'var(--bad)':free<FREE_WARN?'var(--warn)':'var(--ok)';
+
+  const ms = D.metrics || [];
+  const tag = D.current_tag;
+  const curRows = ms.filter(m=>m.tag===tag);
+  const idx = curRows.length ? Math.max(...curRows.map(m=>m.rollout_idx||0)) : -1;
+
+  // µ>1 的臂每个 µ-step 记一行（同 rollout_idx 会有多行），rollout 级视图必须去重：
+  // 按 (tag,rollout_idx) 聚合，行数凑满该臂的 µ 才算完成，代表行取 ts 最大的（最后一个 µ-step）
+  const muOf = t => +(((t||'').match(/mu(\d+)/)||[])[1]||1);
+  const rollAgg = new Map();
+  for(const m of ms){
+    const k = m.tag+'#'+(m.rollout_idx??-1);
+    let a = rollAgg.get(k);
+    if(!a){ a = {rows:[], last:null}; rollAgg.set(k,a); }
+    a.rows.push(m);
+    if(!a.last || (m.ts||0) >= (a.last.ts||0)) a.last = m;
+  }
+  const rolls = [...rollAgg.values()]
+    .filter(a=>a.rows.length >= muOf(a.tag))
+    .map(a=>a.last)
+    .sort((a,b)=>(a.ts||0)-(b.ts||0));
+
+  const done = rolls.length, total = TOTAL_RUNS*ROLLOUTS_PER_RUN;
+  const runNo = ORDER.indexOf(tag)+1;
+  $('cur').textContent = tag ? `${tag} · r${idx+1}/${ROLLOUTS_PER_RUN}` : '未在跑';
+  $('cursub').textContent = `第 ${runNo||'?'} / 9 个 run · 全战役 ${done} / ${total} rollout`;
+  $('runbar').style.width = (idx+1)/ROLLOUTS_PER_RUN*100+'%';
+
+  const upS = D.container_start ? (D.epoch - D.container_start) : null;
+  const spentCny = upS!==null ? upS/3600*PRICE : null;
+  $('spent').textContent = spentCny!==null ? '¥'+fmt(spentCny,1) : '—';
+  $('spentsub').textContent = upS!==null ? `容器已运行 ${fmt(upS/3600,2)} h · 内部记账 ¥${fmt(ms.length?ms[ms.length-1].cost_cny_cum:0,2)}` : '—';
+
+  // pace from the last two *completed* rollouts（µ>1 时行级 ts 差是 µ-step 间隔，不能用）
+  let gap=null;
+  if(rolls.length>=2){
+    const a=rolls[rolls.length-2], b=rolls[rolls.length-1];
+    if(a.ts&&b.ts) gap=b.ts-a.ts;
+  }
+  const remain = Math.max(0,total-done);
+  if(gap && remain){
+    const runsLeft = Math.max(0, TOTAL_RUNS - (runNo||TOTAL_RUNS));
+    const etaS = remain*gap + runsLeft*90;
+    const endEpoch = D.epoch + etaS;
+    const d2 = new Date((endEpoch+8*3600)*1000);
+    $('eta').textContent = d2.toISOString().slice(5,16).replace('T',' ');
+    const totalH = D.container_start ? (endEpoch-D.container_start)/3600 : null;
+    $('etasub').textContent = `还剩 ${remain} rollout × ${Math.round(gap)} s`
+      + (totalH?` · 总费约 ¥${fmt(totalH*PRICE,0)}`:'');
+  } else {
+    $('eta').textContent = gap ? '完赛' : '—';
+    $('etasub').textContent = gap ? '所有 rollout 已落地' : '需要 ≥2 条 rollout 才能估速';
+  }
+
+  // ---- charts ----
+  // 图表用"每 rollout 一个点"的口径（含进行中的部分 rollout，取其最新 µ-step 行），
+  // 否则 µ>1 臂会把同一个 rollout 画成 µ 个重复点，斜率单位也从 tok/rollout 变成 tok/µ-step
+  const rollReps = [...rollAgg.values()].map(a=>a.last).sort((a,b)=>(a.ts||0)-(b.ts||0));
+  const seq = rollReps.map((m,i)=>[i, m.resp_len_mean]).filter(p=>p[1]!=null);
+  $('lenlast').textContent = seq.length? `最新 ${fmt(seq[seq.length-1][1],1)}` : '';
+  svgChart($('cslen'), [{pts:seq,color:'#58a6ff'}], {fmtY:v=>fmt(v,0)});
+  if(seq.length>=4){
+    const head=seq.slice(0,Math.max(2,Math.floor(seq.length/2))), tail=seq.slice(-Math.max(2,Math.floor(seq.length/2)));
+    const m=a=>a.reduce((s,p)=>s+p[1],0)/a.length;
+    const slope=(m(tail)-m(head))/(tail.length/2);
+    $('lenslope').innerHTML = `<b>斜率 ≈ ${slope>0?'+':''}${fmt(slope,2)}</b> tok / rollout（前半 vs 后半均值）`
+      + (slope>0.5?' · <span style="color:var(--warn)">在涨，直接吃显存</span>':'');
+  } else if(seq.length){ $('lenslope').textContent='点数不足，斜率暂不可算'; }
+
+  const sig = rollReps.map((m,i)=>[i,m.grad_noise_sigma]).filter(p=>p[1]!=null);
+  $('siglast').textContent = sig.length? `最新 ${fmt(sig[sig.length-1][1],4)}` : '';
+  svgChart($('cssig'), [{pts:sig,color:'#bc8cff'}], {fmtY:v=>fmt(v,3)});
+  if(sig.length>1){
+    const vs=sig.map(p=>p[1]);
+    $('sigrange').textContent = `区间 ${fmt(Math.min(...vs),4)} – ${fmt(Math.max(...vs),4)}`;
+  }
+
+  const cost = rollReps.map((m,i)=>[i,m.cost_cny_cum]).filter(p=>p[1]!=null);
+  $('costlast').textContent = cost.length? `¥${fmt(cost[cost.length-1][1],2)}` : '';
+  svgChart($('cscost'), [{pts:cost,color:'#3fb950'}], {h:130,fmtY:v=>'¥'+fmt(v,1),zero:true});
+
+  // VRAM split: train vs engine; free from the frame
+  if(D.apps && D.apps.length && D.vram.total){
+    const tr = D.apps.find(a=>a.pid===((D.procs.train||'').trim().split(/\s+/)[0]));
+    const en = D.apps.find(a=>a.pid===((D.procs.engine||'').trim().split(/\s+/)[0]));
+    const trV=tr?+tr.mib:0, enV=en?+en.mib:0;
+    $('vramsub').textContent = `train ${trV.toLocaleString()} · vLLM ${enV.toLocaleString()} MiB`;
+    const W=560,H=130,y=40,bh=42;
+    const scale = v=>v/D.vram.total*(W-16);
+    let x=8, g='';
+    const seg=(v,c,lbl)=>{ if(v<=0)return;
+      const w=scale(v);
+      g+=`<rect x="${x}" y="${y}" width="${Math.max(w,0)}" height="${bh}" fill="${c}"/>`;
+      if(w>52) g+=`<text x="${x+w/2}" y="${y+bh/2+4}" fill="#0d1117" font-size="10" text-anchor="middle" font-weight="600">${lbl}</text>`;
+      x+=w; };
+    seg(trV,'#58a6ff','train'); seg(enV,'#bc8cff','vLLM'); seg(D.vram.free,'#30363d','free');
+    g+=`<line x1="${8+scale(D.vram.total-FREE_TRIP)}" y1="${y-12}" x2="${8+scale(D.vram.total-FREE_TRIP)}" y2="${y+bh+12}" stroke="#f85149" stroke-width="1.2" stroke-dasharray="4 3"/>
+        <text x="${8+scale(D.vram.total-FREE_TRIP)}" y="${y-16}" fill="#f85149" font-size="9" text-anchor="middle">2 GiB 停机线</text>`;
+    g+=`<text x="8" y="${y+bh+30}" fill="#6e7681" font-size="9">0</text>
+        <text x="${W-8}" y="${y+bh+30}" fill="#6e7681" font-size="9" text-anchor="end">${D.vram.total.toLocaleString()} MiB</text>`;
+    $('csvram').innerHTML=g;
+  } else { $('csvram').innerHTML=''; $('vramsub').textContent='—'; }
+
+  // ---- table ----
+  const tb=$('tbl').querySelector('tbody');
+  const recent=ms.slice(-10).reverse();
+  tb.innerHTML = recent.map(m=>{
+    const live = (m.tag===tag && (idx)>=0 && m.rollout_idx===idx);
+    const s=ms=>ms==null?'—':fmt(ms/1000,1);
+    return `<tr class="${live?'live':''}">
+      <td><span class="tag">${m.tag}</span></td>
+      <td class="num">${m.rollout_idx}</td>
+      <td class="num">${m.mu_step ?? 0}</td>
+      <td class="num">${fmt(m.resp_len_mean,1)}</td>
+      <td class="num">${fmt(m.pass_rate,3)}</td>
+      <td class="num">${fmt(m.grad_noise_sigma,4)}</td>
+      <td class="num">${fmt(m.drift_d,3)}</td>
+      <td class="num">${fmt(m.ratio_mean,3)}</td>
+      <td class="num">${fmt(m.clip_frac_any,4)}</td>
+      <td class="num">${s(m.wall_ms_rollout)}</td>
+      <td class="num">${s(m.wall_ms_old_logp)}</td>
+      <td class="num">${s(m.wall_ms_update)}</td>
+      <td class="num">${fmt(m.cost_cny_cum,2)}</td>
+    </tr>`;
+  }).join('');
+  $('tblempty').style.display = recent.length?'none':'block';
+
+  $('guard').textContent = (D.guard_tail||[]).join('\n') || '—';
+  $('logtail').textContent = (D.log_tail||[]).join('\n') || '—';
+}
+
+async function tick(){
+  try{
+    const r = await fetch('data.json?_='+Date.now(), {cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    D = await r.json();
+    // The local file always fetches instantly, so freshness has to be judged
+    // from the frame's own timestamp: a frame older than 90 s means the poller
+    // is failing, even though this page is talking to its own server fine.
+    const age = Date.now()/1000 - (D.epoch||0);
+    STALE = age > 90;
+    LAST_OK = Date.now();
+  }catch(e){ STALE=true; }
+  render();
+}
+
+tick();
+setInterval(tick, 3000);
+setInterval(render, 1000);
+</script>
+</body>
+</html>
