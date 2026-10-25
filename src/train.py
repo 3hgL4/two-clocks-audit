@@ -29,6 +29,7 @@ import json
 import os
 import platform
 import random
+import shutil
 import subprocess
 import sys
 import time
@@ -168,6 +169,68 @@ def save_rollout_ids(out_dir: Path, r_idx: int, rb, *, seed: int,
     }
     with open(out_dir / "index.jsonl", "a", encoding="utf-8") as f:
         f.write(json.dumps(rec) + "\n")
+    return rec
+
+
+def _sha256_file(path: Path, chunk: int = 1 << 22) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for block in iter(lambda: f.read(chunk), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
+def snapshot_adapter(run_dir: Path, r_idx: int, adapter_dir: str | Path,
+                     min_free_gb: float = 4.0) -> dict:
+    """Copy the LoRA weights that produced rollout r_idx into the run directory.
+
+    Why: `state.pt` and `runs/_adapter` are both overwritten, so after a run the
+    only surviving weights are the last ones. Any question of the form "what did
+    the policy look like when this rollout's ratio was 1.31" needs the weights
+    for that rollout, and they cannot be reconstructed from token ids alone.
+
+    Cost: 266 MiB per rollout in fp32 (the trained LoRA is 69.7 M params and PEFT
+    writes float32, which is the dtype the optimizer holds -- casting to bf16
+    would make the snapshot NOT the value that was trained). Eight snapshots per
+    run is 2.1 GiB, hence the free-space guard: a full disk would kill a
+    16-hour campaign, and a missing snapshot is recoverable, a dead run is not.
+    """
+    src = Path(adapter_dir)
+    out_dir = run_dir / "adapters"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    dst = out_dir / f"r{r_idx:03d}"
+    rec = {"rollout_idx": r_idx, "src": str(src), "dst": dst.name, "skipped": False}
+
+    if not src.exists():
+        rec.update(skipped=True, reason=f"no adapter at {src}")
+    else:
+        free_gb = shutil.disk_usage(out_dir).free / 2**30
+        need_gb = sum(p.stat().st_size for p in src.rglob("*") if p.is_file()) / 2**30
+        if free_gb < max(min_free_gb, need_gb * 1.5):
+            rec.update(skipped=True, reason=f"free {free_gb:.1f} GiB < needed {need_gb:.1f} GiB")
+        else:
+            variant = 0
+            while dst.exists():
+                variant += 1
+                dst = out_dir / f"r{r_idx:03d}_v{variant}"
+            tmp = out_dir / (dst.name + ".tmp")
+            if tmp.exists():
+                shutil.rmtree(tmp)
+            shutil.copytree(src, tmp)
+            tmp.replace(dst)
+            rec["dst"] = dst.name
+            files = {p.name: p.stat().st_size for p in dst.rglob("*") if p.is_file()}
+            st = sorted(dst.glob("*.safetensors"))
+            rec.update(bytes=sum(files.values()), files=files,
+                       variant=variant,
+                       sha256=_sha256_file(st[0]) if st else "",
+                       meta=json.loads((dst / "AUDIT_ADAPTER_META.json").read_text())
+                       if (dst / "AUDIT_ADAPTER_META.json").exists() else {})
+
+    if rec["skipped"]:
+        print(f"[adapter] rollout {r_idx} NOT archived: {rec['reason']}")
+    with open(out_dir / "index.jsonl", "a", encoding="utf-8") as f:
+        f.write(json.dumps(rec, ensure_ascii=False) + "\n")
     return rec
 
 
@@ -405,6 +468,10 @@ def main(argv: list[str] | None = None) -> int:
             rb = backend.generate(items, G, r_idx, seed=seed)
             if backend.name == "vllm" and bool(cfg.get("rollout.vllm.offload_policy", False)):
                 policy.model.to(policy.device)
+            # D-22: the weights that generated these responses, before the update
+            # mutates them. Must happen here, not after the update.
+            if backend.name == "vllm" and bool(cfg.get("logging.save_adapter_every_rollout", False)):
+                snapshot_adapter(run_dir, r_idx, cfg["rollout.vllm.adapter_dir"])
 
             rewards = torch.tensor(
                 [verify.reward(int(it["answer"]), txt) for it, txt in zip(rb.items, rb.completion_texts)],

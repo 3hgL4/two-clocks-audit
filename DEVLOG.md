@@ -711,3 +711,58 @@ metrics 里是**可选**字段（老行仍过 schema）。REPORT 第 16 行改�
 
 per-rollout 权重快照（+1.3 GB/run，9 run +12 GB，盘上剩 32 GB）。目前"重放某一步"做不到，
 但 token 级 archive 已经能支撑数据层复现，暂不需要。
+
+### D-22 按 rollout 存 LoRA 快照；以及为什么"参数空间逐 token 梯度份额"不该做（2026-10-25）
+
+用户要求"条件允许就尽可能把实验数据拿全"，并问这两件事会不会让云上 OOM。
+
+**一、per-rollout adapter 快照：可以补，且不占显存**
+
+实测体积：`runs/_adapter` 里是 392 个张量、**F32、266 MiB**（不是先前估的 132 MiB——PEFT 存
+float32，而这正是优化器持有的 dtype；转 bf16 会让快照不等于"被训练的那个值"）。
+`export_adapter` 走 PEFT `save_pretrained`，只对 LoRA 那 69.7 M 参数做 CPU 侧落盘，
+**不分配新的显存**，所以与 40.2 GiB 峰值无关。
+
+新增 `logging.save_adapter_every_rollout`（默认开）与 `train.snapshot_adapter()`：
+在 `backend.generate()` 返回后**立刻**拷一份到 `runs/<tag>/adapters/r{idx}`（此时 `_adapter`
+里的权重正是生成这批 response 的那一版），写 `adapters/index.jsonl`（字节数、safetensors
+sha256、adapter 版本号）。同一 idx 二次快照写 `_v1` 不覆盖，与 rollout ids 的规则一致。
+
+磁盘账（重算过，之前估错了）：
+| 项 | 单价 | 9 run |
+|---|---|---|
+| adapter 快照 | 266 MiB × 8 | **19.1 GiB** |
+| `state.pt` | 837 MiB × 1 | 7.5 GiB |
+| rollout ids | ~1 MiB × 8 | 0.1 GiB |
+| 合计 | — | **26.7 GiB** |
+
+盘上原本剩 31 GiB，加上 `det_*` 九个探针 run 的 `state.pt`（7.5 GiB，只是 checkpoints，
+判据不依赖它）删掉后剩约 38 GiB。`snapshot_adapter` 自带余量闸：可用空间低于 max(4 GiB,
+本次需求×1.5) 就跳过并把原因写进 index，**不会因为磁盘满而搞死 16 小时的 run**。
+
+**二、backward hook：不会 OOM，但拿不到想要的东西**
+
+结论先说：**不做**。理由不是显存，是定义。
+
+* 精确的"参数空间逐 token 梯度份额"需要每个 token 一次反传：`g_t = ∂L_t/∂θ`。
+  一个 rollout 116 万个 token，等于 116 万次 backward；用 vmap 一次算出来要物化
+  116 万份 69.7 M 参数的梯度缓冲，量级 10^5 GiB。**不可行**。
+* 唯一"便宜"的 hook 位置是 lm_head 的 grad_output，形状 `(B,T,V)`：
+  micro=4、T=614、V=151669、bf16 → **745 MiB**，加 fp32 副本 1.5 GiB。
+  而当前峰值 40,172 MiB / 可用 47,370 MiB，余 7 GiB，**所以不会 OOM**——
+  但它算出来的就是 `c_t·(p−onehot)`，即已经记下的 `clip_grad_mass_share` 的同一份系数，
+  **没有新信息**。
+* 还有一条硬伤：`model.gradient_checkpointing=true`，hook 会在重算图里二次触发，
+  拿到的是错误的中间值。
+
+所以 ④ 不是"要不要花显存"的问题，是"这个量在合理成本内不存在"。已经记的
+`clip_grad_mass_share`（D-21）就是这个侧证的上限，REPORT 里已写明参数空间份额未测。
+
+**三、代价与状态**
+
+* 额外耗时：每次快照 = 266 MiB 拷贝 + sha256，实测盘速 730 MB/s → 约 0.8 s，
+  8 次/run ≈ **6 s/run**（0.1%）。
+* 补测试：`tests/test_adapter_snapshot.py` 3 条（拷贝+摘要、二次快照不覆盖、缺 adapter
+  只记录不致命），全套 **25/25**。
+* 代价：为改这一版，13:03 启动的战役在跑完第一个 rollout 前被停掉，浪费约 **¥0.05 / 2 分钟**。
+  重跑前删掉 `runs/mu1_s0`（否则 `run_9.sh` 会因"有目录无 state.pt"拒绝启动）。

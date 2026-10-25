@@ -72,6 +72,11 @@ logging:
   # also lands in every metrics row.
   save_rollout_ids: true
   rollout_id_dir: rollouts
+  # DEVLOG D-22. state.pt and runs/_adapter are both overwritten, so without this
+  # the last weights are the only ones that survive a run. 266 MiB per rollout in
+  # fp32 (the dtype the optimizer trains), 8 rollouts = 2.1 GiB per run, 19 GiB
+  # for the nine. Costs no GPU memory -- it is a file copy of the exported LoRA.
+  save_adapter_every_rollout: true
 
 drift:
   kappa: 1.0                  # unit convention only; cancels in every ratio

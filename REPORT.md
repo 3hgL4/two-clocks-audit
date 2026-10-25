@@ -92,7 +92,7 @@ TODO（一句话，含"实测 / 预测"两个数和一个比值，不含量化�
 | 19 | 代码 | 404 | 本仓库 | — | 否 |
 | 20 | 前向块大小 | 未报告（微批=8 由 σ 的定义隐含） | `micro_batch_responses: 4`，σ 组仍取 8 | 48 GiB 单卡放不下 micro=8 + 并置的 vLLM；组边界与 σ 口径不变 | 否（D-15 消融：g8m8 与 g8m4 逐位相同） |
 | 21 | G 条的采样种子 | 未说明（默认 G 条独立采样） | 每 response 独立 seed；另关前缀缓存/chunked prefill、固定 token 预算 | 共享 seed 会让同 prompt 的 G 条退化成 1 条（实测 1.2/8 distinct、零方差组 87.5%）；固定批次形状让运行可逐位重现 | **否，但是前置门（D-18/D-19）** |
-| 22 | 溯源信息 | 未说明 | `run_meta.json` 记 git commit、工作区是否 dirty、vLLM / torch / transformers / numpy 版本、驱动、argv、题池直方图；每 rollout 另存全量 token id 与 sha256 | 事后能回答"这行数字出自哪次提交、哪版采样库、哪批 response" | 否 |
+| 22 | 溯源信息 | 未说明 | `run_meta.json` 记 git commit、工作区是否 dirty、vLLM / torch / transformers / numpy 版本、驱动、argv、题池直方图；每 rollout 另存全量 token id（+sha256）与该轮生成的 LoRA 权重（`adapters/r{idx}`，266 MiB，fp32） | 事后能回答"这行数字出自哪次提交、哪版采样库、哪批 response、哪版权重"；后两项使"重放某一优化步"成为可能 | 否 |
 
 > **注（D-21）**：claims.yaml 的 C7 把成本阈值写成「4090-24G @ ¥1.50/h，单 run ≤¥6、九次 ≤¥55」。
 > 实际租的是 **4090-48G @ ¥2.08/h**（`configs/cloud48g.yaml: accounting.price_cny_per_hour`），

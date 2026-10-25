@@ -63,8 +63,20 @@ assert cfg.get("rollout.vllm.enable_prefix_caching") is False, "prefix cache off
 assert cfg.get("rollout.vllm.enable_chunked_prefill") is False, "chunked prefill off (D-19)"
 assert cfg.get("rollout.vllm.max_num_batched_tokens"), "fixed token budget (D-19)"
 assert cfg.get("logging.save_rollout_ids") is True, "rollout archive must stay on (D-17)"
+assert cfg.get("logging.save_adapter_every_rollout") is True, \
+    "per-rollout adapter snapshots must stay on (D-22)"
 assert cfg.get("rollout.vllm.seed_per_request") is True, "per-request seeds (D-18)"
 EOF
+
+echo "=== pre-flight: disk ==="
+# 9 runs need ~7.5 GiB of state.pt + ~19 GiB of adapter snapshots (D-22). The
+# snapshot helper skips itself below 4 GiB free, but a campaign that silently
+# stops archiving is worth refusing to start.
+FREE_GB=$(df -Pk . | awk 'NR==2 {printf "%d", $4/1048576}')
+echo "  free ${FREE_GB} GiB"
+if [[ "$FREE_GB" -lt 28 ]]; then
+  echo "  [warn] under 28 GiB free: adapter snapshots may start skipping mid-campaign" >&2
+fi
 
 echo "=== pre-flight: provenance ==="
 # D-21: run_meta.json records the commit; on a box without .git (code arrives by
