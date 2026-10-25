@@ -900,3 +900,33 @@ mns 256 → **192**（让调度器不超额使用变小的 KV 预算）。代价
 本地 `conda ai` 环境的 `transformers` 坏了（`import transformers` 抛
 `NameError: name 'nn' is not defined`，与本次改动无关），所以本地 CPU dryrun 跑不了，
 新字段的落盘验证放在云端做。单元测试本地 25/25 通过（纯 numpy，不碰 transformers）。
+
+**六、D-25 验证（真机，06:21:17Z 重启，commit `f04df9ff`）**
+
+| 项 | 值 |
+|---|---|
+| `[r0] done` | `rollout 285.5s oldlogp 124.3s grad 367.9s update 492.2s` |
+| `wall_ms_old_logp` / `wall_ms_update` | 124,275 / 492,213 ms（124.3 + 367.9 = 492.2 ✅） |
+| `cost_cny_cum` / GPU-h | **0.4494** / 0.216（旧口径 0.3793 / 0.182，**+18.5%**） |
+| `resp_len_mean` / `pass_rate` | **292.925 / 0.218018** |
+| σ / d | 0.06626243 / 0.07232314 |
+| 显存 | 40,568 used / **7,941 free** MiB |
+
+关键交叉验证：`resp_len` 292.925 与 `pass_rate` 0.218018 与前一次运行（重启前删掉的那个
+`mu1_s0` 的 r0）**完全一致**，σ 只差 5.6e-7（0.06626613 → 0.06626243）、d 差 2.2e-6。
+即 D-19 的确定性在**真机上、跨进程、跨代码改动**复现了——删掉重跑确实没有损失信息，
+只是重花 30 分钟。
+
+ETA 用本次实测（每 rollout 285.5 + 492.2 + 落盘 ≈ 783 s）：单 run **1.75 h**，
+九次 **15.75 h**，完赛 **北京次日 06:06**（比 D-24 的 05:22 晚，因为中间重跑了一次）。
+`resp_len` 若继续涨，按每 +10% 加 1.4 h 记。
+
+**七、两次自伤要记住**
+
+1. `run_9.sh` 的 preflight 要求 `COMMIT` 是**非全零 40 位 hex**，我先写了短 hash `f04df9f`，
+   被 preflight 正确拦下（`[error] COMMIT file is 'f04df9f' -- stamp it`），campaign 空转
+   一轮。这个闸是对的，错的是我。
+2. 这次会话 SSH 极不稳（`kex_exchange_identification: Connection reset` 与
+   `Connection closed` 轮替，一分钟内多次），`scp` 会直接失败。改用
+   `ssh ... "bash -s" < script.sh` 单连接送脚本后稳定；`setsid -w` + `ServerAliveInterval`
+   是必需的。
