@@ -260,6 +260,13 @@ function render(){
     .map(a=>a.last)
     .sort((a,b)=>(a.ts||0)-(b.ts||0));
 
+  // feed 白名单不下发 mu_step，也没有 kl_per_rollout_policy；µ-step 序位只能靠组内落盘顺序推导
+  // （metrics.jsonl 追加写、组内严格按 ts 递增；C1 自检可反证：序位 0 的行 72/72 ratio=1、clip=0）
+  for(const a of rollAgg.values()){
+    a.rows.sort((x,y)=>(x.ts||0)-(y.ts||0));
+    a.rows.forEach((m,i)=>{ m._step = i; });
+  }
+
   const done = rolls.length, total = TOTAL_RUNS*ROLLOUTS_PER_RUN;
   const runNo = ORDER.indexOf(tag)+1;
   $('cur').textContent = tag ? `${tag} · r${idx+1}/${ROLLOUTS_PER_RUN}` : '未在跑';
@@ -350,7 +357,7 @@ function render(){
     return `<tr class="${live?'live':''}">
       <td><span class="tag">${m.tag}</span></td>
       <td class="num">${m.rollout_idx}</td>
-      <td class="num">${m.mu_step ?? 0}</td>
+      <td class="num">${m.mu_step ?? m._step ?? 0}</td>
       <td class="num">${fmt(m.resp_len_mean,1)}</td>
       <td class="num">${fmt(m.pass_rate,3)}</td>
       <td class="num">${fmt(m.grad_noise_sigma,4)}</td>
