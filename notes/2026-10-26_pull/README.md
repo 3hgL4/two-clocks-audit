@@ -31,7 +31,7 @@
 | 训练 stdout 日志 | 10 | 200 KB | `runs/_logs/` |
 | 工作 adapter（`_adapter`） | — | 267 MB | `runs/_adapter/` |
 | 主控日志 `campaign.log` 等 /tmp 产物 | 9 | 228 KB | `cloud_tmp/` |
-| 数据盘顶层的探针 log / vram csv | 24 | ~400 KB | `cloud_tmp/` |
+| 数据盘顶层的探针 log / vram csv | 24 个 log + 7 个 csv | 2.8 MB | `cloud_tmp/` |
 | 云端独有、仓库里从来没有的脚本 | 4 | 8 KB | `cloud_only/` + `tools/run_with_chunk.py` |
 
 **没拉的**：`models/` 3.3 GB 权重（`tools/fetch_model.py` 13 分钟可从魔搭重下）、
@@ -46,8 +46,10 @@
 - `MANIFEST.state.sha256` — 9 条（`state.pt`）
 - `MANIFEST.sizes.tsv` — 441 条（字节数，用于先按大小快速筛掉传输截断）
 
-核对结果写在 `verify_result.txt`（生成方式与命令都在文件头）。
-判定标准不是"看着一样"，是 `sha256sum -c` 逐条 OK；任何一条不符即视为失败。
+核对结果在 `verify_result.txt`（生成方式与命令都在文件头）：
+**441/441 一致（432 个非 state 文件 + 9 个 `state.pt`），0 mismatch，0 missing，
+每个 run 49/49。** 判定标准不是"看着一样"，是逐条 sha256 相符；任何一条不符即
+视为失败（`tools/verify_archive.py` 的退出码非 0）。
 
 传输方式：`tar` 流经 ssh 直通（`ssh 'tar cf - dir' | tar xf -`），逐 run 分 9 次，
 每次失败自动重试 3 次。实测吞吐 9.4–12.3 MB/s（约 90 Mbps），
