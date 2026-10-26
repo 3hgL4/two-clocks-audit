@@ -36,8 +36,10 @@ src/
   gen_counting.py, verify.py   从 S1 原样复用（counting 任务与验证器）
 tools/           make_pool.py（造池+冻结）/ check_schema.py（数据闸门）/ calibrate_pool.py
 analysis/        make_table.py（含自助 CI）/ make_figures.py（无 matplotlib 也出 CSV）/ trace.py（claim→证据）
-tests/           12 个测试：损失正确性（标量参考实现 + 有限差分）、配对性、记账、配置闸门
+tests/           25 个测试：损失正确性（标量参考实现 + 有限差分）、配对性、记账、配置闸门、归档校验
 runs/            每次运行一个子目录（git 忽略）
+REPORT.md        实验报告（事实源，含逐判据结果与有效性威胁）
+REPORT.html      同一份报告的单文件版（图内嵌，离线可读，由 tools/build_report_html.py 生成）
 ```
 
 ---
@@ -86,7 +88,7 @@ python src/train.py --config configs/mu8.yaml --seed 0 --resume
 
 - **不做多卡、不做 DeepSpeed**：单卡 24G 是预算决定的实验条件，不是能力上限。
 - **不追论文绝对数值**：论文是 4×A6000 / ~2000 GPU-h，本项目是单卡 9 run。κ 是量纲约定，绝对标度不可比，**只比比值**。
-- **不做 Tobit / Kaplan-Meier**：`N_τ` 的删失情况（"9 次里 6 次在 8 个 rollout 内达到阈值"）如实上报，不拟合一个报告不出来的时间常数。
+- **不做 Tobit / Kaplan-Meier**：`N_τ` 的删失情况如实上报（本次实测 **9/9 run 全部右删失**，比值因此不存在，见 `REPORT.md` §5.2），不拟合一个报告不出来的时间常数。
 - **不改任务难度去凑好看的曲线**：题池冻结后不重采样。
 
 ---
