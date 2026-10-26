@@ -37,15 +37,28 @@ RNG = np.random.default_rng(12345)
 # ---------------------------------------------------------------------------
 
 
-def load_runs(root: Path) -> dict[tuple[str, int], list[dict]]:
+def load_runs(root: Path, pattern: str = "mu*_s*") -> dict[tuple[str, int], list[dict]]:
+    """Read runs/*/metrics.jsonl, keyed by (arm, seed).
+
+    The directory-name filter is not cosmetic: runs/ also collects probes and
+    pilots (det_*, ab_*, reg_*, dryrun, hf48g ...), and a pilot carrying
+    arm=mu1 seed=0 silently overwrites the real mu1_s0 row because the key comes
+    from the row, not from the path. Measured 2026-10-26: the unfiltered table
+    replaced mu1/s0 (8 rollouts, 32768 responses) with a 1-rollout probe.
+    """
     runs: dict[tuple[str, int], list[dict]] = {}
-    for mpath in sorted(root.glob("*/metrics.jsonl")):
+    for mpath in sorted(root.glob(f"{pattern}/metrics.jsonl")):
         rows = metrics_mod.read_metrics(mpath)
         if not rows:
             continue
         mu = int(rows[-1]["mu"])
         seed = int(rows[-1]["seed"])
-        runs[(f"mu{mu}", seed)] = rows
+        key = (f"mu{mu}", seed)
+        if key in runs:
+            raise SystemExit(
+                f"duplicate {key}: {mpath} and another run share arm+seed. "
+                f"Use --pattern to select one family.")
+        runs[key] = rows
     return runs
 
 
@@ -87,8 +100,12 @@ def first_crossing(series: list[float], ratio: float) -> tuple[int | None, bool]
 
 def summarise_run(rows: list[dict]) -> dict:
     mu = int(rows[-1]["mu"])
-    half = max(1, len(rows) // 2)
     last_idx = max(int(r["rollout_idx"]) for r in rows)
+    # "last half" must be half the ROLLOUTS, not half the rows. For mu>1 the row
+    # count is mu times the rollout count, so len(rows)//2 overshoots and keeps
+    # every rollout -- which silently turns "pass in the last half" into "pass
+    # over the whole run" and halves the measured mu effect (caught 2026-10-26).
+    half = max(1, (last_idx + 1) // 2)
     keep_from = last_idx - half + 1
 
     pass_last = rollout_means([r for r in rows if int(r["rollout_idx"]) >= keep_from], "pass_rate")
@@ -201,9 +218,12 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--runs", default="runs")
     ap.add_argument("--out", default="analysis/out")
+    ap.add_argument("--pattern", default="mu*_s*",
+                    help="directory glob under --runs; the default keeps the 9 "
+                         "arm_seed runs and drops probes/pilots")
     a = ap.parse_args()
 
-    runs = load_runs(Path(a.runs))
+    runs = load_runs(Path(a.runs), a.pattern)
     if not runs:
         print(f"no runs found under {a.runs}/*/metrics.jsonl")
         return 1
