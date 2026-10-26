@@ -27,9 +27,19 @@ What this script does instead
 -----------------------------
 Fix one archived rollout D (mu1_s0/r000, 4096 responses produced by the initial
 policy) and vary the *policy* instead of the split: load the per-rollout LoRA
-snapshots r000 / r003 / r007, i.e. policies that have taken 1 / 4 / 8 update steps
-away from the one that generated D. Every policy is evaluated on the same D with
-the same advantages, so the only thing changing between rows is staleness.
+snapshots r000 / r003 / r007, i.e. policies that have taken 0 / 3 / 7 update
+steps away from the one that generated D. Every policy is evaluated on the same
+D with the same advantages, so the only thing changing between rows is staleness.
+
+`r000` is the 0-step row, not a 1-step one: `snapshot_adapter` is called right
+after generation and before the optimizer step (train.py:496-499, DEVLOG D-22),
+which is also why its lora_B norm is exactly zero. That makes it a true zero
+baseline for C9's sigma(r007)/sigma(r000), and it gives an exact anchor: at the
+mu1 split this row must reproduce the sigma the training run itself reported for
+rollout 0 (0.0663). The token normalisers agree by construction -- training
+rescales each micro-batch gradient by its own token count and divides once by the
+group total (train.py:605-627), which is exactly the pooled token mean over the
+whole group that a single 8-response forward computes here.
 
 For each policy the script reports sigma at all three splits in ONE backward pass:
 step boundaries are nested (a mu=16 step is 32 groups, a mu=8 step is 64, mu=1 is
@@ -123,6 +133,10 @@ def main() -> int:
     ap.add_argument("--run", default="runs/mu1_s0", help="run whose archived rollout is used")
     ap.add_argument("--rollout", type=int, default=0, help="rollout index of the fixed data D")
     ap.add_argument("--adapters", nargs="+", default=["000", "003", "007"])
+    ap.add_argument("--include-init", action="store_true",
+                    help="also score the freshly built policy. r000 is already the "
+                         "0-step policy, so this row must equal r000 at every split; "
+                         "it is a load_adapter self-check, not part of the C9 ratio")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--device", default=None)
     ap.add_argument("--json", default=None)
@@ -215,14 +229,26 @@ def main() -> int:
     print(f"[old] done, {len(old_by_group)} groups")
 
     # ---- 4. per-adapter sweep ------------------------------------------------
+    # `init` is the policy that produced D (zero update steps). It is not part of
+    # C9's registered comparison -- that stays sigma(r007)/sigma(r000) -- but it is
+    # the only row with a ground truth to check against: the training runs report
+    # sigma = 0.0663 / 0.0695 / 0.0700 at r0 for mu = 1 / 8 / 16. If this row
+    # reproduces those three numbers at the three splits, the script is measuring
+    # the same quantity as train.py; if it does not, every row below is suspect.
+    order = (["init"] if args.include_init else []) + list(args.adapters)
     results: dict[str, dict] = {}
-    for tag in args.adapters:
-        adir = run_dir / "adapters" / f"r{tag}"
-        if not adir.exists():
-            raise SystemExit(f"missing adapter snapshot: {adir}")
-        how = load_adapter(policy, adir)
+    for tag in order:
+        flag = "init" if tag == "init" else f"r{tag}"
+        if tag == "init":
+            how = "none (weights as built)"
+            print("\n[adapter init] initial policy, 0 update steps")
+        else:
+            adir = run_dir / "adapters" / f"r{tag}"
+            if not adir.exists():
+                raise SystemExit(f"missing adapter snapshot: {adir}")
+            how = load_adapter(policy, adir)
+            print(f"\n[adapter r{tag}] loaded via {how}")
         policy.eval()
-        print(f"\n[adapter r{tag}] loaded via {how}")
 
         bufs = {k: train_mod._grad_buffer(policy) for k in SPLITS}
         seg_norms = {k: [] for k in SPLITS}   # norms of the current segment
@@ -269,7 +295,7 @@ def main() -> int:
                 done = {k: len(v) for k, v in seg_sigma.items()}
                 print(f"  [{gi + 1}/{n_groups}] groups  steps so far {done}", flush=True)
 
-        row_out = {"adapter": f"r{tag}", "load": how, "n_groups": n_groups,
+        row_out = {"adapter": flag, "load": how, "n_groups": n_groups,
                    "sigma": {}, "sigma_sd": {}, "n_steps": {}}
         for k in SPLITS:
             v = seg_sigma[k]
@@ -279,7 +305,7 @@ def main() -> int:
             row_out["sigma"][k] = float(np.mean(v))
             row_out["sigma_sd"][k] = float(np.std(v, ddof=1)) if len(v) > 1 else 0.0
             row_out["n_steps"][k] = len(v)
-        results[f"r{tag}"] = row_out
+        results[flag] = row_out
         torch.cuda.empty_cache()
 
     # ---- 5. report -----------------------------------------------------------
@@ -294,25 +320,43 @@ def main() -> int:
                                    for v in vals) + f"   {spread * 100:8.1f}%")
 
     verdict = {}
+    # Anchor. The three arms' r0 rows (three seeds each) read 0.0663 / 0.0695 /
+    # 0.0700. The mu1 value is the one that can be matched exactly: r000 IS the
+    # policy that generated D, and both sides normalise the same way. The mu8 and
+    # mu16 figures come from different 4096-response batches in training, so they
+    # only indicate order of magnitude -- do not read a percent-level difference
+    # there as a bug.
+    ANCHOR_R0 = {"mu1": 0.0663, "mu8": 0.0695, "mu16": 0.0700}
+    if "init" in results:
+        print("\n=== anchor: init row vs training r0 (3-seed mean) ===")
+        for k in SPLITS:
+            v = results["init"]["sigma"][k]
+            if v is None:
+                continue
+            print(f"  {k:<5} offline {v:.4f}   training {ANCHOR_R0[k]:.4f}   "
+                  f"delta {100.0 * (v - ANCHOR_R0[k]) / ANCHOR_R0[k]:+.1f}%")
+    # C9's ratio is defined over the adapter snapshots only. The init anchor row
+    # must not become the denominator just because it is evaluated first.
+    adv_keys = [k for k in keys if k != "init"]
     h1_ok = all(
         (lambda vals: (max(vals) - min(vals)) / (sum(vals) / len(vals)) < 0.05)(
             [results[r]["sigma"][k] for k in SPLITS if results[r]["sigma"][k] is not None])
-        for r in keys
+        for r in adv_keys
         if sum(results[r]["sigma"][k] is not None for k in SPLITS) == len(SPLITS)
     )
     verdict["H1_split_free"] = bool(h1_ok)
-    if len(keys) >= 2:
-        first, last = results[keys[0]]["sigma"], results[keys[-1]]["sigma"]
+    if len(adv_keys) >= 2:
+        first, last = results[adv_keys[0]]["sigma"], results[adv_keys[-1]]["sigma"]
         for k in SPLITS:
             if first[k] and last[k]:
-                verdict[f"ratio_{keys[-1]}_over_{keys[0]}_{k}"] = last[k] / first[k]
+                verdict[f"ratio_{adv_keys[-1]}_over_{adv_keys[0]}_{k}"] = last[k] / first[k]
         ratios = [last[k] / first[k] for k in SPLITS if first[k] and last[k]]
         verdict["H2_staleness"] = bool(ratios and min(ratios) >= 1.20)
         print("\n=== verdict (thresholds from C9) ===")
         print(f"  H1 split-free   (row spread < 5%)      : {verdict['H1_split_free']}")
         for k in SPLITS:
             if first[k] and last[k]:
-                print(f"  sigma({keys[-1]})/sigma({keys[0]}) at {k:<5}: {last[k] / first[k]:.3f}")
+                print(f"  sigma({adv_keys[-1]})/sigma({adv_keys[0]}) at {k:<5}: {last[k] / first[k]:.3f}")
         print(f"  H2 staleness    (ratio >= 1.20)        : {verdict['H2_staleness']}")
         if verdict["H1_split_free"] and verdict["H2_staleness"]:
             print("  => sigma's mu dependence is off-policy degree, not the split.")
@@ -329,6 +373,8 @@ def main() -> int:
         "n_responses": N,
         "group_size": grp,
         "adapters": args.adapters,
+        "include_init": bool(args.include_init),
+        "anchor_r0_training": ANCHOR_R0 if args.include_init else None,
         "self_check": checks,
         "adv_stats": adv_stats,
         "results": results,
