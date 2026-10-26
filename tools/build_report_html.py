@@ -371,7 +371,11 @@ def main() -> int:
 </body>
 </html>
 """
-    out_path.write_text(doc, encoding="utf-8")
+    # newline="\n": on Windows the default would write CRLF, and .gitattributes
+    # (* text=auto eol=lf) normalises it away on commit — so the working copy
+    # would keep a CRLF file that no diff ever shows. Same trap the yaml configs
+    # hit on 2026-10-25. Pin LF here instead.
+    out_path.write_text(doc, encoding="utf-8", newline="\n")
     print(f"[ok] {out_path.relative_to(ROOT)}  {len(doc) / 1024:.0f} KB")
     print(f"     figures inlined: {len(used)} ({sum(n for _, n in used) / 1024:.0f} KB raw)")
     print(f"     toc entries: {len(md.toc_tokens or [])} top-level")
