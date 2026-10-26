@@ -1,0 +1,18 @@
+# 2x2 cell (b): mu=8 at b=256, i.e. responses_per_rollout = 2048.  [claim C10]
+#
+# The existing arms tie b = Br/mu, so mu and b are collinear by construction. This
+# cell breaks the tie on one side: mu stays 8, b halves to 256, which forces
+# Br = b*mu = 2048 -- 256 prompts per rollout instead of 512, and half the
+# responses per run.
+#
+# READ THIS BEFORE COMPARING: this cell costs HALF a standard run (about 1.0 h vs
+# 2.0 h) and sees the 2000-prompt pool at 1.0x reuse where the standard cell sees
+# 2.25x. A difference against mu8.yaml therefore mixes three things: b, total
+# responses, and prompt reuse. Only the pair (this cell vs ab2x2_mu16_b512) holds b
+# fixed while mu varies, and only that pair is the intended contrast.
+extends: cloud48g_main.yaml
+run:
+  tag: ab2x2_mu8_b256
+train:
+  mu: 8
+  responses_per_rollout: 2048   # b = 2048/8 = 256 = the mu16 cell's b

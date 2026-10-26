@@ -34,6 +34,32 @@ revisions:
     why: >-
       C3 原文把比值方向写反（写的是 N_tau(mu16)/N_tau(mu1)=6.1x，而 6.1x 对应
       N_tau(mu1)/N_tau(mu16)）。仅记录，未改原文，未改阈值；处理方式待用户拍板。
+  - date: "2026-10-26"
+    kind: addition
+    id: C9
+    why: >-
+      归因实验 (a)。原始设计（离线按不同 b 切分 sigma，与训练曲线比对）在写完之后
+      才发现不成立——sigma 的组大小固定为 8，b 只改组数，变异系数期望与组数无关，
+      离线必然平坦。改成固定数据 + 变 adapter 陈旧度的 3x3 分解，阈值在跑前锁定。
+      属事后登记（看过 9 个 run 的 sigma 序列之后），结论不得写成预注册预测。
+  - date: "2026-10-26"
+    kind: addition
+    id: C10
+    why: >-
+      归因实验 (b)。两新格的 Br 与标准格不同是 Idempotent 约束（Br=b*mu），
+      混淆已写进 note；效应量与 MDE 的比较口径在跑前锁定。
+  - date: "2026-10-26"
+    kind: addition
+    id: C11
+    why: >-
+      归因实验 (c)。三项归因里唯一单变量的实验，阈值取 n=3 的 MDE 3.0pp。
+  - date: "2026-10-26"
+    kind: addition
+    id: C12
+    why: >-
+      R4-A 的统计口径必须在跑前锁定，否则同一份数据有插值与网格两种读法、
+      结果差 1.7 倍（插值 5.34/6.75 vs 网格 2.75-3.25/3.67-4.33）。
+      选网格，因为插值对 C8 的线性假设是循环论证。
 
 claims:
   - id: C1
@@ -99,6 +125,71 @@ claims:
       「续跑穿越」的主要优势——「0.30 还是 0.35」不再是会跑空预算的参数。
       evidence 指向脚本而非它的输出：analysis/out/ 不入库（.gitignore），数值由
       `python analysis/slope_ratio.py --json analysis/out/slope_ratio.json` 再生。
+
+  - id: C9
+    text: >-
+      归因 (a) 离线 sigma 分解：取一份归档数据 D（mu1_s0/r000，4096 条 responses，
+      由初始策略产生），在三个 adapter（r000 / r003 / r007，累积 off-policy 陈旧度递增）
+      与三种切分（mu'=1/8/16，即 b'=4096/mu'）下各算一次 sigma，得 3x3 表。
+      H1（切分无关）：同一 adapter 下三种切分的 sigma 相对极差 < 5%；
+      H2（陈旧相关）：sigma(a7)/sigma(a0) >= 1.20。
+      判定：H1 且 H2 成立 -> sigma 的 mu 依赖归因于「每步的 off-policy 程度」，
+      切分本身不产生 sigma 差异；H1 不成立 -> 切分影响 sigma，原判据的前提成立；
+      H2 不成立 -> sigma 的 mu 依赖既非切分也非策略陈旧，必须列为未解释的混淆项。
+    status: pending
+    evidence: analysis/out/offline_sigma.json
+    note: >-
+      这条替换掉「离线跑不同 b 切分、若 sigma 曲线与训练一致则归因成立」的原始设计。
+      原设计不可成立：sigma 是组内梯度范数的变异系数，而组大小固定 8
+      （config.micro_group_responses），改 b 只改组数不改组大小，变异系数的期望
+      与组数无关，故离线 sigma 在 b 变化下必然平坦，无法「复现」训练中的增长。
+      零成本佐证：r0 三臂 sigma=0.0663/0.0695/0.0700（极差 5%），r7 为
+      0.0663/0.0830/0.0958（极差 44%），且 mu1 与 mu8 的 r0 rollout_data_sha 完全相同
+      （82bbd063...）——mu 依赖在起点不存在，只在训练后出现。
+
+  - id: C10
+    text: >-
+      归因 (b) b x mu 2x2：现有两格为 mu8@b=512（Br=4096）与 mu16@b=256（Br=4096），
+      新补 mu8@b=256（Br=2048）与 mu16@b=512（Br=8192），各 3 seeds。
+      判据：以 r7 pass 为响应估 b 与 mu 的主效应；若 |b 主效应| > |mu 主效应| 且
+      两者的配对 CI 不相交 -> 每步样本数 b（而非更新次数 mu）是性能主因；
+      若交互项为正（b 增大在 mu=16 下收益更大）-> mu16 的劣势可由 b 补偿。
+    status: pending
+    evidence: analysis/out/bmu_2x2.json
+    note: >-
+      两新格的 Br 必然与标准格不同（Br=b*mu 是恒等式，固定 Br 则 2x2 退化），
+      因此 mu16@b=512 的数据量是标准格的 2x（题池复用 2.25x -> 4.1x），
+      mu8@b=256 是 0.5x（复用 -> 1.0x）。这是二阶混淆，写作时必须声明：
+      第 4 格偏乐观、第 3 格偏保守，两者对「b 是主因」的方向相反。
+
+  - id: C11
+    text: >-
+      归因 (c) dual clip 消融：mu=16 下把 clip_delta 从 10.0 改为 null（其余不动），3 seeds。
+      判据：|pass(mu16, no-clip) - pass(mu16, clip=10)| < 3.0pp（n=3 的 MDE）-> 不可识别；
+      差值 <= -3.0pp -> dual clip 是 mu=16 的必要条件；差值 >= +3.0pp -> dual clip 有害。
+    status: pending
+    evidence: analysis/out/noclip_mu16.json
+    note: >-
+      只改一个开关（grpo.py:83-86 的 coef_1 上界），是三项归因里唯一单变量的实验。
+
+  - id: C12
+    text: >-
+      R4-A：mu=1 从 8 续跑到 19 rollout（3 seeds），用网格口径判定——
+      只在每个 rollout 结束处检查 pass >= 0.30 是否达成，不做 rollout 间插值
+      （插值等于把线性假设当已知，对 C8 是循环论证）。
+      3/3 命中 -> 报告首次命中的 rollout 索引与累计 responses；
+      3/3 未命中 -> 得无假设下界 N_0.30(mu1) > 19*4096 = 77,824 responses，
+      并可算 mu1/mu8 >= 4.75、mu1/mu16 >= 6.33 的下界。
+    status: pending
+    evidence: analysis/out/r4a_grid.json
+    note: >-
+      total_steps = num_rollouts * mu（train.py:430），续跑会把 mu=1 的 lr 在 r8
+      从 2.48e-6 拉到 3.36e-5（13.6x），是两段调度拼接，不是同一条退火曲线的延长。
+      因此 r0-r18 不得拼成一条曲线做斜率，也不得用来检验 C8 的线性假设；
+      本判据只取「是否穿越」这一与调度形状无关的事实。若改用插值口径，
+      按 R4A 收益分析会得 mu1/mu8=5.34、mu1/mu16=6.75（与 C8 差 +7%/+10%），
+      而网格口径得 2.75-3.25 / 3.67-4.33（差 -40%/-35%），两种口径差 1.7 倍，
+      故口径必须在跑前锁定。
 
   - id: D1
     text: "训练器为自写循环而非 TRL GRPOTrainer：TRL 1.16 的 num_iterations 能表达 mu，但不暴露 per-mu 的 KL、clip 梯度份额与 micro-batch 梯度散度 sigma。正确性用独立标量实现 + 有限差分自证（tests/test_grpo.py）。"

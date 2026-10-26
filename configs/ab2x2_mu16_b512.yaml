@@ -1,0 +1,18 @@
+# 2x2 cell (b): mu=16 at b=512, i.e. responses_per_rollout = 8192.  [claim C10]
+#
+# Mirror of ab2x2_mu8_b256.yaml: mu stays 16, b doubles to 512, which forces
+# Br = b*mu = 8192 -- 1024 prompts per rollout, and twice the responses per run.
+#
+# Cost: about 4.0 h/run (vs 1.97 h for the standard mu16 cell), because both
+# generation and the update scale with responses. Prompt reuse goes from 2.25x to
+# 4.1x (8 rollouts x 1024 prompts against a 2000-prompt pool), which biases this
+# arm OPTIMISTICALLY relative to the mu16 baseline -- worth stating in the
+# write-up, because it works against the hypothesis that b=512 rescues mu=16.
+#
+# The intended contrast is (this cell vs ab2x2_mu8_b256): b fixed at 512, mu 8 vs 16.
+extends: cloud48g_main.yaml
+run:
+  tag: ab2x2_mu16_b512
+train:
+  mu: 16
+  responses_per_rollout: 8192   # b = 8192/16 = 512 = the mu8 cell's b

@@ -1,0 +1,21 @@
+# Ablation (c): mu=16 with dual clip disabled.  [claim C11]
+#
+# The pre-registered arm mu16 runs clip_delta=10.0 (base.yaml). This overlay turns
+# it off and changes nothing else, so the only difference between the two runs is
+# whether the pessimistic branch of coef_1 is capped at 10 (grpo.py:83-86).
+#
+# Why it is worth one arm: if multiple updates per rollout are only survivable
+# because the dual clip bounds how far a single step can move, then removing it at
+# mu=16 should cost more than it would at mu=1 -- i.e. the interaction, not the
+# main effect, is the claim.
+#
+# Inheritance is cloud48g_main (NOT mu16.yaml): mu16 only carries mu, while the
+# main overlay is what pins micro=4 / group=8 / local weights / the D-18/D-19
+# sampler settings. Extending mu16 alone would silently resolve model.name to the
+# Hugging Face id and drop the sampler fixes, i.e. measure a different arm.
+extends: cloud48g_main.yaml
+run:
+  tag: noclip_mu16
+train:
+  mu: 16
+  clip_delta: null
