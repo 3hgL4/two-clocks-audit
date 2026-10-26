@@ -51,6 +51,12 @@
 每个 run 49/49。** 判定标准不是"看着一样"，是逐条 sha256 相符；任何一条不符即
 视为失败（`tools/verify_archive.py` 的退出码非 0）。
 
+"没漏东西"另有一条更强的证据：云端 `runs/` 目录下**全部 599 个非 state 文件**
+（含 6 个吞吐/确定性探针 run、`_logs`、`_adapter`）都生成了字节数清单
+（`MANIFEST.all.sizes.tsv`）与 sha256 清单（`MANIFEST.misc.sha256`，167 条），
+本地逐条比对：**599/599 存在且大小一致，167/167 sha256 相符**。
+加上 9 个 `state.pt`，共 **608 个文件全部经 sha256 校验通过，无一条缺失或改动**。
+
 传输方式：`tar` 流经 ssh 直通（`ssh 'tar cf - dir' | tar xf -`），逐 run 分 9 次，
 每次失败自动重试 3 次。实测吞吐 9.4–12.3 MB/s（约 90 Mbps），
 单 run 2.1 GB 用 170–230 s。**未使用压缩**：safetensors 是已压缩的浮点数据，
