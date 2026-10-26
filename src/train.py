@@ -45,6 +45,7 @@ import config as config_mod  # noqa: E402
 import data as data_mod  # noqa: E402
 import grpo  # noqa: E402
 import metrics as metrics_mod  # noqa: E402
+import prompt_log  # noqa: E402
 import rollout as rollout_mod  # noqa: E402
 import verify  # noqa: E402
 from model import Policy  # noqa: E402
@@ -434,6 +435,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     writer = metrics_mod.MetricsWriter(run_dir / "metrics.jsonl")
     samples_f = open(run_dir / "samples.jsonl", "a", encoding="utf-8")
+    # Per-prompt archive. The aggregate rows cannot answer "how many prompts are
+    # all-wrong" or "how correlated are one prompt's eight generations" once the
+    # responses are gone, and the nine runs already completed cannot answer them
+    # either. One line per rollout, ~50 KiB at 512x8. Opened after the resume
+    # truncation below, which rewrites the file in place.
+    prompts_path = run_dir / "prompts.jsonl"
 
     start_rollout = 0
     state_path = run_dir / "state.pt"
@@ -448,10 +455,16 @@ def main(argv: list[str] | None = None) -> int:
         if torch.cuda.is_available() and state.get("cuda_rng") is not None:
             torch.cuda.set_rng_state_all(state["cuda_rng"])
         dropped = writer.truncate_to_rollout(start_rollout)
+        dropped_p = prompt_log.truncate_to_rollout(prompts_path, start_rollout)
         meter.base = state.get("totals", {}) or {}
         print(f"[resume] from rollout {start_rollout}; kept {dropped} metric rows; "
               f"carried {meter.base.get('responses', 0)} responses / "
               f"¥{meter.base.get('cost_cny', 0):.2f}")
+        if dropped_p:
+            print(f"[resume] prompts.jsonl: dropped {dropped_p} rows at or after "
+                  f"rollout {start_rollout}")
+
+    prompts_f = open(prompts_path, "a", encoding="utf-8")
 
     G = int(cfg["train.num_generations"])
     Br = int(cfg["train.responses_per_rollout"])
@@ -506,6 +519,10 @@ def main(argv: list[str] | None = None) -> int:
                               f"for rollout {r_idx} exists, i.e. this run re-sampled it")
             adv, adv_stats = grpo.group_advantages(rewards, G)
             adv = adv.to(policy.device)
+            # Correctness-defined group statistics (src/prompt_log.py). The
+            # reward-defined `zero_var_group_frac` is kept for continuity with
+            # the archived runs, but it is confounded by the format bonus.
+            grp_stats = prompt_log.group_summary(correct, G)
 
             # D-24: the clock starts *before* the old-policy forward pass. That
             # pass is Br/micro forward chunks over the whole rollout (~128 s at
@@ -656,6 +673,11 @@ def main(argv: list[str] | None = None) -> int:
                     "reward_mean": round(float(rewards.mean()), 6),
                     "pass_rate": round(float(np.mean(correct)), 6),
                     "zero_var_group_frac": adv_stats["zero_var_group_frac"],
+                    "zero_var_correct_frac": round(grp_stats["zero_var_correct_frac"], 6),
+                    "group_all_correct_frac": round(grp_stats["group_all_correct_frac"], 6),
+                    "group_all_wrong_frac": round(grp_stats["group_all_wrong_frac"], 6),
+                    "group_icc": (None if grp_stats["group_icc"] is None
+                                  else round(grp_stats["group_icc"], 6)),
                     "adv_abs_mean": adv_stats["adv_abs_mean"],
                     "wall_ms_rollout": round(rb.wall_ms if si == 0 else 0.0, 3),
                     # D-24: book the old-policy pass once per rollout, on row 0,
@@ -690,7 +712,8 @@ def main(argv: list[str] | None = None) -> int:
                     f"kl={rec['kl_per_rollout_policy']:+.2e} "
                     f"clip={rec['clip_frac_any']:.4f} "
                     f"gn={rec['grad_norm_raw']:.3f} sig={rec['grad_noise_sigma']:.4g} "
-                    f"d={rec['drift_d'] if rec['drift_d'] is None else round(rec['drift_d'], 4)}"
+                    f"d={rec['drift_d'] if rec['drift_d'] is None else round(rec['drift_d'], 4)} "
+                    f"zvC={100 * grp_stats['zero_var_correct_frac']:.2f}%"
                 )
 
             # -- per-rollout bookkeeping ------------------------------------
@@ -729,6 +752,18 @@ def main(argv: list[str] | None = None) -> int:
                 }, ensure_ascii=False) + "\n")
             samples_f.flush()
 
+            # Per-prompt archive: prompt ids + 8 correctness bits + 8 rewards.
+            # Written after the samples loop so a crash costs at most this line.
+            prompt_log.write_record(prompts_f, prompt_log.build_record(
+                rollout_idx=r_idx, arm=f"mu{mu}", seed=seed, mu=mu,
+                prompt_idx=[int(rb.items[i].get("_idx", i // G))
+                            for i in range(0, rb.n_responses, G)],
+                correct=correct,
+                reward=[float(x) for x in rewards.tolist()],
+                group_size=G,
+            ))
+            prompts_f.flush()
+
             # -- checkpoint (state must survive a rented-box shutdown) ------
             if not args.no_save_state and (r_idx + 1) % int(cfg["logging.save_state_every_rollouts"]) == 0:
                 tmp = state_path.with_suffix(".tmp")
@@ -746,6 +781,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"[ckpt] {state_path} @ rollout {r_idx}")
     finally:
         samples_f.close()
+        prompts_f.close()
         writer.close()
         summary = {"totals": meter.totals(), "pool": pool_info, "resolved": cfg.raw}
         with open(run_dir / "summary.json", "w", encoding="utf-8") as f:

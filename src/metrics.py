@@ -43,7 +43,16 @@ SCHEMA: dict[str, tuple[type | tuple[type, ...], bool]] = {
     "completion_tokens": (int, True),
     "reward_mean": (float, True),
     "pass_rate": (float, True),
+    # `zero_var_group_frac` counts groups whose *reward* is identical, and reward
+    # carries format bonuses, so it measures "all-wrong and format-stable" on a
+    # weak policy and "all-right" on a strong one. The four fields below are the
+    # correctness-defined version and are optional so rows written before
+    # 2026-10-26 still validate; see src/prompt_log.py:group_summary.
     "zero_var_group_frac": (float, True),
+    "zero_var_correct_frac": (float, False),
+    "group_all_correct_frac": (float, False),
+    "group_all_wrong_frac": (float, False),
+    "group_icc": ((float, type(None)), False),
     "adv_abs_mean": (float, True),
     "wall_ms_rollout": (float, True),
     # D-24: old-policy forward time, booked once per rollout on row 0. Part of

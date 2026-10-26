@@ -17,6 +17,24 @@ task: "counting (mixed, depth 1-7, 2000 frozen prompts)"
 # 主结论只允许一条，其余一律标为探索性，避免多重比较。
 main_claim: C3
 
+# 修订记录。改预注册必须留痕：什么时候、加了什么、为什么。新增条目不等于改写
+# 旧条目——C1-C7 的措辞与阈值一个字都没动。
+revisions:
+  - date: "2026-10-26"
+    kind: addition
+    id: C8
+    why: >-
+      C3 在 8 个 rollout 后不可识别（d/d0 全程 0.926-1.116，阈值两端均右删失），
+      而「不可识别」无法向下游交付任何数。C8 是同一批数据能回答的替代判据。
+      注意：C8 是在看过九个 run 之后登记的，属事后（post hoc）登记，
+      它产出的数字是描述性的，不得写成预注册预测。
+  - date: "2026-10-26"
+    kind: annotation
+    id: C3
+    why: >-
+      C3 原文把比值方向写反（写的是 N_tau(mu16)/N_tau(mu1)=6.1x，而 6.1x 对应
+      N_tau(mu1)/N_tau(mu16)）。仅记录，未改原文，未改阈值；处理方式待用户拍板。
+
 claims:
   - id: C1
     text: "测量器自检：同一个 rollout 内的第一个优化步（mu_step=0）与 rollout 策略完全一致，KL 应为 0；check_schema 在 --strict 下把任何 |KL|>1e-4 的 mu_step=0 行判为失败，因此这条不是可选项。"
@@ -62,6 +80,25 @@ claims:
     status: pending
     evidence: runs/mu1/metrics.jsonl
     field: cost_cny_cum
+
+  # ---- added 2026-10-26, after the nine runs were inspected (see revisions) --
+  - id: C8
+    text: >-
+      代理判据（C3 的可算替代）：在 r0-r7 这一三臂共享的窗口内，若 pass 对 responses
+      近似线性，则 N_tau 之比等于斜率之反比，且与阈值 tau 无关。报告
+      N_tau(mu1)/N_tau(mu8) 与 N_tau(mu1)/N_tau(mu16) 的点估计、逐种子离散、五窗口区间，
+      以及三档统计不确定度（iid 二项 / 设计效应 3 / 残差自助）。方法自检用 mu8-vs-mu16
+      这一对：两者都能在窗口内穿越，故可用「直接读穿越点」这一不依赖线性假设的估计
+      与斜率比对照。与论文 Eq.(5) 的 6.1x 只作同向同量级对照，不作复现声明。
+    status: pending
+    evidence: analysis/slope_ratio.py
+    note: >-
+      (1) 线性假设是唯一实质假设，只有续跑（R4）能直接检验它；(2) 窗口系统误差
+      (-41%/+49%) 比统计误差大一个量级，两者必须同时报，只报一套会得出偏的结论；
+      (3) 事后登记，禁止在 REPORT 里写成预注册预测；(4) tau 的无关性是这条判据相对
+      「续跑穿越」的主要优势——「0.30 还是 0.35」不再是会跑空预算的参数。
+      evidence 指向脚本而非它的输出：analysis/out/ 不入库（.gitignore），数值由
+      `python analysis/slope_ratio.py --json analysis/out/slope_ratio.json` 再生。
 
   - id: D1
     text: "训练器为自写循环而非 TRL GRPOTrainer：TRL 1.16 的 num_iterations 能表达 mu，但不暴露 per-mu 的 KL、clip 梯度份额与 micro-batch 梯度散度 sigma。正确性用独立标量实现 + 有限差分自证（tests/test_grpo.py）。"

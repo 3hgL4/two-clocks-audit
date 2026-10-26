@@ -1110,3 +1110,56 @@ B `cloud48g_util042`、C `lowmem`），**只是文本，不执行**。
 
 **没动的**：`claims.yaml` 的任何 status、任何阈值。`trace.py --strict` 仍 11 条 `[ok]`。
 
+
+### D-30 C8 斜率比判据落地；per-prompt 日志补上，旧 zero_var 口径被证伪（2026-10-26）
+
+用户拍板执行 R1–R4。R1、R2 零成本，已在本地做完；R3/R4 要租卡，未启动。
+
+**R1：把"C3 不可识别"变成一个带区间的数。** 新增 `analysis/slope_ratio.py`。
+在 r0–r7 这一三臂共享窗口内按 `N_τ(µ)/N_τ(µ') = slope(µ')/slope(µ)` 计算，τ 自动
+消掉——这正好去掉了决策卡里那个"0.30 还是 0.35，选错就白跑"的参数。逐种子再平均
+（三臂按 seed 配对）：µ1/µ8 = **4.98**（4.66/4.80/5.47），µ1/µ16 = **6.14**
+（5.99/5.62/6.80），µ8/µ16 = **1.23**。五窗口区间 µ1/µ16 ∈ **[3.59, 9.17]**
+（−41%/+49%），比统计区间（iid 5.31–7.51、设计效应 3 档 4.85–9.65）宽一个量级，
+所以正文以窗口区间为准。
+
+**方法自检是这次的关键**：µ8 与 µ16 在 0.30–0.40 每个阈值上都穿越，可以直接读
+穿越点得到不含拟合的比值（1.11 / 1.17 / 1.13），与斜率比 1.23 相差 +8%，落在
+±1 rollout 的分辨率内。**线性假设在能被检验的那一对上没有被打翻**，这是把它外推到
+删失端 µ1 的唯一凭据。同时报了两条不依赖任何假设的硬下界：µ1/µ8 ≥ 2.00、
+µ1/µ16 ≥ 2.67。
+
+写进 `claims.yaml` 为 **C8**（status `pending`，evidence `analysis/out/slope_ratio.json`），
+并在新增的 `revisions` 段注明**这是看过九个 run 之后的事后登记**，产出只能当描述性
+结果。同时把 C3 的比值方向笔误记为 annotation。C1–C7 的措辞/阈值/status 未动，
+`trace.py --strict` 现在 12 条全 `[ok]`。
+
+**R2：per-prompt 日志 + 口径修正。** 新增 `src/prompt_log.py`（`group_summary` /
+`build_record` / `truncate_to_rollout` / `unseen_vs_seen`），`train.py` 每 rollout 写
+`prompts.jsonl`（约 50 KiB/rollout，对比 npz 的 25–30 MiB），`metrics.py` SCHEMA 加
+4 个 optional 字段（`zero_var_correct_frac` / `group_all_correct_frac` /
+`group_all_wrong_frac` / `group_icc`）。resume 前先截断 `prompts.jsonl`，否则重放的
+rollout 会重复入库。旧数据零破坏：三份 run 的 `check_schema.py --strict` 仍 `[OK]`。
+
+**旧口径被直接证伪（这是 R2 最硬的产出）**：`analysis/group_grain.py` 把
+`samples.jsonl` 里真正存下的 72 个 group 全部读出来（每 run 8 rollout × 1 group）：
+
+| arm | 全错组 | reward 口径 zvR | correct 口径 zvC | ICC |
+|---|---|---|---|---|
+| µ1 | **37.5%** | **0.000** | **0.375** | 0.198 |
+| µ8 | 8.3% | 0.083 | 0.208 | 0.296 |
+| µ16 | 12.5% | 0.083 | 0.208 | 0.258 |
+
+µ1 在全局 pass 0.269 下 iid 全错期望 8.16%，实观测 37.5%（**4.6×**）；而旧字段
+把它报成 0.000。原因是 reward 带格式奖励（−0.1/0.05/0.1），八条全错的回答只要格式
+不齐就不算零方差——旧字段在弱策略上量的是"全错且格式稳定"，在强策略上量的是"全对"，
+**不是同一个量**。ICC 0.198–0.296 给出设计效应 ≈2.75，独立印证了 `slope_ratio.py`
+选 √3 当保守档不是随手取的。
+
+**测试**：新增 `tests/test_prompt_log.py` 12 项，全套 **37/37 通过**（2.42 s，WSL
+py3.11 + torch 2.9.1）。其中手算 ANOVA 的用例抓到一个真 bug：初版把 grand mean 写成
+组计数均值，SSB 会大 G² 倍、ICC 完全失真。
+
+**没动的**：`REPORT.md` §5.10 仍然把 zero_var 的两种读法并列（"饱和 vs 漂移"），而
+R2 证明两种读法都建立在一个混合量上。改它属 R5，用户未授权，只在
+`notes/2026-10-26_C8_slope_ratio_and_R2.md` §2.3 列出改法。

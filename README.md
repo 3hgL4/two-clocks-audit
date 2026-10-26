@@ -31,12 +31,17 @@ src/
   rollout.py     三种后端：fake（本地干跑）/ hf（小样本冒烟）/ vllm（生产）
   grpo.py        组内优势 + token 级 GRPO（双段 clip 0.2/0.28 + dual clip 10）+ 梯度统计
   accounting.py  三币种记账：responses / tokens / FLOPs，另记墙钟与 ¥
-  metrics.py     JSONL schema + 断点续跑用的截断
+  metrics.py     JSONL schema + 断点续跑用的截断（含 group 级口径的 4 个 optional 字段）
+  prompt_log.py  per-prompt 归档：prompt id + 8 位正确性 + 8 个 reward；组级统计（含 ICC）
   train.py       主循环：rollout → µ 次更新 → 逐步落盘 → 存 state
   gen_counting.py, verify.py   从 S1 原样复用（counting 任务与验证器）
 tools/           make_pool.py（造池+冻结）/ check_schema.py（数据闸门）/ calibrate_pool.py
 analysis/        make_table.py（含自助 CI）/ make_figures.py（无 matplotlib 也出 CSV）/ trace.py（claim→证据）
-tests/           25 个测试：损失正确性（标量参考实现 + 有限差分）、配对性、记账、配置闸门、归档校验
+                 slope_ratio.py（C8 的 N_τ 比：斜率比 + 窗口区间 + 统计误差 + µ8/µ16 自检）
+                 group_grain.py（72 个已归档 group 的组级分析：全对/全错/ICC/zvR vs zvC）
+                 data_review.py / prompt_overlap.py（现有九 run 的复核与题池复用实测）
+tests/           37 个测试：损失正确性（标量参考实现 + 有限差分）、配对性、记账、配置闸门、
+                 归档校验、per-prompt 归档与组级统计（含手算 ANOVA 的 ICC 对照）
 runs/            每次运行一个子目录（git 忽略）
 REPORT.md        实验报告（事实源，含逐判据结果与有效性威胁）
 REPORT.html      同一份报告的单文件版（图内嵌，离线可读，由 tools/build_report_html.py 生成）
@@ -57,6 +62,7 @@ python tools/check_schema.py runs/*/ --strict
 # 3) 云端（Linux + 24G 显存）
 python src/train.py --config configs/mu8.yaml --seed 0
 python analysis/make_table.py && python analysis/make_figures.py
+python analysis/slope_ratio.py --json analysis/out/slope_ratio.json   # C8 的 N_τ 比
 ```
 
 `configs/dryrun.yaml` 用一个 2 层 / hidden 64 的随机小模型顶替 Qwen3-1.7B，用 `fake` 后端顶替 vLLM。**跑的是同一套代码路径**：rollout → 优势 → log-prob 前向 → 反向 → 梯度累积 → σ → clip → 优化器 → 指标校验 → 存盘 → 续跑。区别只有张量尺寸。
