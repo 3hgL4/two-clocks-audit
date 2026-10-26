@@ -1,0 +1,65 @@
+{
+  "npz": "runs/det_base_a/rollouts/r000.npz",
+  "n_responses": 512,
+  "sha256_recomputed": "bc4af0d914eb408780724475e758fa7cadde9d2cac2320d7f215b35d3835d448",
+  "prompt_tokens": 36136,
+  "completion_tokens": 164952,
+  "mean_completion_len": 322.17,
+  "sha256_recorded": "bc4af0d914eb408780724475e758fa7cadde9d2cac2320d7f215b35d3835d448",
+  "sha_matches_record": true,
+  "diversity": {
+    "groups": 64,
+    "group_size": 8,
+    "mean_unique": 1.25,
+    "min_unique": 1,
+    "groups_with_duplicates": 64,
+    "groups_all_identical": 49,
+    "mean_unique_first_token": 1.016,
+    "len_sd_within_group_mean": 6.77,
+    "len_sd_overall": 163.58,
+    "within_over_total_len_sd": 0.041
+  },
+  "comparison": {
+    "comparable": true,
+    "rows": 512,
+    "prompts_identical": true,
+    "completions_identical": false,
+    "rows_differing": 355,
+    "frac_rows_differing": 0.693359,
+    "first_rows_differing": [
+      {
+        "row": 8,
+        "len_a": 163,
+        "len_b": 182,
+        "common_prefix_tokens": 149
+      },
+      {
+        "row": 9,
+        "len_a": 163,
+        "len_b": 182,
+        "common_prefix_tokens": 149
+      },
+      {
+        "row": 10,
+        "len_a": 163,
+        "len_b": 182,
+        "common_prefix_tokens": 149
+      },
+      {
+        "row": 11,
+        "len_a": 163,
+        "len_b": 182,
+        "common_prefix_tokens": 149
+      },
+      {
+        "row": 12,
+        "len_a": 163,
+        "len_b": 182,
+        "common_prefix_tokens": 149
+      }
+    ],
+    "mean_len_a": 322.17,
+    "mean_len_b": 322.5,
+    "other": "runs/det_base_b/rollouts/r000.npz"
+  }
+}

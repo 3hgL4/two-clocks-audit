@@ -1,0 +1,63 @@
+{
+  "generated_utc": "2026-10-25T06:42:33Z",
+  "generated_bjt": "2026-10-25 14:42:33",
+  "reason": "free 7625 MiB < 99999 MiB for 2 consecutive reads at 2026-10-25 06:42:33 \u5317\u4eac",
+  "git_commit": "f04df9ff697d0d4fb22d39a31f405a1def0789c1",
+  "vram": {
+    "raw": "49140, 40884, 7625, 100",
+    "total_mib": 49140,
+    "used_mib": 40884,
+    "free_mib": 7625,
+    "util_pct": 100,
+    "compute_apps": "50313, 18678 MiB\n50836, 22192 MiB"
+  },
+  "procs": {
+    "run_9": "50059       21:20 bash scripts/run_9.sh",
+    "train": "50313       21:16 /opt/conda/bin/python src/train.py --config configs/cloud48g_main.yaml --mu 1 --seed 0 --tag mu1_s0",
+    "engine": "50836       20:57 VLLM::EngineCore",
+    "guard": "49863       21:46 bash tools/vram_guard.sh\n  55342       00:02 bash tools/vram_guard.sh"
+  },
+  "current_tag": "mu1_s0",
+  "disk_free_gib": 38.7,
+  "runs": [
+    {
+      "tag": "mu1_s0",
+      "dir": "runs/mu1_s0",
+      "exists": true,
+      "has_summary": false,
+      "state_pt": {
+        "size_mib": 798.4,
+        "mtime_utc": "2026-10-25T06:34:55Z",
+        "age_s": 458
+      },
+      "rollout_npz": 2,
+      "adapter_snapshots": 2,
+      "metrics_rows": 1,
+      "last": {
+        "rollout_idx": 0,
+        "resp_len_mean": 292.925,
+        "pass_rate": 0.218018,
+        "zero_var_group_frac": 0.0,
+        "grad_noise_sigma": 0.06626243359702177,
+        "clip_grad_mass_share": 0.0,
+        "grad_norm_raw": 0.004792307503521442,
+        "wall_ms_rollout": 285509.028,
+        "wall_ms_old_logp": 124275.388,
+        "wall_ms_update": 492212.771,
+        "cost_cny_cum": 0.4494,
+        "n_groups": 512,
+        "n_forward_chunks": 1024
+      },
+      "trajectory": [
+        {
+          "rollout_idx": 0,
+          "resp_len_mean": 292.925,
+          "pass_rate": 0.218018,
+          "zero_var_group_frac": 0.0,
+          "cost_cny_cum": 0.4494
+        }
+      ],
+      "log_tail": "(EngineCore pid=50836) INFO 10-25 06:21:54 [vllm.py:1929] Cudagraph is disabled under eager mode\n(EngineCore pid=50836) INFO 10-25 06:21:54 [compilation.py:317] Enabled custom fusions: norm_quant, act_quant\n(MainProcess pid=50313) INFO 10-25 06:21:54 [hf.py:648] Detected the chat template content format to be 'string'. You can set `--chat-template-content-format` to override this.\n[info] vocab=151669 params=1.790B trainable=69.7M\n[info] est. logits memory per micro-batch ~0.14 GiB (logit_chunk=64)\n[info] micro=4 group=8 -> 1024 forward chunks / 512 sigma groups per step\n[info] arm mu=1 b=4096 Br=4096 micro=4 M=1024 rollouts=8 total_steps=8\n(MainProcess pid=50313) WARNING 10-25 06:21:55 [input_processor.py:289] vLLM has deprecated support for supporting different tokenizers for different LoRAs. By default, vLLM uses base model's tokenizer. If you are using a LoRA with its own tokenizer, consider specifying `--tokenizer [lora_path]` to use the LoRA tokenizer.\n[ids] r000.npz 1.1 MiB sha256=82bbd063c0dfcff6 (4096 resp, max_seq_len 626)\n[r0 mu00] pass=0.218 r=+0.263 len=293 kl=+0.00e+00 clip=0.0000 gn=0.005 sig=0.06626 d=0.0723\n[r0] done: rollout 285.5s oldlogp 124.3s grad 367.9s update 492.2s cum 4096 resp, 0.216 GPU-h, \u00a50.45\n[ckpt] runs/mu1_s0/state.pt @ rollout 0"
+    }
+  ]
+}

@@ -1,0 +1,131 @@
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 5997.47it/s]
+trainable params: 69,730,304 || all params: 1,790,305,280 || trainable%: 3.8949
+(MainProcess pid=18376) INFO 10-25 03:15:11 [api_utils.py:286] non-default args: {'trust_remote_code': True, 'dtype': 'bfloat16', 'max_model_len': 1024, 'gpu_memory_utilization': 0.45, 'max_num_seqs': 256, 'disable_log_stats': True, 'enforce_eager': True, 'enable_lora': True, 'max_lora_rank': 64, 'model': '/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base'}
+(MainProcess pid=18376) INFO 10-25 03:15:11 [model.py:733] Resolved architecture: Qwen3ForCausalLM
+(MainProcess pid=18376) INFO 10-25 03:15:11 [model.py:2152] Using max model len 1024
+(MainProcess pid=18376) INFO 10-25 03:15:11 [scheduler.py:307] Chunked prefill is enabled with max_num_batched_tokens=8192.
+(MainProcess pid=18376) WARNING 10-25 03:15:11 [vllm.py:1703] Enforce eager set, disabling torch.compile, CUDAGraphs, and JIT kernel warmup. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none and --kernel_config.enable_jit_warmup=False
+(MainProcess pid=18376) WARNING 10-25 03:15:11 [vllm.py:1727] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+(MainProcess pid=18376) INFO 10-25 03:15:11 [kernel.py:467] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native'])
+(MainProcess pid=18376) WARNING 10-25 03:15:11 [flashinfer.py:99] FlashInfer kernels are disabled: flashinfer-cubin is not installed and nvcc (CUDA_HOME, CUDA_PATH, PATH or /usr/local/cuda) or ninja (PATH) is missing. Set CUDA_HOME to a CUDA toolkit and put ninja on PATH, or run `vllm download-kernels`.
+(MainProcess pid=18376) INFO 10-25 03:15:11 [vllm.py:1929] Cudagraph is disabled under eager mode
+(MainProcess pid=18376) INFO 10-25 03:15:11 [compilation.py:317] Enabled custom fusions: norm_quant, act_quant
+(MainProcess pid=18376) WARNING 10-25 03:15:14 [system_utils.py:153] We must use the `spawn` multiprocessing start method. Overriding VLLM_WORKER_MULTIPROC_METHOD to 'spawn'. See https://docs.vllm.ai/en/latest/usage/troubleshooting.html#python-multiprocessing for more information. Reasons: CUDA is initialized
+(EngineCore pid=18777) INFO 10-25 03:15:22 [core.py:133] Initializing a V1 LLM engine (v0.32.0) with config: model='/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base', speculative_config=None, tokenizer='/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=True, dtype=torch.bfloat16, max_seq_len=1024, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=None, quantization_config=None, enforce_eager=True, aux_output_config=AuxOutputConfig(enable_return_routed_experts=False, max_bytes=None), kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, per_request_spec_decode_metrics='none', kv_cache_metrics=False, kv_cache_metrics_sample=0.01, custom_histogram_buckets=None, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=0, served_model_name=/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base, enable_prefix_caching=True, enable_chunked_prefill=True, pooler_config=None, compilation_config={'mode': <CompilationMode.NONE: 0>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['all'], 'ir_enable_torch_wrap': False, 'splitting_ops': [], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'cudagraph_decoder_replay': True, 'decoder_replay_cudagraph_capture_sizes': [], 'decoder_replay_trim_threshold': 768, 'compile_sizes': [], 'compile_ranges_endpoints': [8192], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.NONE: 0>, 'cudagraph_num_of_warmups': 0, 'cudagraph_capture_sizes': [], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': True, 'fuse_act_quant': True, 'fuse_attn_quant': False, 'fuse_allreduce_rms': False, 'enable_qk_norm_rope_fusion': False, 'fuse_rope_kvcache_cat_mla': False, 'fuse_act_padding': False, 'fuse_qk_norm_rope_kvcache': False}, 'max_cudagraph_capture_size': 0, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native']), enable_flashinfer_autotune=True, enable_rocm_segmented_attn_autotune=False, enable_cutedsl_warmup=True, enable_jit_warmup=False, moe_backend='auto', sparse_indexer_topk_backend='auto', linear_backend='auto', linear_backend_per_quant=None)
+(EngineCore pid=18777) WARNING 10-25 03:15:22 [flashinfer.py:99] FlashInfer kernels are disabled: flashinfer-cubin is not installed and nvcc (CUDA_HOME, CUDA_PATH, PATH or /usr/local/cuda) or ninja (PATH) is missing. Set CUDA_HOME to a CUDA toolkit and put ninja on PATH, or run `vllm download-kernels`.
+(EngineCore pid=18777) INFO 10-25 03:15:23 [parallel_state.py:1906] world_size=1 rank=0 local_rank=0 distributed_init_method=file:///tmp/vllm_dist_809afa984dc84711a86aadbd53823864 backend=nccl
+(EngineCore pid=18777) INFO 10-25 03:15:23 [parallel_state.py:2350] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, ETP rank 0, EP rank N/A, EPLB rank N/A
+(EngineCore pid=18777) INFO 10-25 03:15:23 [gpu_worker.py:518] Using V2 Model Runner
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510] EngineCore failed to start.
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510] Traceback (most recent call last):
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]   File "/opt/conda/lib/python3.11/site-packages/vllm/v1/engine/core.py", line 1482, in run_engine_core
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]     engine_core = EngineCoreProc(*args, engine_index=dp_rank, **kwargs)
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]   File "/opt/conda/lib/python3.11/site-packages/vllm/tracing/otel.py", line 175, in sync_wrapper
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]     return func(*args, **kwargs)
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]   File "/opt/conda/lib/python3.11/site-packages/vllm/v1/engine/core.py", line 1194, in __init__
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]     super().__init__(
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]   File "/opt/conda/lib/python3.11/site-packages/vllm/v1/engine/core.py", line 144, in __init__
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]     self.model_executor = executor_class(vllm_config)
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]   File "/opt/conda/lib/python3.11/site-packages/vllm/tracing/otel.py", line 175, in sync_wrapper
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]     return func(*args, **kwargs)
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]   File "/opt/conda/lib/python3.11/site-packages/vllm/v1/executor/abstract.py", line 126, in __init__
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]     self._init_executor()
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]   File "/opt/conda/lib/python3.11/site-packages/vllm/v1/executor/uniproc_executor.py", line 69, in _init_executor
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]     self.driver_worker.init_device()
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]   File "/opt/conda/lib/python3.11/site-packages/vllm/v1/worker/worker_base.py", line 350, in init_device
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]     self.worker.init_device()  # type: ignore
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]     ^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]   File "/opt/conda/lib/python3.11/site-packages/vllm/tracing/otel.py", line 175, in sync_wrapper
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]     return func(*args, **kwargs)
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]   File "/opt/conda/lib/python3.11/site-packages/vllm/v1/worker/gpu_worker.py", line 535, in init_device
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]     self.requested_memory = request_memory(
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]                             ^^^^^^^^^^^^^^^
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]   File "/opt/conda/lib/python3.11/site-packages/vllm/v1/worker/utils.py", line 762, in request_memory
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510]     raise ValueError(
+(EngineCore pid=18777) ERROR 10-25 03:15:24 [core.py:1510] ValueError: Free memory on device cuda:0 (2.54/47.37 GiB) on startup is less than desired GPU memory utilization (0.45, 21.32 GiB). Decrease GPU memory utilization or reduce GPU memory used by other processes.
+Process EngineCore:
+Traceback (most recent call last):
+  File "/opt/conda/lib/python3.11/multiprocessing/process.py", line 314, in _bootstrap
+    self.run()
+  File "/opt/conda/lib/python3.11/multiprocessing/process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/engine/core.py", line 1514, in run_engine_core
+    raise e
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/engine/core.py", line 1482, in run_engine_core
+    engine_core = EngineCoreProc(*args, engine_index=dp_rank, **kwargs)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/tracing/otel.py", line 175, in sync_wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/engine/core.py", line 1194, in __init__
+    super().__init__(
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/engine/core.py", line 144, in __init__
+    self.model_executor = executor_class(vllm_config)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/tracing/otel.py", line 175, in sync_wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/executor/abstract.py", line 126, in __init__
+    self._init_executor()
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/executor/uniproc_executor.py", line 69, in _init_executor
+    self.driver_worker.init_device()
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/worker/worker_base.py", line 350, in init_device
+    self.worker.init_device()  # type: ignore
+    ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/tracing/otel.py", line 175, in sync_wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/worker/gpu_worker.py", line 535, in init_device
+    self.requested_memory = request_memory(
+                            ^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/worker/utils.py", line 762, in request_memory
+    raise ValueError(
+ValueError: Free memory on device cuda:0 (2.54/47.37 GiB) on startup is less than desired GPU memory utilization (0.45, 21.32 GiB). Decrease GPU memory utilization or reduce GPU memory used by other processes.
+[rank0]:[W1025 03:15:24.569365632 ProcessGroupNCCL.cpp:1624] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+(MainProcess pid=18376) INFO 10-25 03:15:25 [utils.py:628] [shutdown] Process manager: send sigterm to process EngineCore
+[lmax] no grad calls recorded
+Traceback (most recent call last):
+  File "/root/rivermind-data/two-clocks-audit/tools/run_with_lmax_log.py", line 64, in <module>
+    rc = T.main(sys.argv[1:])
+         ^^^^^^^^^^^^^^^^^^^^
+  File "/root/rivermind-data/two-clocks-audit/src/train.py", line 224, in main
+    backend = rollout_mod.build_backend(cfg["rollout.backend"], cfg, policy)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/rivermind-data/two-clocks-audit/src/rollout.py", line 269, in build_backend
+    return VLLMBackend(cfg, policy, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/rivermind-data/two-clocks-audit/src/rollout.py", line 203, in __init__
+    self.llm = LLM(
+               ^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/entrypoints/llm.py", line 342, in __init__
+    self.llm_engine = LLMEngine.from_engine_args(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/engine/llm_engine.py", line 191, in from_engine_args
+    return cls(
+           ^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/engine/llm_engine.py", line 116, in __init__
+    self.engine_core = EngineCoreClient.make_client(
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/engine/core_client.py", line 126, in make_client
+    return SyncMPClient(
+           ^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/tracing/otel.py", line 175, in sync_wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/engine/core_client.py", line 925, in __init__
+    super().__init__(
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/engine/core_client.py", line 682, in __init__
+    with launch_core_engines(
+  File "/opt/conda/lib/python3.11/contextlib.py", line 144, in __exit__
+    next(self.gen)
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/engine/utils.py", line 1351, in launch_core_engines
+    wait_for_engine_startup(
+  File "/opt/conda/lib/python3.11/site-packages/vllm/v1/engine/utils.py", line 1431, in wait_for_engine_startup
+    raise RuntimeError(
+RuntimeError: Engine core initialization failed. See root cause above. Failed core proc(s): {}

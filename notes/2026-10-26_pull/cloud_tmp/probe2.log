@@ -1,0 +1,32 @@
+=== det_sf_a  04:19:22 ===
+[ids] r000.npz 0.1 MiB sha256=b02e084bbe096f0d (512 resp, max_seq_len 614)
+[r0] done: rollout 50.7s update 46.1s cum 512 resp, 0.027 GPU-h, ¥0.06
+[diversity] 64 groups of 8: unique 8.0/8 (min 8), distinct first token 7.047, within-group len sd 148.21 vs overall 168.83 (ratio 0.878)
+
+=== det_sf_b  04:22:00 ===
+[ids] r000.npz 0.1 MiB sha256=b02e084bbe096f0d (512 resp, max_seq_len 614)
+[r0] done: rollout 49.6s update 46.1s cum 512 resp, 0.027 GPU-h, ¥0.06
+[diversity] 64 groups of 8: unique 8.0/8 (min 8), distinct first token 7.047, within-group len sd 148.21 vs overall 168.83 (ratio 0.878)
+
+=== det_sf1024_a  04:24:36 ===
+[ids] r000.npz 0.3 MiB sha256=3c036afc8be575b3 (1024 resp, max_seq_len 618)
+[r0] done: rollout 84.8s update 89.8s cum 1024 resp, 0.049 GPU-h, ¥0.10
+[diversity] 128 groups of 8: unique 8.0/8 (min 8), distinct first token 7.117, within-group len sd 152.33 vs overall 168.3 (ratio 0.905)
+
+=== det_sf1024_b  04:28:48 ===
+[ids] r000.npz 0.3 MiB sha256=3c036afc8be575b3 (1024 resp, max_seq_len 618)
+[r0] done: rollout 83.2s update 89.5s cum 1024 resp, 0.048 GPU-h, ¥0.10
+[diversity] 128 groups of 8: unique 8.0/8 (min 8), distinct first token 7.117, within-group len sd 152.33 vs overall 168.3 (ratio 0.905)
+
+=== comparisons ===
+--- det_sf_a vs det_sf_b (group 8)
+  identical=True rows_differing=0/512 | unique 8.00/8 first_tok 7.05
+--- det_sf1024_a vs det_sf1024_b (group 8)
+  identical=True rows_differing=0/1024 | unique 8.00/8 first_tok 7.12
+=== metrics ===
+det_sf1024_a     pass 0.225 zero_var 0.008 sigma 0.06852 d 0.1008 resp_len 283 rollout 84.8s
+det_sf1024_b     pass 0.225 zero_var 0.008 sigma 0.06853 d 0.1008 resp_len 283 rollout 83.2s
+det_sf_a         pass 0.205 zero_var 0.016 sigma 0.06346 d 0.1359 resp_len 285 rollout 50.7s
+det_sf_b         pass 0.205 zero_var 0.016 sigma 0.06346 d 0.1358 resp_len 285 rollout 49.6s
+/tmp/tc_probe2.sh: line 45: unexpected EOF while looking for matching `"'
+/tmp/tc_probe2.sh: line 46: syntax error: unexpected end of file

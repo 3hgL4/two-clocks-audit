@@ -1,0 +1,1620 @@
+=== pre-flight: tests ===
+
+test_adapter_snapshot.py  (3 tests)
+  ok    test_snapshot_copies_weights_and_records_the_digest
+  ok    test_second_snapshot_of_the_same_rollout_does_not_overwrite_the_first
+[adapter] rollout 0 NOT archived: no adapter at /tmp/tmp8wjkzc57/nope
+  ok    test_missing_adapter_is_recorded_not_fatal
+
+test_grpo.py  (6 tests)
+  ok    test_matches_reference_loop
+  ok    test_gradient_matches_finite_differences
+  ok    test_invariants
+  ok    test_masked_tokens_are_ignored
+  ok    test_clip_grad_mass_share
+  ok    test_group_advantages
+
+test_pipeline.py  (11 tests)
+  ok    test_prompt_batch_is_deterministic_and_paired
+  ok    test_prompt_batch_reuses_when_pool_is_small
+  ok    test_pool_hash_guard
+  ok    test_accounting_tri_currency
+  ok    test_config_rejects_undefined_sigma
+  ok    test_config_derived_quantities
+  ok    test_plan_partition_micro_is_batch_size_not_count
+  ok    test_chunked_logsumexp_agrees_with_full
+  ok    test_config_group_and_chunk_are_separable
+  ok    test_group_accumulation_reproduces_the_group_mean
+  ok    test_config_extends
+
+test_rollout_archive.py  (5 tests)
+  ok    test_archive_digest_matches_the_audit_tool
+  ok    test_second_write_for_the_same_rollout_is_kept_apart
+  ok    test_diversity_flags_a_collapsed_group
+  ok    test_compare_pinpoints_the_first_differing_rows
+  ok    test_compare_refuses_ragged_archives
+
+25/25 passed in 3.19s
+=== pre-flight: config resolves ===
+  micro=4 group=8 Br=4096 rollouts=8 util=0.45 mns=256
+=== pre-flight: disk ===
+  free 39 GiB
+=== pre-flight: provenance ===
+  COMMIT=f04df9ff697d0d4fb22d39a31f405a1def0789c1 (from file)
+=== mu1_s0  2026-10-25T06:21:17Z ===
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 4232.91it/s]
+trainable params: 69,730,304 || all params: 1,790,305,280 || trainable%: 3.8949
+(MainProcess pid=50313) INFO 10-25 06:21:33 [api_utils.py:286] non-default args: {'trust_remote_code': True, 'dtype': 'bfloat16', 'max_model_len': 1024, 'enable_prefix_caching': False, 'gpu_memory_utilization': 0.45, 'max_num_batched_tokens': 2048, 'max_num_seqs': 256, 'disable_log_stats': True, 'enforce_eager': True, 'enable_lora': True, 'max_lora_rank': 64, 'enable_chunked_prefill': False, 'model': '/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base'}
+(MainProcess pid=50313) INFO 10-25 06:21:33 [model.py:733] Resolved architecture: Qwen3ForCausalLM
+(MainProcess pid=50313) INFO 10-25 06:21:33 [model.py:2152] Using max model len 1024
+(MainProcess pid=50313) WARNING 10-25 06:21:33 [arg_utils.py:3005] This model does not officially support disabling chunked prefill. Disabling this manually may cause the engine to crash or produce incorrect outputs.
+(MainProcess pid=50313) WARNING 10-25 06:21:33 [vllm.py:1703] Enforce eager set, disabling torch.compile, CUDAGraphs, and JIT kernel warmup. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none and --kernel_config.enable_jit_warmup=False
+(MainProcess pid=50313) WARNING 10-25 06:21:33 [vllm.py:1727] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+(MainProcess pid=50313) INFO 10-25 06:21:33 [kernel.py:467] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native'])
+(MainProcess pid=50313) WARNING 10-25 06:21:33 [flashinfer.py:99] FlashInfer kernels are disabled: flashinfer-cubin is not installed and nvcc (CUDA_HOME, CUDA_PATH, PATH or /usr/local/cuda) or ninja (PATH) is missing. Set CUDA_HOME to a CUDA toolkit and put ninja on PATH, or run `vllm download-kernels`.
+(MainProcess pid=50313) INFO 10-25 06:21:33 [vllm.py:1929] Cudagraph is disabled under eager mode
+(MainProcess pid=50313) INFO 10-25 06:21:33 [compilation.py:317] Enabled custom fusions: norm_quant, act_quant
+(MainProcess pid=50313) WARNING 10-25 06:21:36 [system_utils.py:153] We must use the `spawn` multiprocessing start method. Overriding VLLM_WORKER_MULTIPROC_METHOD to 'spawn'. See https://docs.vllm.ai/en/latest/usage/troubleshooting.html#python-multiprocessing for more information. Reasons: CUDA is initialized
+(EngineCore pid=50836) INFO 10-25 06:21:44 [core.py:133] Initializing a V1 LLM engine (v0.32.0) with config: model='/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base', speculative_config=None, tokenizer='/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=True, dtype=torch.bfloat16, max_seq_len=1024, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=None, quantization_config=None, enforce_eager=True, aux_output_config=AuxOutputConfig(enable_return_routed_experts=False, max_bytes=None), kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, per_request_spec_decode_metrics='none', kv_cache_metrics=False, kv_cache_metrics_sample=0.01, custom_histogram_buckets=None, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=0, served_model_name=/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base, enable_prefix_caching=False, enable_chunked_prefill=False, pooler_config=None, compilation_config={'mode': <CompilationMode.NONE: 0>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['all'], 'ir_enable_torch_wrap': False, 'splitting_ops': [], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'cudagraph_decoder_replay': True, 'decoder_replay_cudagraph_capture_sizes': [], 'decoder_replay_trim_threshold': 768, 'compile_sizes': [], 'compile_ranges_endpoints': [2048], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.NONE: 0>, 'cudagraph_num_of_warmups': 0, 'cudagraph_capture_sizes': [], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': True, 'fuse_act_quant': True, 'fuse_attn_quant': False, 'fuse_allreduce_rms': False, 'enable_qk_norm_rope_fusion': False, 'fuse_rope_kvcache_cat_mla': False, 'fuse_act_padding': False, 'fuse_qk_norm_rope_kvcache': False}, 'max_cudagraph_capture_size': 0, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native']), enable_flashinfer_autotune=True, enable_rocm_segmented_attn_autotune=False, enable_cutedsl_warmup=True, enable_jit_warmup=False, moe_backend='auto', sparse_indexer_topk_backend='auto', linear_backend='auto', linear_backend_per_quant=None)
+(EngineCore pid=50836) WARNING 10-25 06:21:44 [flashinfer.py:99] FlashInfer kernels are disabled: flashinfer-cubin is not installed and nvcc (CUDA_HOME, CUDA_PATH, PATH or /usr/local/cuda) or ninja (PATH) is missing. Set CUDA_HOME to a CUDA toolkit and put ninja on PATH, or run `vllm download-kernels`.
+(EngineCore pid=50836) INFO 10-25 06:21:45 [parallel_state.py:1906] world_size=1 rank=0 local_rank=0 distributed_init_method=file:///tmp/vllm_dist_9b79a38eb8574f30bd3881e8e1a3c4d6 backend=nccl
+(EngineCore pid=50836) INFO 10-25 06:21:45 [parallel_state.py:2350] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, ETP rank 0, EP rank N/A, EPLB rank N/A
+(EngineCore pid=50836) INFO 10-25 06:21:45 [gpu_worker.py:518] Using V2 Model Runner
+(EngineCore pid=50836) INFO 10-25 06:21:46 [model_runner.py:392] Loading model from scratch...
+(EngineCore pid=50836) INFO 10-25 06:21:47 [cuda.py:506] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].
+(EngineCore pid=50836) INFO 10-25 06:21:47 [flash_attn.py:1117] Using FlashAttention version 2
+(EngineCore pid=50836) INFO 10-25 06:21:48 [base_loader.py:82] Initializing model took 1.473639 seconds
+(EngineCore pid=50836) INFO 10-25 06:21:48 [weight_utils.py:1108] Filesystem type for checkpoints: EXT4. Checkpoint size: 3.20 GiB. Available RAM: 34.38 GiB.
+(EngineCore pid=50836) INFO 10-25 06:21:48 [weight_utils.py:1131] Auto-prefetch is disabled because the filesystem (EXT4) is not a recognized network FS (NFS/Lustre). If you want to force prefetching, start vLLM with --safetensors-load-strategy=prefetch.
+Loading safetensors checkpoint shards:   0% Completed | 0/1 [00:00<?, ?it/s]
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  1.48it/s]
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  1.47it/s]
+
+(EngineCore pid=50836) INFO 10-25 06:21:49 [default_loader.py:501] Loading weights took 0.87 seconds
+(EngineCore pid=50836) INFO 10-25 06:21:49 [punica_selector.py:20] Using PunicaWrapperGPU.
+(EngineCore pid=50836) INFO 10-25 06:21:50 [model_runner.py:424] Model loading took 3.38 GiB memory and 4.410072 seconds
+(EngineCore pid=50836) INFO 10-25 06:21:50 [topk_topp_sampler.py:124] Using FlashInfer for top-p & top-k sampling.
+(EngineCore pid=50836) INFO 10-25 06:21:50 [torch_utils.py:295] Reducing Torch threads from 22 to 1 for serving. Set OMP_NUM_THREADS in the external environment to override.
+(EngineCore pid=50836) INFO 10-25 06:21:50 [utils.py:347] Using LBNHC KV cache layout.
+(EngineCore pid=50836) WARNING 10-25 06:21:51 [utils.py:276] Using default LoRA kernel configs
+(EngineCore pid=50836) INFO 10-25 06:21:52 [gpu_worker.py:759] Available KV cache memory: 17.53 GiB
+(EngineCore pid=50836) INFO 10-25 06:21:52 [kv_cache_utils.py:2327] GPU KV cache size: 164,064 tokens, Maximum concurrency for 1,024 tokens per request: 160.22x
+(EngineCore pid=50836) INFO 10-25 06:21:53 [gpu_worker.py:1034] Free memory on device (43.13/47.37 GiB) on startup. Desired GPU memory utilization is (0.45, 21.32 GiB). Actual usage is 3.69 GiB for consumed memory (weights + non-torch), 0.1 GiB for peak activation, and 0.0 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory=18660587213` (17.38 GiB) to fit into requested memory, or `--kv-cache-memory=42077317632` (39.19 GiB) to fully utilize gpu memory. Current kv cache memory in use is 17.53 GiB.
+(EngineCore pid=50836) INFO 10-25 06:21:53 [core.py:402] init engine (profile, create kv cache, warmup model) took 2.82 s
+(EngineCore pid=50836) WARNING 10-25 06:21:54 [vllm.py:1703] Enforce eager set, disabling torch.compile, CUDAGraphs, and JIT kernel warmup. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none and --kernel_config.enable_jit_warmup=False
+(EngineCore pid=50836) WARNING 10-25 06:21:54 [vllm.py:1727] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+(EngineCore pid=50836) INFO 10-25 06:21:54 [kernel.py:467] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native'])
+(EngineCore pid=50836) INFO 10-25 06:21:54 [vllm.py:1929] Cudagraph is disabled under eager mode
+(EngineCore pid=50836) INFO 10-25 06:21:54 [compilation.py:317] Enabled custom fusions: norm_quant, act_quant
+(MainProcess pid=50313) INFO 10-25 06:21:54 [hf.py:648] Detected the chat template content format to be 'string'. You can set `--chat-template-content-format` to override this.
+[info] vocab=151669 params=1.790B trainable=69.7M
+[info] est. logits memory per micro-batch ~0.14 GiB (logit_chunk=64)
+[info] micro=4 group=8 -> 1024 forward chunks / 512 sigma groups per step
+[info] arm mu=1 b=4096 Br=4096 micro=4 M=1024 rollouts=8 total_steps=8
+(MainProcess pid=50313) WARNING 10-25 06:21:55 [input_processor.py:289] vLLM has deprecated support for supporting different tokenizers for different LoRAs. By default, vLLM uses base model's tokenizer. If you are using a LoRA with its own tokenizer, consider specifying `--tokenizer [lora_path]` to use the LoRA tokenizer.
+[ids] r000.npz 1.1 MiB sha256=82bbd063c0dfcff6 (4096 resp, max_seq_len 626)
+[r0 mu00] pass=0.218 r=+0.263 len=293 kl=+0.00e+00 clip=0.0000 gn=0.005 sig=0.06626 d=0.0723
+[r0] done: rollout 285.5s oldlogp 124.3s grad 367.9s update 492.2s cum 4096 resp, 0.216 GPU-h, ¥0.45
+[ckpt] runs/mu1_s0/state.pt @ rollout 0
+[r1 mu00] pass=0.227 r=+0.274 len=301 kl=+0.00e+00 clip=0.0000 gn=0.004 sig=0.06456 d=0.067
+[r1] done: rollout 292.9s oldlogp 125.3s grad 373.1s update 498.4s cum 8192 resp, 0.436 GPU-h, ¥0.91
+[ckpt] runs/mu1_s0/state.pt @ rollout 1
+[r2 mu00] pass=0.235 r=+0.282 len=298 kl=+0.00e+00 clip=0.0000 gn=0.005 sig=0.06562 d=0.07
+[r2] done: rollout 294.5s oldlogp 124.8s grad 370.4s update 495.3s cum 12288 resp, 0.655 GPU-h, ¥1.36
+[ckpt] runs/mu1_s0/state.pt @ rollout 2
+[r3 mu00] pass=0.238 r=+0.287 len=302 kl=+0.00e+00 clip=0.0000 gn=0.005 sig=0.06486 d=0.0696
+[r3] done: rollout 303.8s oldlogp 125.4s grad 375.8s update 501.1s cum 16384 resp, 0.879 GPU-h, ¥1.83
+[ckpt] runs/mu1_s0/state.pt @ rollout 3
+[r4 mu00] pass=0.258 r=+0.313 len=295 kl=+0.00e+00 clip=0.0000 gn=0.005 sig=0.06599 d=0.0711
+[r4] done: rollout 292.3s oldlogp 124.1s grad 370.2s update 494.3s cum 20480 resp, 1.097 GPU-h, ¥2.28
+[ckpt] runs/mu1_s0/state.pt @ rollout 4
+[r5 mu00] pass=0.254 r=+0.311 len=306 kl=+0.00e+00 clip=0.0000 gn=0.004 sig=0.06507 d=0.0673
+[r5] done: rollout 303.6s oldlogp 126.6s grad 378.5s update 505.2s cum 24576 resp, 1.322 GPU-h, ¥2.75
+[ckpt] runs/mu1_s0/state.pt @ rollout 5
+[r6 mu00] pass=0.267 r=+0.323 len=299 kl=+0.00e+00 clip=0.0000 gn=0.005 sig=0.066 d=0.0692
+[r6] done: rollout 295.8s oldlogp 125.1s grad 377.0s update 502.1s cum 28672 resp, 1.544 GPU-h, ¥3.21
+[ckpt] runs/mu1_s0/state.pt @ rollout 6
+[r7 mu00] pass=0.270 r=+0.329 len=303 kl=+0.00e+00 clip=0.0000 gn=0.005 sig=0.06568 d=0.0686
+[r7] done: rollout 300.0s oldlogp 125.4s grad 378.2s update 503.6s cum 32768 resp, 1.767 GPU-h, ¥3.67
+[ckpt] runs/mu1_s0/state.pt @ rollout 7
+(MainProcess pid=50313) INFO 10-25 08:08:23 [utils.py:628] [shutdown] Process manager: send sigterm to process EngineCore
+(EngineCore pid=50836) INFO 10-25 08:08:23 [core.py:1454] [shutdown] EngineCore: trigger received signal=SIGTERM
+(EngineCore pid=50836) INFO 10-25 08:08:23 [core.py:1635] [shutdown] EngineCore: start mode=abort timeout=0s
+(EngineCore pid=50836) INFO 10-25 08:08:23 [core.py:1666] [shutdown] EngineCore: request processing complete; starting resource teardown
+(EngineCore pid=50836) INFO 10-25 08:08:23 [core.py:1499] [shutdown] EngineCore: exiting busy loop
+[OK  ] runs/mu1_s0
+        rows=8 arm=mu1 seed=0 pass=0.270 kl=+0.00e+00 d=0.06857055922153601 cost=¥3.67
+{
+  "npz": "runs/mu1_s0/rollouts/r000.npz",
+  "n_responses": 4096,
+  "sha256_recomputed": "82bbd063c0dfcff6ac73f72d90b55c663a6e751c4a96845e6df0ae32ff262d4e",
+  "prompt_tokens": 294240,
+  "completion_tokens": 1199821,
+  "mean_completion_len": 292.93,
+  "sha256_recorded": "82bbd063c0dfcff6ac73f72d90b55c663a6e751c4a96845e6df0ae32ff262d4e",
+  "sha_matches_record": true,
+  "diversity": {
+    "groups": 512,
+    "group_size": 8,
+    "mean_unique": 7.996,
+    "min_unique": 7,
+    "groups_with_duplicates": 2,
+    "groups_all_identical": 0,
+    "mean_unique_first_token": 7.072,
+    "len_sd_within_group_mean": 153.68,
+    "len_sd_overall": 170.36,
+    "within_over_total_len_sd": 0.902
+  }
+}
+
+[diversity] 512 groups of 8: unique 7.996/8 (min 7), distinct first token 7.072, within-group len sd 153.68 vs overall 170.36 (ratio 0.902)
+=== mu1_s1  2026-10-25T08:08:31Z ===
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 4210.53it/s]
+trainable params: 69,730,304 || all params: 1,790,305,280 || trainable%: 3.8949
+(MainProcess pid=81624) INFO 10-25 08:08:48 [api_utils.py:286] non-default args: {'trust_remote_code': True, 'dtype': 'bfloat16', 'max_model_len': 1024, 'enable_prefix_caching': False, 'gpu_memory_utilization': 0.45, 'max_num_batched_tokens': 2048, 'max_num_seqs': 256, 'disable_log_stats': True, 'enforce_eager': True, 'enable_lora': True, 'max_lora_rank': 64, 'enable_chunked_prefill': False, 'model': '/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base'}
+(MainProcess pid=81624) INFO 10-25 08:08:48 [model.py:733] Resolved architecture: Qwen3ForCausalLM
+(MainProcess pid=81624) INFO 10-25 08:08:48 [model.py:2152] Using max model len 1024
+(MainProcess pid=81624) WARNING 10-25 08:08:48 [arg_utils.py:3005] This model does not officially support disabling chunked prefill. Disabling this manually may cause the engine to crash or produce incorrect outputs.
+(MainProcess pid=81624) WARNING 10-25 08:08:48 [vllm.py:1703] Enforce eager set, disabling torch.compile, CUDAGraphs, and JIT kernel warmup. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none and --kernel_config.enable_jit_warmup=False
+(MainProcess pid=81624) WARNING 10-25 08:08:48 [vllm.py:1727] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+(MainProcess pid=81624) INFO 10-25 08:08:48 [kernel.py:467] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native'])
+(MainProcess pid=81624) WARNING 10-25 08:08:48 [flashinfer.py:99] FlashInfer kernels are disabled: flashinfer-cubin is not installed and nvcc (CUDA_HOME, CUDA_PATH, PATH or /usr/local/cuda) or ninja (PATH) is missing. Set CUDA_HOME to a CUDA toolkit and put ninja on PATH, or run `vllm download-kernels`.
+(MainProcess pid=81624) INFO 10-25 08:08:49 [vllm.py:1929] Cudagraph is disabled under eager mode
+(MainProcess pid=81624) INFO 10-25 08:08:49 [compilation.py:317] Enabled custom fusions: norm_quant, act_quant
+(MainProcess pid=81624) WARNING 10-25 08:08:52 [system_utils.py:153] We must use the `spawn` multiprocessing start method. Overriding VLLM_WORKER_MULTIPROC_METHOD to 'spawn'. See https://docs.vllm.ai/en/latest/usage/troubleshooting.html#python-multiprocessing for more information. Reasons: CUDA is initialized
+(EngineCore pid=82109) INFO 10-25 08:08:59 [core.py:133] Initializing a V1 LLM engine (v0.32.0) with config: model='/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base', speculative_config=None, tokenizer='/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=True, dtype=torch.bfloat16, max_seq_len=1024, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=None, quantization_config=None, enforce_eager=True, aux_output_config=AuxOutputConfig(enable_return_routed_experts=False, max_bytes=None), kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, per_request_spec_decode_metrics='none', kv_cache_metrics=False, kv_cache_metrics_sample=0.01, custom_histogram_buckets=None, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=0, served_model_name=/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base, enable_prefix_caching=False, enable_chunked_prefill=False, pooler_config=None, compilation_config={'mode': <CompilationMode.NONE: 0>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['all'], 'ir_enable_torch_wrap': False, 'splitting_ops': [], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'cudagraph_decoder_replay': True, 'decoder_replay_cudagraph_capture_sizes': [], 'decoder_replay_trim_threshold': 768, 'compile_sizes': [], 'compile_ranges_endpoints': [2048], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.NONE: 0>, 'cudagraph_num_of_warmups': 0, 'cudagraph_capture_sizes': [], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': True, 'fuse_act_quant': True, 'fuse_attn_quant': False, 'fuse_allreduce_rms': False, 'enable_qk_norm_rope_fusion': False, 'fuse_rope_kvcache_cat_mla': False, 'fuse_act_padding': False, 'fuse_qk_norm_rope_kvcache': False}, 'max_cudagraph_capture_size': 0, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native']), enable_flashinfer_autotune=True, enable_rocm_segmented_attn_autotune=False, enable_cutedsl_warmup=True, enable_jit_warmup=False, moe_backend='auto', sparse_indexer_topk_backend='auto', linear_backend='auto', linear_backend_per_quant=None)
+(EngineCore pid=82109) WARNING 10-25 08:08:59 [flashinfer.py:99] FlashInfer kernels are disabled: flashinfer-cubin is not installed and nvcc (CUDA_HOME, CUDA_PATH, PATH or /usr/local/cuda) or ninja (PATH) is missing. Set CUDA_HOME to a CUDA toolkit and put ninja on PATH, or run `vllm download-kernels`.
+(EngineCore pid=82109) INFO 10-25 08:09:00 [parallel_state.py:1906] world_size=1 rank=0 local_rank=0 distributed_init_method=file:///tmp/vllm_dist_1b517c14b52943309bbdc3439ab2ca7d backend=nccl
+(EngineCore pid=82109) INFO 10-25 08:09:00 [parallel_state.py:2350] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, ETP rank 0, EP rank N/A, EPLB rank N/A
+(EngineCore pid=82109) INFO 10-25 08:09:00 [gpu_worker.py:518] Using V2 Model Runner
+(EngineCore pid=82109) INFO 10-25 08:09:01 [model_runner.py:392] Loading model from scratch...
+(EngineCore pid=82109) INFO 10-25 08:09:02 [cuda.py:506] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].
+(EngineCore pid=82109) INFO 10-25 08:09:02 [flash_attn.py:1117] Using FlashAttention version 2
+(EngineCore pid=82109) INFO 10-25 08:09:02 [base_loader.py:82] Initializing model took 1.355200 seconds
+(EngineCore pid=82109) INFO 10-25 08:09:02 [weight_utils.py:1108] Filesystem type for checkpoints: EXT4. Checkpoint size: 3.20 GiB. Available RAM: 33.47 GiB.
+(EngineCore pid=82109) INFO 10-25 08:09:02 [weight_utils.py:1131] Auto-prefetch is disabled because the filesystem (EXT4) is not a recognized network FS (NFS/Lustre). If you want to force prefetching, start vLLM with --safetensors-load-strategy=prefetch.
+Loading safetensors checkpoint shards:   0% Completed | 0/1 [00:00<?, ?it/s]
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  1.35it/s]
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  1.35it/s]
+
+(EngineCore pid=82109) INFO 10-25 08:09:03 [default_loader.py:501] Loading weights took 0.97 seconds
+(EngineCore pid=82109) INFO 10-25 08:09:04 [punica_selector.py:20] Using PunicaWrapperGPU.
+(EngineCore pid=82109) INFO 10-25 08:09:05 [model_runner.py:424] Model loading took 3.38 GiB memory and 4.243303 seconds
+(EngineCore pid=82109) INFO 10-25 08:09:05 [topk_topp_sampler.py:124] Using FlashInfer for top-p & top-k sampling.
+(EngineCore pid=82109) INFO 10-25 08:09:05 [torch_utils.py:295] Reducing Torch threads from 22 to 1 for serving. Set OMP_NUM_THREADS in the external environment to override.
+(EngineCore pid=82109) INFO 10-25 08:09:05 [utils.py:347] Using LBNHC KV cache layout.
+(EngineCore pid=82109) WARNING 10-25 08:09:06 [utils.py:276] Using default LoRA kernel configs
+(EngineCore pid=82109) INFO 10-25 08:09:07 [gpu_worker.py:759] Available KV cache memory: 17.53 GiB
+(EngineCore pid=82109) INFO 10-25 08:09:07 [kv_cache_utils.py:2327] GPU KV cache size: 164,064 tokens, Maximum concurrency for 1,024 tokens per request: 160.22x
+(EngineCore pid=82109) INFO 10-25 08:09:07 [gpu_worker.py:1034] Free memory on device (43.13/47.37 GiB) on startup. Desired GPU memory utilization is (0.45, 21.32 GiB). Actual usage is 3.69 GiB for consumed memory (weights + non-torch), 0.1 GiB for peak activation, and 0.0 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory=18660587213` (17.38 GiB) to fit into requested memory, or `--kv-cache-memory=42077317632` (39.19 GiB) to fully utilize gpu memory. Current kv cache memory in use is 17.53 GiB.
+(EngineCore pid=82109) INFO 10-25 08:09:08 [core.py:402] init engine (profile, create kv cache, warmup model) took 2.69 s
+(EngineCore pid=82109) WARNING 10-25 08:09:08 [vllm.py:1703] Enforce eager set, disabling torch.compile, CUDAGraphs, and JIT kernel warmup. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none and --kernel_config.enable_jit_warmup=False
+(EngineCore pid=82109) WARNING 10-25 08:09:08 [vllm.py:1727] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+(EngineCore pid=82109) INFO 10-25 08:09:08 [kernel.py:467] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native'])
+(EngineCore pid=82109) INFO 10-25 08:09:08 [vllm.py:1929] Cudagraph is disabled under eager mode
+(EngineCore pid=82109) INFO 10-25 08:09:08 [compilation.py:317] Enabled custom fusions: norm_quant, act_quant
+(MainProcess pid=81624) INFO 10-25 08:09:09 [hf.py:648] Detected the chat template content format to be 'string'. You can set `--chat-template-content-format` to override this.
+[info] vocab=151669 params=1.790B trainable=69.7M
+[info] est. logits memory per micro-batch ~0.14 GiB (logit_chunk=64)
+[info] micro=4 group=8 -> 1024 forward chunks / 512 sigma groups per step
+[info] arm mu=1 b=4096 Br=4096 micro=4 M=1024 rollouts=8 total_steps=8
+(MainProcess pid=81624) WARNING 10-25 08:09:09 [input_processor.py:289] vLLM has deprecated support for supporting different tokenizers for different LoRAs. By default, vLLM uses base model's tokenizer. If you are using a LoRA with its own tokenizer, consider specifying `--tokenizer [lora_path]` to use the LoRA tokenizer.
+[ids] r000.npz 1.0 MiB sha256=1b6819d3051d406d (4096 resp, max_seq_len 626)
+[r0 mu00] pass=0.222 r=+0.267 len=292 kl=+0.00e+00 clip=0.0000 gn=0.004 sig=0.06565 d=0.0682
+[r0] done: rollout 285.9s oldlogp 124.2s grad 369.0s update 493.2s cum 4096 resp, 0.216 GPU-h, ¥0.45
+[ckpt] runs/mu1_s1/state.pt @ rollout 0
+[r1 mu00] pass=0.233 r=+0.279 len=297 kl=+0.00e+00 clip=0.0000 gn=0.005 sig=0.06531 d=0.0733
+[r1] done: rollout 294.2s oldlogp 125.3s grad 372.2s update 497.5s cum 8192 resp, 0.436 GPU-h, ¥0.91
+[ckpt] runs/mu1_s1/state.pt @ rollout 1
+[r2 mu00] pass=0.236 r=+0.285 len=298 kl=+0.00e+00 clip=0.0000 gn=0.005 sig=0.06495 d=0.0695
+[r2] done: rollout 292.6s oldlogp 126.4s grad 377.6s update 504.0s cum 12288 resp, 0.658 GPU-h, ¥1.37
+[ckpt] runs/mu1_s1/state.pt @ rollout 2
+[r3 mu00] pass=0.248 r=+0.299 len=296 kl=+0.00e+00 clip=0.0000 gn=0.005 sig=0.06735 d=0.0709
+[r3] done: rollout 290.0s oldlogp 124.2s grad 370.1s update 494.3s cum 16384 resp, 0.875 GPU-h, ¥1.82
+[ckpt] runs/mu1_s1/state.pt @ rollout 3
+[r4 mu00] pass=0.243 r=+0.295 len=304 kl=+0.00e+00 clip=0.0000 gn=0.005 sig=0.06498 d=0.0744
+[r4] done: rollout 293.9s oldlogp 125.7s grad 373.2s update 498.9s cum 20480 resp, 1.096 GPU-h, ¥2.28
+[ckpt] runs/mu1_s1/state.pt @ rollout 4
+[r5 mu00] pass=0.272 r=+0.330 len=298 kl=+0.00e+00 clip=0.0000 gn=0.005 sig=0.06655 d=0.0723
+[r5] done: rollout 297.6s oldlogp 124.9s grad 371.2s update 496.2s cum 24576 resp, 1.316 GPU-h, ¥2.74
+[ckpt] runs/mu1_s1/state.pt @ rollout 5
+[r6 mu00] pass=0.272 r=+0.330 len=301 kl=+0.00e+00 clip=0.0000 gn=0.005 sig=0.06586 d=0.0685
+[r6] done: rollout 296.6s oldlogp 126.3s grad 373.5s update 499.8s cum 28672 resp, 1.537 GPU-h, ¥3.20
+[ckpt] runs/mu1_s1/state.pt @ rollout 6
+[r7 mu00] pass=0.275 r=+0.331 len=295 kl=+0.00e+00 clip=0.0000 gn=0.005 sig=0.06566 d=0.0749
+[r7] done: rollout 287.8s oldlogp 124.3s grad 369.8s update 494.1s cum 32768 resp, 1.755 GPU-h, ¥3.65
+[ckpt] runs/mu1_s1/state.pt @ rollout 7
+(MainProcess pid=81624) INFO 10-25 09:54:52 [utils.py:628] [shutdown] Process manager: send sigterm to process EngineCore
+(EngineCore pid=82109) INFO 10-25 09:54:52 [core.py:1454] [shutdown] EngineCore: trigger received signal=SIGTERM
+(EngineCore pid=82109) INFO 10-25 09:54:52 [core.py:1635] [shutdown] EngineCore: start mode=abort timeout=0s
+(EngineCore pid=82109) INFO 10-25 09:54:52 [core.py:1666] [shutdown] EngineCore: request processing complete; starting resource teardown
+(EngineCore pid=82109) INFO 10-25 09:54:52 [core.py:1499] [shutdown] EngineCore: exiting busy loop
+[OK  ] runs/mu1_s1
+        rows=8 arm=mu1 seed=1 pass=0.275 kl=+0.00e+00 d=0.07490198716604007 cost=¥3.65
+{
+  "npz": "runs/mu1_s1/rollouts/r000.npz",
+  "n_responses": 4096,
+  "sha256_recomputed": "1b6819d3051d406de7477c40625bb86235103acd7c02a5536fe4d934fbeb01c8",
+  "prompt_tokens": 297080,
+  "completion_tokens": 1195834,
+  "mean_completion_len": 291.95,
+  "sha256_recorded": "1b6819d3051d406de7477c40625bb86235103acd7c02a5536fe4d934fbeb01c8",
+  "sha_matches_record": true,
+  "diversity": {
+    "groups": 512,
+    "group_size": 8,
+    "mean_unique": 7.996,
+    "min_unique": 7,
+    "groups_with_duplicates": 2,
+    "groups_all_identical": 0,
+    "mean_unique_first_token": 6.932,
+    "len_sd_within_group_mean": 154.12,
+    "len_sd_overall": 168.96,
+    "within_over_total_len_sd": 0.912
+  }
+}
+
+[diversity] 512 groups of 8: unique 7.996/8 (min 7), distinct first token 6.932, within-group len sd 154.12 vs overall 168.96 (ratio 0.912)
+=== mu1_s2  2026-10-25T09:54:59Z ===
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 4374.95it/s]
+trainable params: 69,730,304 || all params: 1,790,305,280 || trainable%: 3.8949
+(MainProcess pid=115539) INFO 10-25 09:55:16 [api_utils.py:286] non-default args: {'trust_remote_code': True, 'dtype': 'bfloat16', 'max_model_len': 1024, 'enable_prefix_caching': False, 'gpu_memory_utilization': 0.45, 'max_num_batched_tokens': 2048, 'max_num_seqs': 256, 'disable_log_stats': True, 'enforce_eager': True, 'enable_lora': True, 'max_lora_rank': 64, 'enable_chunked_prefill': False, 'model': '/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base'}
+(MainProcess pid=115539) INFO 10-25 09:55:16 [model.py:733] Resolved architecture: Qwen3ForCausalLM
+(MainProcess pid=115539) INFO 10-25 09:55:16 [model.py:2152] Using max model len 1024
+(MainProcess pid=115539) WARNING 10-25 09:55:16 [arg_utils.py:3005] This model does not officially support disabling chunked prefill. Disabling this manually may cause the engine to crash or produce incorrect outputs.
+(MainProcess pid=115539) WARNING 10-25 09:55:16 [vllm.py:1703] Enforce eager set, disabling torch.compile, CUDAGraphs, and JIT kernel warmup. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none and --kernel_config.enable_jit_warmup=False
+(MainProcess pid=115539) WARNING 10-25 09:55:16 [vllm.py:1727] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+(MainProcess pid=115539) INFO 10-25 09:55:16 [kernel.py:467] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native'])
+(MainProcess pid=115539) WARNING 10-25 09:55:16 [flashinfer.py:99] FlashInfer kernels are disabled: flashinfer-cubin is not installed and nvcc (CUDA_HOME, CUDA_PATH, PATH or /usr/local/cuda) or ninja (PATH) is missing. Set CUDA_HOME to a CUDA toolkit and put ninja on PATH, or run `vllm download-kernels`.
+(MainProcess pid=115539) INFO 10-25 09:55:17 [vllm.py:1929] Cudagraph is disabled under eager mode
+(MainProcess pid=115539) INFO 10-25 09:55:17 [compilation.py:317] Enabled custom fusions: norm_quant, act_quant
+(MainProcess pid=115539) WARNING 10-25 09:55:19 [system_utils.py:153] We must use the `spawn` multiprocessing start method. Overriding VLLM_WORKER_MULTIPROC_METHOD to 'spawn'. See https://docs.vllm.ai/en/latest/usage/troubleshooting.html#python-multiprocessing for more information. Reasons: CUDA is initialized
+(EngineCore pid=116020) INFO 10-25 09:55:27 [core.py:133] Initializing a V1 LLM engine (v0.32.0) with config: model='/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base', speculative_config=None, tokenizer='/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=True, dtype=torch.bfloat16, max_seq_len=1024, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=None, quantization_config=None, enforce_eager=True, aux_output_config=AuxOutputConfig(enable_return_routed_experts=False, max_bytes=None), kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, per_request_spec_decode_metrics='none', kv_cache_metrics=False, kv_cache_metrics_sample=0.01, custom_histogram_buckets=None, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=0, served_model_name=/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base, enable_prefix_caching=False, enable_chunked_prefill=False, pooler_config=None, compilation_config={'mode': <CompilationMode.NONE: 0>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['all'], 'ir_enable_torch_wrap': False, 'splitting_ops': [], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'cudagraph_decoder_replay': True, 'decoder_replay_cudagraph_capture_sizes': [], 'decoder_replay_trim_threshold': 768, 'compile_sizes': [], 'compile_ranges_endpoints': [2048], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.NONE: 0>, 'cudagraph_num_of_warmups': 0, 'cudagraph_capture_sizes': [], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': True, 'fuse_act_quant': True, 'fuse_attn_quant': False, 'fuse_allreduce_rms': False, 'enable_qk_norm_rope_fusion': False, 'fuse_rope_kvcache_cat_mla': False, 'fuse_act_padding': False, 'fuse_qk_norm_rope_kvcache': False}, 'max_cudagraph_capture_size': 0, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native']), enable_flashinfer_autotune=True, enable_rocm_segmented_attn_autotune=False, enable_cutedsl_warmup=True, enable_jit_warmup=False, moe_backend='auto', sparse_indexer_topk_backend='auto', linear_backend='auto', linear_backend_per_quant=None)
+(EngineCore pid=116020) WARNING 10-25 09:55:27 [flashinfer.py:99] FlashInfer kernels are disabled: flashinfer-cubin is not installed and nvcc (CUDA_HOME, CUDA_PATH, PATH or /usr/local/cuda) or ninja (PATH) is missing. Set CUDA_HOME to a CUDA toolkit and put ninja on PATH, or run `vllm download-kernels`.
+(EngineCore pid=116020) INFO 10-25 09:55:28 [parallel_state.py:1906] world_size=1 rank=0 local_rank=0 distributed_init_method=file:///tmp/vllm_dist_42c6ff0a5ede4fa090bfacb2521fc112 backend=nccl
+(EngineCore pid=116020) INFO 10-25 09:55:29 [parallel_state.py:2350] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, ETP rank 0, EP rank N/A, EPLB rank N/A
+(EngineCore pid=116020) INFO 10-25 09:55:29 [gpu_worker.py:518] Using V2 Model Runner
+(EngineCore pid=116020) INFO 10-25 09:55:29 [model_runner.py:392] Loading model from scratch...
+(EngineCore pid=116020) INFO 10-25 09:55:30 [cuda.py:506] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].
+(EngineCore pid=116020) INFO 10-25 09:55:30 [flash_attn.py:1117] Using FlashAttention version 2
+(EngineCore pid=116020) INFO 10-25 09:55:31 [base_loader.py:82] Initializing model took 1.398561 seconds
+(EngineCore pid=116020) INFO 10-25 09:55:31 [weight_utils.py:1108] Filesystem type for checkpoints: EXT4. Checkpoint size: 3.20 GiB. Available RAM: 40.01 GiB.
+(EngineCore pid=116020) INFO 10-25 09:55:31 [weight_utils.py:1131] Auto-prefetch is disabled because the filesystem (EXT4) is not a recognized network FS (NFS/Lustre). If you want to force prefetching, start vLLM with --safetensors-load-strategy=prefetch.
+Loading safetensors checkpoint shards:   0% Completed | 0/1 [00:00<?, ?it/s]
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  1.62it/s]
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  1.62it/s]
+
+(EngineCore pid=116020) INFO 10-25 09:55:31 [default_loader.py:501] Loading weights took 0.82 seconds
+(EngineCore pid=116020) INFO 10-25 09:55:32 [punica_selector.py:20] Using PunicaWrapperGPU.
+(EngineCore pid=116020) INFO 10-25 09:55:33 [model_runner.py:424] Model loading took 3.38 GiB memory and 3.786295 seconds
+(EngineCore pid=116020) INFO 10-25 09:55:33 [topk_topp_sampler.py:124] Using FlashInfer for top-p & top-k sampling.
+(EngineCore pid=116020) INFO 10-25 09:55:33 [torch_utils.py:295] Reducing Torch threads from 22 to 1 for serving. Set OMP_NUM_THREADS in the external environment to override.
+(EngineCore pid=116020) INFO 10-25 09:55:33 [utils.py:347] Using LBNHC KV cache layout.
+(EngineCore pid=116020) WARNING 10-25 09:55:33 [utils.py:276] Using default LoRA kernel configs
+(EngineCore pid=116020) INFO 10-25 09:55:35 [gpu_worker.py:759] Available KV cache memory: 17.53 GiB
+(EngineCore pid=116020) INFO 10-25 09:55:35 [kv_cache_utils.py:2327] GPU KV cache size: 164,064 tokens, Maximum concurrency for 1,024 tokens per request: 160.22x
+(EngineCore pid=116020) INFO 10-25 09:55:35 [gpu_worker.py:1034] Free memory on device (43.13/47.37 GiB) on startup. Desired GPU memory utilization is (0.45, 21.32 GiB). Actual usage is 3.69 GiB for consumed memory (weights + non-torch), 0.1 GiB for peak activation, and 0.0 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory=18660587213` (17.38 GiB) to fit into requested memory, or `--kv-cache-memory=42077317632` (39.19 GiB) to fully utilize gpu memory. Current kv cache memory in use is 17.53 GiB.
+(EngineCore pid=116020) INFO 10-25 09:55:35 [core.py:402] init engine (profile, create kv cache, warmup model) took 2.59 s
+(EngineCore pid=116020) WARNING 10-25 09:55:36 [vllm.py:1703] Enforce eager set, disabling torch.compile, CUDAGraphs, and JIT kernel warmup. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none and --kernel_config.enable_jit_warmup=False
+(EngineCore pid=116020) WARNING 10-25 09:55:36 [vllm.py:1727] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+(EngineCore pid=116020) INFO 10-25 09:55:36 [kernel.py:467] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native'])
+(EngineCore pid=116020) INFO 10-25 09:55:36 [vllm.py:1929] Cudagraph is disabled under eager mode
+(EngineCore pid=116020) INFO 10-25 09:55:36 [compilation.py:317] Enabled custom fusions: norm_quant, act_quant
+(MainProcess pid=115539) INFO 10-25 09:55:36 [hf.py:648] Detected the chat template content format to be 'string'. You can set `--chat-template-content-format` to override this.
+[info] vocab=151669 params=1.790B trainable=69.7M
+[info] est. logits memory per micro-batch ~0.14 GiB (logit_chunk=64)
+[info] micro=4 group=8 -> 1024 forward chunks / 512 sigma groups per step
+[info] arm mu=1 b=4096 Br=4096 micro=4 M=1024 rollouts=8 total_steps=8
+(MainProcess pid=115539) WARNING 10-25 09:55:37 [input_processor.py:289] vLLM has deprecated support for supporting different tokenizers for different LoRAs. By default, vLLM uses base model's tokenizer. If you are using a LoRA with its own tokenizer, consider specifying `--tokenizer [lora_path]` to use the LoRA tokenizer.
+[ids] r000.npz 1.1 MiB sha256=deb3c6df8f7511f7 (4096 resp, max_seq_len 628)
+[r0 mu00] pass=0.225 r=+0.269 len=295 kl=+0.00e+00 clip=0.0000 gn=0.004 sig=0.06598 d=0.0661
+[r0] done: rollout 293.2s oldlogp 125.5s grad 372.7s update 498.2s cum 4096 resp, 0.220 GPU-h, ¥0.46
+[ckpt] runs/mu1_s2/state.pt @ rollout 0
+[r1 mu00] pass=0.230 r=+0.276 len=295 kl=+0.00e+00 clip=0.0000 gn=0.005 sig=0.06667 d=0.0726
+[r1] done: rollout 290.0s oldlogp 124.6s grad 370.0s update 494.6s cum 8192 resp, 0.438 GPU-h, ¥0.91
+[ckpt] runs/mu1_s2/state.pt @ rollout 1
+[r2 mu00] pass=0.229 r=+0.276 len=298 kl=+0.00e+00 clip=0.0000 gn=0.005 sig=0.06463 d=0.0738
+[r2] done: rollout 295.2s oldlogp 126.6s grad 376.4s update 503.0s cum 12288 resp, 0.660 GPU-h, ¥1.37
+[ckpt] runs/mu1_s2/state.pt @ rollout 2
+[r3 mu00] pass=0.239 r=+0.288 len=301 kl=+0.00e+00 clip=0.0000 gn=0.004 sig=0.06575 d=0.0651
+[r3] done: rollout 293.5s oldlogp 126.6s grad 376.6s update 503.2s cum 16384 resp, 0.881 GPU-h, ¥1.83
+[ckpt] runs/mu1_s2/state.pt @ rollout 3
+[r4 mu00] pass=0.244 r=+0.297 len=296 kl=+0.00e+00 clip=0.0000 gn=0.005 sig=0.06587 d=0.0736
+[r4] done: rollout 291.4s oldlogp 124.4s grad 370.1s update 494.5s cum 20480 resp, 1.099 GPU-h, ¥2.29
+[ckpt] runs/mu1_s2/state.pt @ rollout 4
+[r5 mu00] pass=0.246 r=+0.302 len=302 kl=+0.00e+00 clip=0.0000 gn=0.005 sig=0.06588 d=0.0731
+[r5] done: rollout 298.4s oldlogp 125.5s grad 376.5s update 502.1s cum 24576 resp, 1.321 GPU-h, ¥2.75
+[ckpt] runs/mu1_s2/state.pt @ rollout 5
+[r6 mu00] pass=0.283 r=+0.343 len=298 kl=+0.00e+00 clip=0.0000 gn=0.005 sig=0.0679 d=0.0725
+[r6] done: rollout 294.4s oldlogp 124.9s grad 372.2s update 497.0s cum 28672 resp, 1.541 GPU-h, ¥3.21
+[ckpt] runs/mu1_s2/state.pt @ rollout 6
+[r7 mu00] pass=0.261 r=+0.318 len=297 kl=+0.00e+00 clip=0.0000 gn=0.005 sig=0.06752 d=0.0712
+[r7] done: rollout 295.6s oldlogp 125.9s grad 373.3s update 499.2s cum 32768 resp, 1.762 GPU-h, ¥3.67
+[ckpt] runs/mu1_s2/state.pt @ rollout 7
+(MainProcess pid=115539) INFO 10-25 11:41:48 [utils.py:628] [shutdown] Process manager: send sigterm to process EngineCore
+(EngineCore pid=116020) INFO 10-25 11:41:48 [core.py:1454] [shutdown] EngineCore: trigger received signal=SIGTERM
+(EngineCore pid=116020) INFO 10-25 11:41:48 [core.py:1635] [shutdown] EngineCore: start mode=abort timeout=0s
+(EngineCore pid=116020) INFO 10-25 11:41:48 [core.py:1666] [shutdown] EngineCore: request processing complete; starting resource teardown
+(EngineCore pid=116020) INFO 10-25 11:41:48 [core.py:1499] [shutdown] EngineCore: exiting busy loop
+[OK  ] runs/mu1_s2
+        rows=8 arm=mu1 seed=2 pass=0.261 kl=+0.00e+00 d=0.07123338700588377 cost=¥3.67
+{
+  "npz": "runs/mu1_s2/rollouts/r000.npz",
+  "n_responses": 4096,
+  "sha256_recomputed": "deb3c6df8f7511f7393a513b80f566ce47b88c7f06fad6a2c0dd9f51e8dce247",
+  "prompt_tokens": 296000,
+  "completion_tokens": 1208294,
+  "mean_completion_len": 294.99,
+  "sha256_recorded": "deb3c6df8f7511f7393a513b80f566ce47b88c7f06fad6a2c0dd9f51e8dce247",
+  "sha_matches_record": true,
+  "diversity": {
+    "groups": 512,
+    "group_size": 8,
+    "mean_unique": 7.994,
+    "min_unique": 7,
+    "groups_with_duplicates": 3,
+    "groups_all_identical": 0,
+    "mean_unique_first_token": 7.021,
+    "len_sd_within_group_mean": 150.06,
+    "len_sd_overall": 169.24,
+    "within_over_total_len_sd": 0.887
+  }
+}
+
+[diversity] 512 groups of 8: unique 7.994/8 (min 7), distinct first token 7.021, within-group len sd 150.06 vs overall 169.24 (ratio 0.887)
+=== mu8_s0  2026-10-25T11:41:56Z ===
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 4582.87it/s]
+trainable params: 69,730,304 || all params: 1,790,305,280 || trainable%: 3.8949
+(MainProcess pid=149948) INFO 10-25 11:42:13 [api_utils.py:286] non-default args: {'trust_remote_code': True, 'dtype': 'bfloat16', 'max_model_len': 1024, 'enable_prefix_caching': False, 'gpu_memory_utilization': 0.45, 'max_num_batched_tokens': 2048, 'max_num_seqs': 256, 'disable_log_stats': True, 'enforce_eager': True, 'enable_lora': True, 'max_lora_rank': 64, 'enable_chunked_prefill': False, 'model': '/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base'}
+(MainProcess pid=149948) INFO 10-25 11:42:13 [model.py:733] Resolved architecture: Qwen3ForCausalLM
+(MainProcess pid=149948) INFO 10-25 11:42:13 [model.py:2152] Using max model len 1024
+(MainProcess pid=149948) WARNING 10-25 11:42:13 [arg_utils.py:3005] This model does not officially support disabling chunked prefill. Disabling this manually may cause the engine to crash or produce incorrect outputs.
+(MainProcess pid=149948) WARNING 10-25 11:42:13 [vllm.py:1703] Enforce eager set, disabling torch.compile, CUDAGraphs, and JIT kernel warmup. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none and --kernel_config.enable_jit_warmup=False
+(MainProcess pid=149948) WARNING 10-25 11:42:13 [vllm.py:1727] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+(MainProcess pid=149948) INFO 10-25 11:42:13 [kernel.py:467] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native'])
+(MainProcess pid=149948) WARNING 10-25 11:42:13 [flashinfer.py:99] FlashInfer kernels are disabled: flashinfer-cubin is not installed and nvcc (CUDA_HOME, CUDA_PATH, PATH or /usr/local/cuda) or ninja (PATH) is missing. Set CUDA_HOME to a CUDA toolkit and put ninja on PATH, or run `vllm download-kernels`.
+(MainProcess pid=149948) INFO 10-25 11:42:13 [vllm.py:1929] Cudagraph is disabled under eager mode
+(MainProcess pid=149948) INFO 10-25 11:42:13 [compilation.py:317] Enabled custom fusions: norm_quant, act_quant
+(MainProcess pid=149948) WARNING 10-25 11:42:16 [system_utils.py:153] We must use the `spawn` multiprocessing start method. Overriding VLLM_WORKER_MULTIPROC_METHOD to 'spawn'. See https://docs.vllm.ai/en/latest/usage/troubleshooting.html#python-multiprocessing for more information. Reasons: CUDA is initialized
+(EngineCore pid=150431) INFO 10-25 11:42:24 [core.py:133] Initializing a V1 LLM engine (v0.32.0) with config: model='/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base', speculative_config=None, tokenizer='/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=True, dtype=torch.bfloat16, max_seq_len=1024, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=None, quantization_config=None, enforce_eager=True, aux_output_config=AuxOutputConfig(enable_return_routed_experts=False, max_bytes=None), kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, per_request_spec_decode_metrics='none', kv_cache_metrics=False, kv_cache_metrics_sample=0.01, custom_histogram_buckets=None, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=0, served_model_name=/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base, enable_prefix_caching=False, enable_chunked_prefill=False, pooler_config=None, compilation_config={'mode': <CompilationMode.NONE: 0>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['all'], 'ir_enable_torch_wrap': False, 'splitting_ops': [], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'cudagraph_decoder_replay': True, 'decoder_replay_cudagraph_capture_sizes': [], 'decoder_replay_trim_threshold': 768, 'compile_sizes': [], 'compile_ranges_endpoints': [2048], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.NONE: 0>, 'cudagraph_num_of_warmups': 0, 'cudagraph_capture_sizes': [], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': True, 'fuse_act_quant': True, 'fuse_attn_quant': False, 'fuse_allreduce_rms': False, 'enable_qk_norm_rope_fusion': False, 'fuse_rope_kvcache_cat_mla': False, 'fuse_act_padding': False, 'fuse_qk_norm_rope_kvcache': False}, 'max_cudagraph_capture_size': 0, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native']), enable_flashinfer_autotune=True, enable_rocm_segmented_attn_autotune=False, enable_cutedsl_warmup=True, enable_jit_warmup=False, moe_backend='auto', sparse_indexer_topk_backend='auto', linear_backend='auto', linear_backend_per_quant=None)
+(EngineCore pid=150431) WARNING 10-25 11:42:24 [flashinfer.py:99] FlashInfer kernels are disabled: flashinfer-cubin is not installed and nvcc (CUDA_HOME, CUDA_PATH, PATH or /usr/local/cuda) or ninja (PATH) is missing. Set CUDA_HOME to a CUDA toolkit and put ninja on PATH, or run `vllm download-kernels`.
+(EngineCore pid=150431) INFO 10-25 11:42:25 [parallel_state.py:1906] world_size=1 rank=0 local_rank=0 distributed_init_method=file:///tmp/vllm_dist_82222d5d93c44bc7b749bf0bbd4e219e backend=nccl
+(EngineCore pid=150431) INFO 10-25 11:42:25 [parallel_state.py:2350] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, ETP rank 0, EP rank N/A, EPLB rank N/A
+(EngineCore pid=150431) INFO 10-25 11:42:25 [gpu_worker.py:518] Using V2 Model Runner
+(EngineCore pid=150431) INFO 10-25 11:42:26 [model_runner.py:392] Loading model from scratch...
+(EngineCore pid=150431) INFO 10-25 11:42:26 [cuda.py:506] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].
+(EngineCore pid=150431) INFO 10-25 11:42:26 [flash_attn.py:1117] Using FlashAttention version 2
+(EngineCore pid=150431) INFO 10-25 11:42:27 [base_loader.py:82] Initializing model took 1.346665 seconds
+(EngineCore pid=150431) INFO 10-25 11:42:27 [weight_utils.py:1108] Filesystem type for checkpoints: EXT4. Checkpoint size: 3.20 GiB. Available RAM: 37.00 GiB.
+(EngineCore pid=150431) INFO 10-25 11:42:27 [weight_utils.py:1131] Auto-prefetch is disabled because the filesystem (EXT4) is not a recognized network FS (NFS/Lustre). If you want to force prefetching, start vLLM with --safetensors-load-strategy=prefetch.
+Loading safetensors checkpoint shards:   0% Completed | 0/1 [00:00<?, ?it/s]
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  1.34it/s]
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  1.34it/s]
+
+(EngineCore pid=150431) INFO 10-25 11:42:28 [default_loader.py:501] Loading weights took 0.99 seconds
+(EngineCore pid=150431) INFO 10-25 11:42:29 [punica_selector.py:20] Using PunicaWrapperGPU.
+(EngineCore pid=150431) INFO 10-25 11:42:29 [model_runner.py:424] Model loading took 3.38 GiB memory and 3.869865 seconds
+(EngineCore pid=150431) INFO 10-25 11:42:29 [topk_topp_sampler.py:124] Using FlashInfer for top-p & top-k sampling.
+(EngineCore pid=150431) INFO 10-25 11:42:29 [torch_utils.py:295] Reducing Torch threads from 22 to 1 for serving. Set OMP_NUM_THREADS in the external environment to override.
+(EngineCore pid=150431) INFO 10-25 11:42:29 [utils.py:347] Using LBNHC KV cache layout.
+(EngineCore pid=150431) WARNING 10-25 11:42:30 [utils.py:276] Using default LoRA kernel configs
+(EngineCore pid=150431) INFO 10-25 11:42:31 [gpu_worker.py:759] Available KV cache memory: 17.53 GiB
+(EngineCore pid=150431) INFO 10-25 11:42:31 [kv_cache_utils.py:2327] GPU KV cache size: 164,064 tokens, Maximum concurrency for 1,024 tokens per request: 160.22x
+(EngineCore pid=150431) INFO 10-25 11:42:31 [gpu_worker.py:1034] Free memory on device (43.13/47.37 GiB) on startup. Desired GPU memory utilization is (0.45, 21.32 GiB). Actual usage is 3.69 GiB for consumed memory (weights + non-torch), 0.1 GiB for peak activation, and 0.0 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory=18660587213` (17.38 GiB) to fit into requested memory, or `--kv-cache-memory=42077317632` (39.19 GiB) to fully utilize gpu memory. Current kv cache memory in use is 17.53 GiB.
+(EngineCore pid=150431) INFO 10-25 11:42:32 [core.py:402] init engine (profile, create kv cache, warmup model) took 2.39 s
+(EngineCore pid=150431) WARNING 10-25 11:42:32 [vllm.py:1703] Enforce eager set, disabling torch.compile, CUDAGraphs, and JIT kernel warmup. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none and --kernel_config.enable_jit_warmup=False
+(EngineCore pid=150431) WARNING 10-25 11:42:32 [vllm.py:1727] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+(EngineCore pid=150431) INFO 10-25 11:42:32 [kernel.py:467] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native'])
+(EngineCore pid=150431) INFO 10-25 11:42:32 [vllm.py:1929] Cudagraph is disabled under eager mode
+(EngineCore pid=150431) INFO 10-25 11:42:32 [compilation.py:317] Enabled custom fusions: norm_quant, act_quant
+(MainProcess pid=149948) INFO 10-25 11:42:33 [hf.py:648] Detected the chat template content format to be 'string'. You can set `--chat-template-content-format` to override this.
+[info] vocab=151669 params=1.790B trainable=69.7M
+[info] est. logits memory per micro-batch ~0.14 GiB (logit_chunk=64)
+[info] micro=4 group=8 -> 128 forward chunks / 64 sigma groups per step
+[info] arm mu=8 b=512 Br=4096 micro=4 M=128 rollouts=8 total_steps=64
+(MainProcess pid=149948) WARNING 10-25 11:42:33 [input_processor.py:289] vLLM has deprecated support for supporting different tokenizers for different LoRAs. By default, vLLM uses base model's tokenizer. If you are using a LoRA with its own tokenizer, consider specifying `--tokenizer [lora_path]` to use the LoRA tokenizer.
+[ids] r000.npz 1.1 MiB sha256=82bbd063c0dfcff6 (4096 resp, max_seq_len 626)
+[r0 mu00] pass=0.218 r=+0.263 len=293 kl=+0.00e+00 clip=0.0000 gn=0.010 sig=0.06954 d=0.138
+[r0 mu01] pass=0.218 r=+0.263 len=293 kl=-1.81e-05 clip=0.0027 gn=0.009 sig=0.06713 d=0.1349
+[r0 mu02] pass=0.218 r=+0.263 len=293 kl=+4.05e-05 clip=0.0026 gn=0.009 sig=0.06378 d=0.1452
+[r0 mu03] pass=0.218 r=+0.263 len=293 kl=+2.01e-04 clip=0.0026 gn=0.009 sig=0.0657 d=0.1326
+[r0 mu04] pass=0.218 r=+0.263 len=293 kl=+8.60e-05 clip=0.0028 gn=0.009 sig=0.06793 d=0.1335
+[r0 mu05] pass=0.218 r=+0.263 len=293 kl=+1.64e-04 clip=0.0030 gn=0.008 sig=0.06311 d=0.1312
+[r0 mu06] pass=0.218 r=+0.263 len=293 kl=+3.74e-05 clip=0.0029 gn=0.009 sig=0.07162 d=0.1276
+[r0 mu07] pass=0.218 r=+0.263 len=293 kl=+1.79e-04 clip=0.0031 gn=0.009 sig=0.06702 d=0.1299
+[r0] done: rollout 290.4s oldlogp 124.8s grad 370.8s update 495.5s cum 4096 resp, 0.218 GPU-h, ¥0.45
+[ckpt] runs/mu8_s0/state.pt @ rollout 0
+[r1 mu00] pass=0.250 r=+0.304 len=304 kl=+0.00e+00 clip=0.0000 gn=0.009 sig=0.0685 d=0.1287
+[r1 mu01] pass=0.250 r=+0.304 len=304 kl=+1.11e-04 clip=0.0026 gn=0.010 sig=0.07194 d=0.1355
+[r1 mu02] pass=0.250 r=+0.304 len=304 kl=+1.67e-04 clip=0.0030 gn=0.009 sig=0.06538 d=0.1342
+[r1 mu03] pass=0.250 r=+0.304 len=304 kl=+2.90e-04 clip=0.0040 gn=0.010 sig=0.07154 d=0.1346
+[r1 mu04] pass=0.250 r=+0.304 len=304 kl=+2.25e-04 clip=0.0046 gn=0.010 sig=0.06568 d=0.145
+[r1 mu05] pass=0.250 r=+0.304 len=304 kl=+5.07e-04 clip=0.0053 gn=0.009 sig=0.06616 d=0.1433
+[r1 mu06] pass=0.250 r=+0.304 len=304 kl=+3.67e-04 clip=0.0061 gn=0.009 sig=0.0654 d=0.1374
+[r1 mu07] pass=0.250 r=+0.304 len=304 kl=+7.03e-04 clip=0.0066 gn=0.010 sig=0.07613 d=0.1263
+[r1] done: rollout 303.3s oldlogp 125.5s grad 371.3s update 496.8s cum 8192 resp, 0.441 GPU-h, ¥0.92
+[ckpt] runs/mu8_s0/state.pt @ rollout 1
+[r2 mu00] pass=0.302 r=+0.368 len=302 kl=+0.00e+00 clip=0.0000 gn=0.009 sig=0.06908 d=0.1323
+[r2 mu01] pass=0.302 r=+0.368 len=302 kl=+1.83e-04 clip=0.0026 gn=0.009 sig=0.06831 d=0.128
+[r2 mu02] pass=0.302 r=+0.368 len=302 kl=-6.28e-05 clip=0.0027 gn=0.009 sig=0.07316 d=0.128
+[r2 mu03] pass=0.302 r=+0.368 len=302 kl=+2.63e-04 clip=0.0032 gn=0.009 sig=0.06565 d=0.1364
+[r2 mu04] pass=0.302 r=+0.368 len=302 kl=+2.82e-04 clip=0.0036 gn=0.010 sig=0.072 d=0.138
+[r2 mu05] pass=0.302 r=+0.368 len=302 kl=+5.71e-04 clip=0.0048 gn=0.009 sig=0.0668 d=0.1391
+[r2 mu06] pass=0.302 r=+0.368 len=302 kl=+4.90e-04 clip=0.0049 gn=0.009 sig=0.07136 d=0.1264
+[r2 mu07] pass=0.302 r=+0.368 len=302 kl=+5.60e-04 clip=0.0058 gn=0.012 sig=0.08006 d=0.1453
+[r2] done: rollout 301.1s oldlogp 124.5s grad 369.4s update 493.8s cum 12288 resp, 0.661 GPU-h, ¥1.38
+[ckpt] runs/mu8_s0/state.pt @ rollout 2
+[r3 mu00] pass=0.327 r=+0.403 len=298 kl=+0.00e+00 clip=0.0000 gn=0.009 sig=0.07329 d=0.1258
+[r3 mu01] pass=0.327 r=+0.403 len=298 kl=+1.19e-04 clip=0.0023 gn=0.009 sig=0.07179 d=0.1321
+[r3 mu02] pass=0.327 r=+0.403 len=298 kl=+1.71e-04 clip=0.0024 gn=0.010 sig=0.07357 d=0.1325
+[r3 mu03] pass=0.327 r=+0.403 len=298 kl=+1.09e-04 clip=0.0026 gn=0.009 sig=0.07334 d=0.1293
+[r3 mu04] pass=0.327 r=+0.403 len=298 kl=-5.66e-05 clip=0.0028 gn=0.009 sig=0.07138 d=0.1267
+[r3 mu05] pass=0.327 r=+0.403 len=298 kl=+2.54e-04 clip=0.0035 gn=0.010 sig=0.0793 d=0.1309
+[r3 mu06] pass=0.327 r=+0.403 len=298 kl=+4.02e-04 clip=0.0041 gn=0.010 sig=0.07623 d=0.1271
+[r3 mu07] pass=0.327 r=+0.403 len=298 kl=+1.45e-04 clip=0.0043 gn=0.009 sig=0.06805 d=0.1395
+[r3] done: rollout 301.6s oldlogp 123.4s grad 368.5s update 491.9s cum 16384 resp, 0.882 GPU-h, ¥1.83
+[ckpt] runs/mu8_s0/state.pt @ rollout 3
+[r4 mu00] pass=0.409 r=+0.491 len=284 kl=+0.00e+00 clip=0.0000 gn=0.010 sig=0.07694 d=0.1259
+[r4 mu01] pass=0.409 r=+0.491 len=284 kl=+3.34e-05 clip=0.0021 gn=0.009 sig=0.07511 d=0.1256
+[r4 mu02] pass=0.409 r=+0.491 len=284 kl=+1.35e-04 clip=0.0026 gn=0.009 sig=0.07379 d=0.1282
+[r4 mu03] pass=0.409 r=+0.491 len=284 kl=+2.98e-04 clip=0.0027 gn=0.010 sig=0.07917 d=0.124
+[r4 mu04] pass=0.409 r=+0.491 len=284 kl=+1.72e-04 clip=0.0030 gn=0.012 sig=0.08723 d=0.1376
+[r4 mu05] pass=0.409 r=+0.491 len=284 kl=+2.79e-04 clip=0.0031 gn=0.010 sig=0.0827 d=0.125
+[r4 mu06] pass=0.409 r=+0.491 len=284 kl=+4.09e-04 clip=0.0037 gn=0.011 sig=0.07907 d=0.1349
+[r4 mu07] pass=0.409 r=+0.491 len=284 kl=+5.09e-04 clip=0.0040 gn=0.010 sig=0.07627 d=0.1361
+[r4] done: rollout 284.4s oldlogp 119.8s grad 357.6s update 477.4s cum 20480 resp, 1.093 GPU-h, ¥2.27
+[ckpt] runs/mu8_s0/state.pt @ rollout 4
+[r5 mu00] pass=0.411 r=+0.496 len=282 kl=+0.00e+00 clip=0.0000 gn=0.011 sig=0.08383 d=0.1326
+[r5 mu01] pass=0.411 r=+0.496 len=282 kl=-7.50e-05 clip=0.0021 gn=0.010 sig=0.08139 d=0.1241
+[r5 mu02] pass=0.411 r=+0.496 len=282 kl=-2.34e-05 clip=0.0022 gn=0.010 sig=0.0787 d=0.1211
+[r5 mu03] pass=0.411 r=+0.496 len=282 kl=+5.43e-05 clip=0.0026 gn=0.011 sig=0.08172 d=0.133
+[r5 mu04] pass=0.411 r=+0.496 len=282 kl=+2.44e-04 clip=0.0025 gn=0.010 sig=0.08213 d=0.1273
+[r5 mu05] pass=0.411 r=+0.496 len=282 kl=+1.33e-05 clip=0.0025 gn=0.010 sig=0.07908 d=0.1268
+[r5 mu06] pass=0.411 r=+0.496 len=282 kl=+2.05e-04 clip=0.0030 gn=0.010 sig=0.07886 d=0.127
+[r5 mu07] pass=0.411 r=+0.496 len=282 kl=+3.17e-04 clip=0.0032 gn=0.010 sig=0.07828 d=0.1323
+[r5] done: rollout 283.6s oldlogp 119.7s grad 356.5s update 476.1s cum 24576 resp, 1.304 GPU-h, ¥2.71
+[ckpt] runs/mu8_s0/state.pt @ rollout 5
+[r6 mu00] pass=0.450 r=+0.538 len=277 kl=+0.00e+00 clip=0.0000 gn=0.011 sig=0.07619 d=0.1484
+[r6 mu01] pass=0.450 r=+0.538 len=277 kl=-1.42e-04 clip=0.0019 gn=0.011 sig=0.08126 d=0.1386
+[r6 mu02] pass=0.450 r=+0.538 len=277 kl=-2.00e-04 clip=0.0019 gn=0.011 sig=0.08369 d=0.1259
+[r6 mu03] pass=0.450 r=+0.538 len=277 kl=-2.43e-05 clip=0.0020 gn=0.011 sig=0.08355 d=0.1257
+[r6 mu04] pass=0.450 r=+0.538 len=277 kl=-6.18e-05 clip=0.0022 gn=0.010 sig=0.07933 d=0.128
+[r6 mu05] pass=0.450 r=+0.538 len=277 kl=+2.30e-05 clip=0.0023 gn=0.012 sig=0.08781 d=0.1325
+[r6 mu06] pass=0.450 r=+0.538 len=277 kl=+6.58e-05 clip=0.0020 gn=0.010 sig=0.07706 d=0.1317
+[r6 mu07] pass=0.450 r=+0.538 len=277 kl=+1.90e-05 clip=0.0022 gn=0.011 sig=0.08363 d=0.1263
+[r6] done: rollout 281.6s oldlogp 117.1s grad 349.4s update 466.5s cum 28672 resp, 1.512 GPU-h, ¥3.15
+[ckpt] runs/mu8_s0/state.pt @ rollout 6
+[r7 mu00] pass=0.445 r=+0.534 len=277 kl=+0.00e+00 clip=0.0000 gn=0.011 sig=0.07943 d=0.1336
+[r7 mu01] pass=0.445 r=+0.534 len=277 kl=+7.36e-06 clip=0.0022 gn=0.010 sig=0.0804 d=0.1263
+[r7 mu02] pass=0.445 r=+0.534 len=277 kl=+8.24e-05 clip=0.0018 gn=0.011 sig=0.08524 d=0.1299
+[r7 mu03] pass=0.445 r=+0.534 len=277 kl=-1.05e-04 clip=0.0019 gn=0.010 sig=0.08152 d=0.1278
+[r7 mu04] pass=0.445 r=+0.534 len=277 kl=-1.63e-04 clip=0.0019 gn=0.012 sig=0.0918 d=0.1322
+[r7 mu05] pass=0.445 r=+0.534 len=277 kl=+2.10e-05 clip=0.0020 gn=0.010 sig=0.07249 d=0.1374
+[r7 mu06] pass=0.445 r=+0.534 len=277 kl=+1.67e-05 clip=0.0020 gn=0.010 sig=0.08021 d=0.128
+[r7 mu07] pass=0.445 r=+0.534 len=277 kl=+3.89e-05 clip=0.0021 gn=0.010 sig=0.07847 d=0.1234
+[r7] done: rollout 278.1s oldlogp 117.2s grad 351.0s update 468.2s cum 32768 resp, 1.720 GPU-h, ¥3.58
+[ckpt] runs/mu8_s0/state.pt @ rollout 7
+(MainProcess pid=149948) INFO 10-25 13:26:10 [utils.py:628] [shutdown] Process manager: send sigterm to process EngineCore
+(EngineCore pid=150431) INFO 10-25 13:26:10 [core.py:1454] [shutdown] EngineCore: trigger received signal=SIGTERM
+(EngineCore pid=150431) INFO 10-25 13:26:10 [core.py:1635] [shutdown] EngineCore: start mode=abort timeout=0s
+(EngineCore pid=150431) INFO 10-25 13:26:10 [core.py:1666] [shutdown] EngineCore: request processing complete; starting resource teardown
+(EngineCore pid=150431) INFO 10-25 13:26:10 [core.py:1499] [shutdown] EngineCore: exiting busy loop
+[OK  ] runs/mu8_s0
+        rows=64 arm=mu8 seed=0 pass=0.445 kl=+3.89e-05 d=0.12336101938121205 cost=¥3.58
+{
+  "npz": "runs/mu8_s0/rollouts/r000.npz",
+  "n_responses": 4096,
+  "sha256_recomputed": "82bbd063c0dfcff6ac73f72d90b55c663a6e751c4a96845e6df0ae32ff262d4e",
+  "prompt_tokens": 294240,
+  "completion_tokens": 1199821,
+  "mean_completion_len": 292.93,
+  "sha256_recorded": "82bbd063c0dfcff6ac73f72d90b55c663a6e751c4a96845e6df0ae32ff262d4e",
+  "sha_matches_record": true,
+  "diversity": {
+    "groups": 512,
+    "group_size": 8,
+    "mean_unique": 7.996,
+    "min_unique": 7,
+    "groups_with_duplicates": 2,
+    "groups_all_identical": 0,
+    "mean_unique_first_token": 7.072,
+    "len_sd_within_group_mean": 153.68,
+    "len_sd_overall": 170.36,
+    "within_over_total_len_sd": 0.902
+  }
+}
+
+[diversity] 512 groups of 8: unique 7.996/8 (min 7), distinct first token 7.072, within-group len sd 153.68 vs overall 170.36 (ratio 0.902)
+=== mu8_s1  2026-10-25T13:26:17Z ===
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 4571.06it/s]
+trainable params: 69,730,304 || all params: 1,790,305,280 || trainable%: 3.8949
+(MainProcess pid=187624) INFO 10-25 13:26:34 [api_utils.py:286] non-default args: {'trust_remote_code': True, 'dtype': 'bfloat16', 'max_model_len': 1024, 'enable_prefix_caching': False, 'gpu_memory_utilization': 0.45, 'max_num_batched_tokens': 2048, 'max_num_seqs': 256, 'disable_log_stats': True, 'enforce_eager': True, 'enable_lora': True, 'max_lora_rank': 64, 'enable_chunked_prefill': False, 'model': '/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base'}
+(MainProcess pid=187624) INFO 10-25 13:26:34 [model.py:733] Resolved architecture: Qwen3ForCausalLM
+(MainProcess pid=187624) INFO 10-25 13:26:34 [model.py:2152] Using max model len 1024
+(MainProcess pid=187624) WARNING 10-25 13:26:34 [arg_utils.py:3005] This model does not officially support disabling chunked prefill. Disabling this manually may cause the engine to crash or produce incorrect outputs.
+(MainProcess pid=187624) WARNING 10-25 13:26:34 [vllm.py:1703] Enforce eager set, disabling torch.compile, CUDAGraphs, and JIT kernel warmup. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none and --kernel_config.enable_jit_warmup=False
+(MainProcess pid=187624) WARNING 10-25 13:26:34 [vllm.py:1727] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+(MainProcess pid=187624) INFO 10-25 13:26:34 [kernel.py:467] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native'])
+(MainProcess pid=187624) WARNING 10-25 13:26:34 [flashinfer.py:99] FlashInfer kernels are disabled: flashinfer-cubin is not installed and nvcc (CUDA_HOME, CUDA_PATH, PATH or /usr/local/cuda) or ninja (PATH) is missing. Set CUDA_HOME to a CUDA toolkit and put ninja on PATH, or run `vllm download-kernels`.
+(MainProcess pid=187624) INFO 10-25 13:26:34 [vllm.py:1929] Cudagraph is disabled under eager mode
+(MainProcess pid=187624) INFO 10-25 13:26:34 [compilation.py:317] Enabled custom fusions: norm_quant, act_quant
+(MainProcess pid=187624) WARNING 10-25 13:26:37 [system_utils.py:153] We must use the `spawn` multiprocessing start method. Overriding VLLM_WORKER_MULTIPROC_METHOD to 'spawn'. See https://docs.vllm.ai/en/latest/usage/troubleshooting.html#python-multiprocessing for more information. Reasons: CUDA is initialized
+(EngineCore pid=188101) INFO 10-25 13:26:45 [core.py:133] Initializing a V1 LLM engine (v0.32.0) with config: model='/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base', speculative_config=None, tokenizer='/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=True, dtype=torch.bfloat16, max_seq_len=1024, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=None, quantization_config=None, enforce_eager=True, aux_output_config=AuxOutputConfig(enable_return_routed_experts=False, max_bytes=None), kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, per_request_spec_decode_metrics='none', kv_cache_metrics=False, kv_cache_metrics_sample=0.01, custom_histogram_buckets=None, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=0, served_model_name=/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base, enable_prefix_caching=False, enable_chunked_prefill=False, pooler_config=None, compilation_config={'mode': <CompilationMode.NONE: 0>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['all'], 'ir_enable_torch_wrap': False, 'splitting_ops': [], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'cudagraph_decoder_replay': True, 'decoder_replay_cudagraph_capture_sizes': [], 'decoder_replay_trim_threshold': 768, 'compile_sizes': [], 'compile_ranges_endpoints': [2048], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.NONE: 0>, 'cudagraph_num_of_warmups': 0, 'cudagraph_capture_sizes': [], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': True, 'fuse_act_quant': True, 'fuse_attn_quant': False, 'fuse_allreduce_rms': False, 'enable_qk_norm_rope_fusion': False, 'fuse_rope_kvcache_cat_mla': False, 'fuse_act_padding': False, 'fuse_qk_norm_rope_kvcache': False}, 'max_cudagraph_capture_size': 0, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native']), enable_flashinfer_autotune=True, enable_rocm_segmented_attn_autotune=False, enable_cutedsl_warmup=True, enable_jit_warmup=False, moe_backend='auto', sparse_indexer_topk_backend='auto', linear_backend='auto', linear_backend_per_quant=None)
+(EngineCore pid=188101) WARNING 10-25 13:26:45 [flashinfer.py:99] FlashInfer kernels are disabled: flashinfer-cubin is not installed and nvcc (CUDA_HOME, CUDA_PATH, PATH or /usr/local/cuda) or ninja (PATH) is missing. Set CUDA_HOME to a CUDA toolkit and put ninja on PATH, or run `vllm download-kernels`.
+(EngineCore pid=188101) INFO 10-25 13:26:46 [parallel_state.py:1906] world_size=1 rank=0 local_rank=0 distributed_init_method=file:///tmp/vllm_dist_61f2468936834c55a11c765726a14023 backend=nccl
+(EngineCore pid=188101) INFO 10-25 13:26:46 [parallel_state.py:2350] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, ETP rank 0, EP rank N/A, EPLB rank N/A
+(EngineCore pid=188101) INFO 10-25 13:26:46 [gpu_worker.py:518] Using V2 Model Runner
+(EngineCore pid=188101) INFO 10-25 13:26:47 [model_runner.py:392] Loading model from scratch...
+(EngineCore pid=188101) INFO 10-25 13:26:48 [cuda.py:506] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].
+(EngineCore pid=188101) INFO 10-25 13:26:48 [flash_attn.py:1117] Using FlashAttention version 2
+(EngineCore pid=188101) INFO 10-25 13:26:48 [base_loader.py:82] Initializing model took 1.378641 seconds
+(EngineCore pid=188101) INFO 10-25 13:26:48 [weight_utils.py:1108] Filesystem type for checkpoints: EXT4. Checkpoint size: 3.20 GiB. Available RAM: 34.81 GiB.
+(EngineCore pid=188101) INFO 10-25 13:26:48 [weight_utils.py:1131] Auto-prefetch is disabled because the filesystem (EXT4) is not a recognized network FS (NFS/Lustre). If you want to force prefetching, start vLLM with --safetensors-load-strategy=prefetch.
+Loading safetensors checkpoint shards:   0% Completed | 0/1 [00:00<?, ?it/s]
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  1.23it/s]
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  1.23it/s]
+
+(EngineCore pid=188101) INFO 10-25 13:26:49 [default_loader.py:501] Loading weights took 1.07 seconds
+(EngineCore pid=188101) INFO 10-25 13:26:50 [punica_selector.py:20] Using PunicaWrapperGPU.
+(EngineCore pid=188101) INFO 10-25 13:26:50 [model_runner.py:424] Model loading took 3.38 GiB memory and 4.138786 seconds
+(EngineCore pid=188101) INFO 10-25 13:26:51 [topk_topp_sampler.py:124] Using FlashInfer for top-p & top-k sampling.
+(EngineCore pid=188101) INFO 10-25 13:26:51 [torch_utils.py:295] Reducing Torch threads from 22 to 1 for serving. Set OMP_NUM_THREADS in the external environment to override.
+(EngineCore pid=188101) INFO 10-25 13:26:51 [utils.py:347] Using LBNHC KV cache layout.
+(EngineCore pid=188101) WARNING 10-25 13:26:51 [utils.py:276] Using default LoRA kernel configs
+(EngineCore pid=188101) INFO 10-25 13:26:53 [gpu_worker.py:759] Available KV cache memory: 17.53 GiB
+(EngineCore pid=188101) INFO 10-25 13:26:53 [kv_cache_utils.py:2327] GPU KV cache size: 164,064 tokens, Maximum concurrency for 1,024 tokens per request: 160.22x
+(EngineCore pid=188101) INFO 10-25 13:26:53 [gpu_worker.py:1034] Free memory on device (43.13/47.37 GiB) on startup. Desired GPU memory utilization is (0.45, 21.32 GiB). Actual usage is 3.69 GiB for consumed memory (weights + non-torch), 0.1 GiB for peak activation, and 0.0 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory=18660587213` (17.38 GiB) to fit into requested memory, or `--kv-cache-memory=42077317632` (39.19 GiB) to fully utilize gpu memory. Current kv cache memory in use is 17.53 GiB.
+(EngineCore pid=188101) INFO 10-25 13:26:53 [core.py:402] init engine (profile, create kv cache, warmup model) took 2.66 s
+(EngineCore pid=188101) WARNING 10-25 13:26:54 [vllm.py:1703] Enforce eager set, disabling torch.compile, CUDAGraphs, and JIT kernel warmup. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none and --kernel_config.enable_jit_warmup=False
+(EngineCore pid=188101) WARNING 10-25 13:26:54 [vllm.py:1727] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+(EngineCore pid=188101) INFO 10-25 13:26:54 [kernel.py:467] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native'])
+(EngineCore pid=188101) INFO 10-25 13:26:54 [vllm.py:1929] Cudagraph is disabled under eager mode
+(EngineCore pid=188101) INFO 10-25 13:26:54 [compilation.py:317] Enabled custom fusions: norm_quant, act_quant
+(MainProcess pid=187624) INFO 10-25 13:26:54 [hf.py:648] Detected the chat template content format to be 'string'. You can set `--chat-template-content-format` to override this.
+[info] vocab=151669 params=1.790B trainable=69.7M
+[info] est. logits memory per micro-batch ~0.14 GiB (logit_chunk=64)
+[info] micro=4 group=8 -> 128 forward chunks / 64 sigma groups per step
+[info] arm mu=8 b=512 Br=4096 micro=4 M=128 rollouts=8 total_steps=64
+(MainProcess pid=187624) WARNING 10-25 13:26:55 [input_processor.py:289] vLLM has deprecated support for supporting different tokenizers for different LoRAs. By default, vLLM uses base model's tokenizer. If you are using a LoRA with its own tokenizer, consider specifying `--tokenizer [lora_path]` to use the LoRA tokenizer.
+[ids] r000.npz 1.0 MiB sha256=1b6819d3051d406d (4096 resp, max_seq_len 626)
+[r0 mu00] pass=0.222 r=+0.267 len=292 kl=+0.00e+00 clip=0.0000 gn=0.009 sig=0.0617 d=0.141
+[r0 mu01] pass=0.222 r=+0.267 len=292 kl=+2.79e-06 clip=0.0026 gn=0.009 sig=0.07069 d=0.1218
+[r0 mu02] pass=0.222 r=+0.267 len=292 kl=+2.59e-04 clip=0.0023 gn=0.009 sig=0.06285 d=0.1373
+[r0 mu03] pass=0.222 r=+0.267 len=292 kl=-1.02e-04 clip=0.0026 gn=0.009 sig=0.06553 d=0.1355
+[r0 mu04] pass=0.222 r=+0.267 len=292 kl=-3.70e-05 clip=0.0027 gn=0.009 sig=0.06786 d=0.1269
+[r0 mu05] pass=0.222 r=+0.267 len=292 kl=+8.38e-05 clip=0.0029 gn=0.008 sig=0.06095 d=0.1363
+[r0 mu06] pass=0.222 r=+0.267 len=292 kl=+4.52e-04 clip=0.0031 gn=0.009 sig=0.06883 d=0.13
+[r0 mu07] pass=0.222 r=+0.267 len=292 kl=+1.17e-04 clip=0.0033 gn=0.009 sig=0.06932 d=0.1289
+[r0] done: rollout 294.6s oldlogp 124.6s grad 371.2s update 495.9s cum 4096 resp, 0.220 GPU-h, ¥0.46
+[ckpt] runs/mu8_s1/state.pt @ rollout 0
+[r1 mu00] pass=0.257 r=+0.308 len=303 kl=+0.00e+00 clip=0.0000 gn=0.009 sig=0.06279 d=0.1361
+[r1 mu01] pass=0.257 r=+0.308 len=303 kl=-5.14e-05 clip=0.0025 gn=0.009 sig=0.06681 d=0.1377
+[r1 mu02] pass=0.257 r=+0.308 len=303 kl=-1.78e-05 clip=0.0027 gn=0.008 sig=0.06418 d=0.1296
+[r1 mu03] pass=0.257 r=+0.308 len=303 kl=+3.36e-04 clip=0.0033 gn=0.008 sig=0.06461 d=0.1297
+[r1 mu04] pass=0.257 r=+0.308 len=303 kl=+2.69e-04 clip=0.0044 gn=0.010 sig=0.07441 d=0.1381
+[r1 mu05] pass=0.257 r=+0.308 len=303 kl=+3.69e-04 clip=0.0054 gn=0.008 sig=0.06337 d=0.1332
+[r1 mu06] pass=0.257 r=+0.308 len=303 kl=+9.37e-04 clip=0.0059 gn=0.009 sig=0.06734 d=0.1286
+[r1 mu07] pass=0.257 r=+0.308 len=303 kl=+6.14e-04 clip=0.0068 gn=0.010 sig=0.0714 d=0.1375
+[r1] done: rollout 301.0s oldlogp 126.5s grad 378.8s update 505.4s cum 8192 resp, 0.444 GPU-h, ¥0.92
+[ckpt] runs/mu8_s1/state.pt @ rollout 1
+[r2 mu00] pass=0.307 r=+0.375 len=298 kl=+0.00e+00 clip=0.0000 gn=0.009 sig=0.06473 d=0.1391
+[r2 mu01] pass=0.307 r=+0.375 len=298 kl=-1.19e-04 clip=0.0025 gn=0.009 sig=0.07199 d=0.1288
+[r2 mu02] pass=0.307 r=+0.375 len=298 kl=-1.20e-05 clip=0.0024 gn=0.009 sig=0.06634 d=0.1307
+[r2 mu03] pass=0.307 r=+0.375 len=298 kl=+1.83e-04 clip=0.0029 gn=0.009 sig=0.07075 d=0.1283
+[r2 mu04] pass=0.307 r=+0.375 len=298 kl=+1.47e-04 clip=0.0032 gn=0.009 sig=0.07293 d=0.1286
+[r2 mu05] pass=0.307 r=+0.375 len=298 kl=+4.13e-04 clip=0.0038 gn=0.009 sig=0.07298 d=0.1249
+[r2 mu06] pass=0.307 r=+0.375 len=298 kl=+2.47e-04 clip=0.0045 gn=0.010 sig=0.07309 d=0.1381
+[r2 mu07] pass=0.307 r=+0.375 len=298 kl=+3.70e-04 clip=0.0054 gn=0.009 sig=0.07386 d=0.1232
+[r2] done: rollout 301.1s oldlogp 125.4s grad 375.1s update 500.5s cum 12288 resp, 0.666 GPU-h, ¥1.39
+[ckpt] runs/mu8_s1/state.pt @ rollout 2
+[r3 mu00] pass=0.355 r=+0.432 len=288 kl=+0.00e+00 clip=0.0000 gn=0.011 sig=0.07941 d=0.1323
+[r3 mu01] pass=0.355 r=+0.432 len=288 kl=+4.10e-05 clip=0.0024 gn=0.011 sig=0.07742 d=0.1416
+[r3 mu02] pass=0.355 r=+0.432 len=288 kl=+3.61e-04 clip=0.0031 gn=0.010 sig=0.07362 d=0.1346
+[r3 mu03] pass=0.355 r=+0.432 len=288 kl=+4.70e-04 clip=0.0029 gn=0.010 sig=0.07727 d=0.1322
+[r3 mu04] pass=0.355 r=+0.432 len=288 kl=+1.84e-05 clip=0.0039 gn=0.010 sig=0.07925 d=0.1255
+[r3 mu05] pass=0.355 r=+0.432 len=288 kl=+4.43e-04 clip=0.0049 gn=0.010 sig=0.07749 d=0.1294
+[r3 mu06] pass=0.355 r=+0.432 len=288 kl=+6.01e-04 clip=0.0055 gn=0.010 sig=0.0768 d=0.1319
+[r3 mu07] pass=0.355 r=+0.432 len=288 kl=+8.73e-04 clip=0.0062 gn=0.010 sig=0.07142 d=0.1366
+[r3] done: rollout 286.9s oldlogp 121.7s grad 362.4s update 484.2s cum 16384 resp, 0.880 GPU-h, ¥1.83
+[ckpt] runs/mu8_s1/state.pt @ rollout 3
+[r4 mu00] pass=0.390 r=+0.473 len=286 kl=+0.00e+00 clip=0.0000 gn=0.010 sig=0.07754 d=0.1353
+[r4 mu01] pass=0.390 r=+0.473 len=286 kl=+5.15e-05 clip=0.0021 gn=0.012 sig=0.08571 d=0.1347
+[r4 mu02] pass=0.390 r=+0.473 len=286 kl=-2.44e-05 clip=0.0026 gn=0.009 sig=0.07381 d=0.1252
+[r4 mu03] pass=0.390 r=+0.473 len=286 kl=+1.69e-04 clip=0.0027 gn=0.011 sig=0.08339 d=0.1277
+[r4 mu04] pass=0.390 r=+0.473 len=286 kl=+2.19e-04 clip=0.0028 gn=0.011 sig=0.0839 d=0.1287
+[r4 mu05] pass=0.390 r=+0.473 len=286 kl=-5.05e-05 clip=0.0032 gn=0.010 sig=0.07896 d=0.1303
+[r4 mu06] pass=0.390 r=+0.473 len=286 kl=+1.83e-04 clip=0.0035 gn=0.009 sig=0.07483 d=0.1245
+[r4 mu07] pass=0.390 r=+0.473 len=286 kl=+3.77e-04 clip=0.0037 gn=0.009 sig=0.07071 d=0.1232
+[r4] done: rollout 288.1s oldlogp 119.9s grad 357.8s update 477.8s cum 20480 resp, 1.093 GPU-h, ¥2.27
+[ckpt] runs/mu8_s1/state.pt @ rollout 4
+[r5 mu00] pass=0.453 r=+0.541 len=275 kl=+0.00e+00 clip=0.0000 gn=0.012 sig=0.08785 d=0.1384
+[r5 mu01] pass=0.453 r=+0.541 len=275 kl=+2.43e-05 clip=0.0024 gn=0.010 sig=0.07894 d=0.1276
+[r5 mu02] pass=0.453 r=+0.541 len=275 kl=-1.21e-04 clip=0.0022 gn=0.010 sig=0.08206 d=0.1204
+[r5 mu03] pass=0.453 r=+0.541 len=275 kl=-6.84e-05 clip=0.0020 gn=0.011 sig=0.08406 d=0.1308
+[r5 mu04] pass=0.453 r=+0.541 len=275 kl=+1.40e-04 clip=0.0024 gn=0.010 sig=0.07953 d=0.1268
+[r5 mu05] pass=0.453 r=+0.541 len=275 kl=+3.53e-06 clip=0.0030 gn=0.010 sig=0.08391 d=0.1233
+[r5 mu06] pass=0.453 r=+0.541 len=275 kl=+5.75e-05 clip=0.0030 gn=0.010 sig=0.08354 d=0.1248
+[r5 mu07] pass=0.453 r=+0.541 len=275 kl=+1.76e-04 clip=0.0027 gn=0.010 sig=0.07553 d=0.1353
+[r5] done: rollout 278.0s oldlogp 118.2s grad 351.5s update 469.7s cum 24576 resp, 1.301 GPU-h, ¥2.71
+[ckpt] runs/mu8_s1/state.pt @ rollout 5
+[r6 mu00] pass=0.447 r=+0.535 len=277 kl=+0.00e+00 clip=0.0000 gn=0.012 sig=0.09259 d=0.127
+[r6 mu01] pass=0.447 r=+0.535 len=277 kl=-3.80e-05 clip=0.0021 gn=0.010 sig=0.08126 d=0.1227
+[r6 mu02] pass=0.447 r=+0.535 len=277 kl=-4.71e-05 clip=0.0023 gn=0.010 sig=0.0806 d=0.1206
+[r6 mu03] pass=0.447 r=+0.535 len=277 kl=+1.18e-04 clip=0.0020 gn=0.011 sig=0.08596 d=0.1324
+[r6 mu04] pass=0.447 r=+0.535 len=277 kl=-3.24e-05 clip=0.0021 gn=0.011 sig=0.08095 d=0.1339
+[r6 mu05] pass=0.447 r=+0.535 len=277 kl=-1.67e-05 clip=0.0020 gn=0.010 sig=0.08125 d=0.1232
+[r6 mu06] pass=0.447 r=+0.535 len=277 kl=+2.87e-05 clip=0.0023 gn=0.011 sig=0.08504 d=0.1268
+[r6 mu07] pass=0.447 r=+0.535 len=277 kl=+5.99e-05 clip=0.0025 gn=0.010 sig=0.08217 d=0.1248
+[r6] done: rollout 279.7s oldlogp 116.9s grad 352.5s update 469.4s cum 28672 resp, 1.509 GPU-h, ¥3.14
+[ckpt] runs/mu8_s1/state.pt @ rollout 6
+[r7 mu00] pass=0.480 r=+0.569 len=273 kl=+0.00e+00 clip=0.0000 gn=0.010 sig=0.08264 d=0.1225
+[r7 mu01] pass=0.480 r=+0.569 len=273 kl=-9.41e-05 clip=0.0020 gn=0.010 sig=0.07835 d=0.1329
+[r7 mu02] pass=0.480 r=+0.569 len=273 kl=+2.05e-04 clip=0.0022 gn=0.012 sig=0.08992 d=0.1283
+[r7 mu03] pass=0.480 r=+0.569 len=273 kl=+6.01e-05 clip=0.0021 gn=0.011 sig=0.08652 d=0.1288
+[r7 mu04] pass=0.480 r=+0.569 len=273 kl=-1.64e-04 clip=0.0020 gn=0.011 sig=0.08355 d=0.1349
+[r7 mu05] pass=0.480 r=+0.569 len=273 kl=-1.11e-04 clip=0.0021 gn=0.011 sig=0.0849 d=0.1289
+[r7 mu06] pass=0.480 r=+0.569 len=273 kl=+4.84e-05 clip=0.0021 gn=0.010 sig=0.08018 d=0.1263
+[r7 mu07] pass=0.480 r=+0.569 len=273 kl=+1.04e-04 clip=0.0020 gn=0.011 sig=0.08187 d=0.1301
+[r7] done: rollout 274.5s oldlogp 115.5s grad 348.1s update 463.7s cum 32768 resp, 1.714 GPU-h, ¥3.57
+[ckpt] runs/mu8_s1/state.pt @ rollout 7
+(MainProcess pid=187624) INFO 10-25 15:10:13 [utils.py:628] [shutdown] Process manager: send sigterm to process EngineCore
+(EngineCore pid=188101) INFO 10-25 15:10:13 [core.py:1454] [shutdown] EngineCore: trigger received signal=SIGTERM
+(EngineCore pid=188101) INFO 10-25 15:10:13 [core.py:1635] [shutdown] EngineCore: start mode=abort timeout=0s
+(EngineCore pid=188101) INFO 10-25 15:10:13 [core.py:1666] [shutdown] EngineCore: request processing complete; starting resource teardown
+(EngineCore pid=188101) INFO 10-25 15:10:13 [core.py:1499] [shutdown] EngineCore: exiting busy loop
+[OK  ] runs/mu8_s1
+        rows=64 arm=mu8 seed=1 pass=0.480 kl=+1.04e-04 d=0.13005218257757603 cost=¥3.57
+{
+  "npz": "runs/mu8_s1/rollouts/r000.npz",
+  "n_responses": 4096,
+  "sha256_recomputed": "1b6819d3051d406de7477c40625bb86235103acd7c02a5536fe4d934fbeb01c8",
+  "prompt_tokens": 297080,
+  "completion_tokens": 1195834,
+  "mean_completion_len": 291.95,
+  "sha256_recorded": "1b6819d3051d406de7477c40625bb86235103acd7c02a5536fe4d934fbeb01c8",
+  "sha_matches_record": true,
+  "diversity": {
+    "groups": 512,
+    "group_size": 8,
+    "mean_unique": 7.996,
+    "min_unique": 7,
+    "groups_with_duplicates": 2,
+    "groups_all_identical": 0,
+    "mean_unique_first_token": 6.932,
+    "len_sd_within_group_mean": 154.12,
+    "len_sd_overall": 168.96,
+    "within_over_total_len_sd": 0.912
+  }
+}
+
+[diversity] 512 groups of 8: unique 7.996/8 (min 7), distinct first token 6.932, within-group len sd 154.12 vs overall 168.96 (ratio 0.912)
+=== mu8_s2  2026-10-25T15:10:21Z ===
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 3986.54it/s]
+trainable params: 69,730,304 || all params: 1,790,305,280 || trainable%: 3.8949
+(MainProcess pid=220267) INFO 10-25 15:10:39 [api_utils.py:286] non-default args: {'trust_remote_code': True, 'dtype': 'bfloat16', 'max_model_len': 1024, 'enable_prefix_caching': False, 'gpu_memory_utilization': 0.45, 'max_num_batched_tokens': 2048, 'max_num_seqs': 256, 'disable_log_stats': True, 'enforce_eager': True, 'enable_lora': True, 'max_lora_rank': 64, 'enable_chunked_prefill': False, 'model': '/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base'}
+(MainProcess pid=220267) INFO 10-25 15:10:39 [model.py:733] Resolved architecture: Qwen3ForCausalLM
+(MainProcess pid=220267) INFO 10-25 15:10:39 [model.py:2152] Using max model len 1024
+(MainProcess pid=220267) WARNING 10-25 15:10:39 [arg_utils.py:3005] This model does not officially support disabling chunked prefill. Disabling this manually may cause the engine to crash or produce incorrect outputs.
+(MainProcess pid=220267) WARNING 10-25 15:10:39 [vllm.py:1703] Enforce eager set, disabling torch.compile, CUDAGraphs, and JIT kernel warmup. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none and --kernel_config.enable_jit_warmup=False
+(MainProcess pid=220267) WARNING 10-25 15:10:39 [vllm.py:1727] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+(MainProcess pid=220267) INFO 10-25 15:10:39 [kernel.py:467] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native'])
+(MainProcess pid=220267) WARNING 10-25 15:10:39 [flashinfer.py:99] FlashInfer kernels are disabled: flashinfer-cubin is not installed and nvcc (CUDA_HOME, CUDA_PATH, PATH or /usr/local/cuda) or ninja (PATH) is missing. Set CUDA_HOME to a CUDA toolkit and put ninja on PATH, or run `vllm download-kernels`.
+(MainProcess pid=220267) INFO 10-25 15:10:39 [vllm.py:1929] Cudagraph is disabled under eager mode
+(MainProcess pid=220267) INFO 10-25 15:10:39 [compilation.py:317] Enabled custom fusions: norm_quant, act_quant
+(MainProcess pid=220267) WARNING 10-25 15:10:42 [system_utils.py:153] We must use the `spawn` multiprocessing start method. Overriding VLLM_WORKER_MULTIPROC_METHOD to 'spawn'. See https://docs.vllm.ai/en/latest/usage/troubleshooting.html#python-multiprocessing for more information. Reasons: CUDA is initialized
+(EngineCore pid=220780) INFO 10-25 15:10:50 [core.py:133] Initializing a V1 LLM engine (v0.32.0) with config: model='/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base', speculative_config=None, tokenizer='/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=True, dtype=torch.bfloat16, max_seq_len=1024, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=None, quantization_config=None, enforce_eager=True, aux_output_config=AuxOutputConfig(enable_return_routed_experts=False, max_bytes=None), kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, per_request_spec_decode_metrics='none', kv_cache_metrics=False, kv_cache_metrics_sample=0.01, custom_histogram_buckets=None, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=0, served_model_name=/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base, enable_prefix_caching=False, enable_chunked_prefill=False, pooler_config=None, compilation_config={'mode': <CompilationMode.NONE: 0>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['all'], 'ir_enable_torch_wrap': False, 'splitting_ops': [], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'cudagraph_decoder_replay': True, 'decoder_replay_cudagraph_capture_sizes': [], 'decoder_replay_trim_threshold': 768, 'compile_sizes': [], 'compile_ranges_endpoints': [2048], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.NONE: 0>, 'cudagraph_num_of_warmups': 0, 'cudagraph_capture_sizes': [], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': True, 'fuse_act_quant': True, 'fuse_attn_quant': False, 'fuse_allreduce_rms': False, 'enable_qk_norm_rope_fusion': False, 'fuse_rope_kvcache_cat_mla': False, 'fuse_act_padding': False, 'fuse_qk_norm_rope_kvcache': False}, 'max_cudagraph_capture_size': 0, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native']), enable_flashinfer_autotune=True, enable_rocm_segmented_attn_autotune=False, enable_cutedsl_warmup=True, enable_jit_warmup=False, moe_backend='auto', sparse_indexer_topk_backend='auto', linear_backend='auto', linear_backend_per_quant=None)
+(EngineCore pid=220780) WARNING 10-25 15:10:50 [flashinfer.py:99] FlashInfer kernels are disabled: flashinfer-cubin is not installed and nvcc (CUDA_HOME, CUDA_PATH, PATH or /usr/local/cuda) or ninja (PATH) is missing. Set CUDA_HOME to a CUDA toolkit and put ninja on PATH, or run `vllm download-kernels`.
+(EngineCore pid=220780) INFO 10-25 15:10:51 [parallel_state.py:1906] world_size=1 rank=0 local_rank=0 distributed_init_method=file:///tmp/vllm_dist_585e358a1b5d4c51bf430ed0d450a85a backend=nccl
+(EngineCore pid=220780) INFO 10-25 15:10:51 [parallel_state.py:2350] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, ETP rank 0, EP rank N/A, EPLB rank N/A
+(EngineCore pid=220780) INFO 10-25 15:10:51 [gpu_worker.py:518] Using V2 Model Runner
+(EngineCore pid=220780) INFO 10-25 15:10:53 [model_runner.py:392] Loading model from scratch...
+(EngineCore pid=220780) INFO 10-25 15:10:53 [cuda.py:506] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].
+(EngineCore pid=220780) INFO 10-25 15:10:53 [flash_attn.py:1117] Using FlashAttention version 2
+(EngineCore pid=220780) INFO 10-25 15:10:54 [base_loader.py:82] Initializing model took 1.527693 seconds
+(EngineCore pid=220780) INFO 10-25 15:10:54 [weight_utils.py:1108] Filesystem type for checkpoints: EXT4. Checkpoint size: 3.20 GiB. Available RAM: 31.80 GiB.
+(EngineCore pid=220780) INFO 10-25 15:10:54 [weight_utils.py:1131] Auto-prefetch is disabled because the filesystem (EXT4) is not a recognized network FS (NFS/Lustre). If you want to force prefetching, start vLLM with --safetensors-load-strategy=prefetch.
+Loading safetensors checkpoint shards:   0% Completed | 0/1 [00:00<?, ?it/s]
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  1.21it/s]
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  1.21it/s]
+
+(EngineCore pid=220780) INFO 10-25 15:10:55 [default_loader.py:501] Loading weights took 1.10 seconds
+(EngineCore pid=220780) INFO 10-25 15:10:56 [punica_selector.py:20] Using PunicaWrapperGPU.
+(EngineCore pid=220780) INFO 10-25 15:10:57 [model_runner.py:424] Model loading took 3.38 GiB memory and 5.064582 seconds
+(EngineCore pid=220780) INFO 10-25 15:10:57 [topk_topp_sampler.py:124] Using FlashInfer for top-p & top-k sampling.
+(EngineCore pid=220780) INFO 10-25 15:10:57 [torch_utils.py:295] Reducing Torch threads from 22 to 1 for serving. Set OMP_NUM_THREADS in the external environment to override.
+(EngineCore pid=220780) INFO 10-25 15:10:57 [utils.py:347] Using LBNHC KV cache layout.
+(EngineCore pid=220780) WARNING 10-25 15:10:57 [utils.py:276] Using default LoRA kernel configs
+(EngineCore pid=220780) INFO 10-25 15:10:59 [gpu_worker.py:759] Available KV cache memory: 17.53 GiB
+(EngineCore pid=220780) INFO 10-25 15:10:59 [kv_cache_utils.py:2327] GPU KV cache size: 164,064 tokens, Maximum concurrency for 1,024 tokens per request: 160.22x
+(EngineCore pid=220780) INFO 10-25 15:10:59 [gpu_worker.py:1034] Free memory on device (43.13/47.37 GiB) on startup. Desired GPU memory utilization is (0.45, 21.32 GiB). Actual usage is 3.69 GiB for consumed memory (weights + non-torch), 0.1 GiB for peak activation, and 0.0 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory=18660587213` (17.38 GiB) to fit into requested memory, or `--kv-cache-memory=42077317632` (39.19 GiB) to fully utilize gpu memory. Current kv cache memory in use is 17.53 GiB.
+(EngineCore pid=220780) INFO 10-25 15:11:00 [core.py:402] init engine (profile, create kv cache, warmup model) took 2.97 s
+(EngineCore pid=220780) WARNING 10-25 15:11:00 [vllm.py:1703] Enforce eager set, disabling torch.compile, CUDAGraphs, and JIT kernel warmup. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none and --kernel_config.enable_jit_warmup=False
+(EngineCore pid=220780) WARNING 10-25 15:11:00 [vllm.py:1727] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+(EngineCore pid=220780) INFO 10-25 15:11:00 [kernel.py:467] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native'])
+(EngineCore pid=220780) INFO 10-25 15:11:00 [vllm.py:1929] Cudagraph is disabled under eager mode
+(EngineCore pid=220780) INFO 10-25 15:11:00 [compilation.py:317] Enabled custom fusions: norm_quant, act_quant
+(MainProcess pid=220267) INFO 10-25 15:11:01 [hf.py:648] Detected the chat template content format to be 'string'. You can set `--chat-template-content-format` to override this.
+[info] vocab=151669 params=1.790B trainable=69.7M
+[info] est. logits memory per micro-batch ~0.14 GiB (logit_chunk=64)
+[info] micro=4 group=8 -> 128 forward chunks / 64 sigma groups per step
+[info] arm mu=8 b=512 Br=4096 micro=4 M=128 rollouts=8 total_steps=64
+(MainProcess pid=220267) WARNING 10-25 15:11:02 [input_processor.py:289] vLLM has deprecated support for supporting different tokenizers for different LoRAs. By default, vLLM uses base model's tokenizer. If you are using a LoRA with its own tokenizer, consider specifying `--tokenizer [lora_path]` to use the LoRA tokenizer.
+[ids] r000.npz 1.1 MiB sha256=deb3c6df8f7511f7 (4096 resp, max_seq_len 628)
+[r0 mu00] pass=0.225 r=+0.269 len=295 kl=+0.00e+00 clip=0.0000 gn=0.009 sig=0.0656 d=0.1412
+[r0 mu01] pass=0.225 r=+0.269 len=295 kl=+6.91e-05 clip=0.0026 gn=0.009 sig=0.06581 d=0.1348
+[r0 mu02] pass=0.225 r=+0.269 len=295 kl=+1.37e-04 clip=0.0024 gn=0.010 sig=0.07261 d=0.139
+[r0 mu03] pass=0.225 r=+0.269 len=295 kl=-7.55e-05 clip=0.0026 gn=0.008 sig=0.06289 d=0.1306
+[r0 mu04] pass=0.225 r=+0.269 len=295 kl=-3.09e-05 clip=0.0024 gn=0.009 sig=0.06998 d=0.129
+[r0 mu05] pass=0.225 r=+0.269 len=295 kl=+4.39e-05 clip=0.0025 gn=0.008 sig=0.06384 d=0.1288
+[r0 mu06] pass=0.225 r=+0.269 len=295 kl=-6.40e-05 clip=0.0026 gn=0.009 sig=0.06652 d=0.132
+[r0 mu07] pass=0.225 r=+0.269 len=295 kl=+1.25e-04 clip=0.0029 gn=0.008 sig=0.06578 d=0.1291
+[r0] done: rollout 292.9s oldlogp 126.0s grad 374.7s update 500.7s cum 4096 resp, 0.220 GPU-h, ¥0.46
+[ckpt] runs/mu8_s2/state.pt @ rollout 0
+[r1 mu00] pass=0.246 r=+0.299 len=297 kl=+0.00e+00 clip=0.0000 gn=0.009 sig=0.06447 d=0.1331
+[r1 mu01] pass=0.246 r=+0.299 len=297 kl=-2.31e-06 clip=0.0028 gn=0.008 sig=0.06269 d=0.1285
+[r1 mu02] pass=0.246 r=+0.299 len=297 kl=+4.28e-06 clip=0.0028 gn=0.009 sig=0.06718 d=0.1337
+[r1 mu03] pass=0.246 r=+0.299 len=297 kl=+2.04e-04 clip=0.0034 gn=0.010 sig=0.0773 d=0.1301
+[r1 mu04] pass=0.246 r=+0.299 len=297 kl=+2.53e-04 clip=0.0042 gn=0.010 sig=0.0682 d=0.1404
+[r1 mu05] pass=0.246 r=+0.299 len=297 kl=+1.69e-04 clip=0.0047 gn=0.009 sig=0.07007 d=0.129
+[r1 mu06] pass=0.246 r=+0.299 len=297 kl=+3.06e-04 clip=0.0053 gn=0.009 sig=0.07226 d=0.1307
+[r1 mu07] pass=0.246 r=+0.299 len=297 kl=+5.08e-04 clip=0.0062 gn=0.009 sig=0.07115 d=0.1272
+[r1] done: rollout 300.1s oldlogp 125.0s grad 372.0s update 497.0s cum 8192 resp, 0.442 GPU-h, ¥0.92
+[ckpt] runs/mu8_s2/state.pt @ rollout 1
+[r2 mu00] pass=0.287 r=+0.351 len=293 kl=+0.00e+00 clip=0.0000 gn=0.010 sig=0.07242 d=0.1314
+[r2 mu01] pass=0.287 r=+0.351 len=293 kl=+1.79e-04 clip=0.0027 gn=0.009 sig=0.07139 d=0.1321
+[r2 mu02] pass=0.287 r=+0.351 len=293 kl=-3.23e-05 clip=0.0028 gn=0.010 sig=0.07362 d=0.1377
+[r2 mu03] pass=0.287 r=+0.351 len=293 kl=+2.67e-04 clip=0.0038 gn=0.009 sig=0.07505 d=0.1236
+[r2 mu04] pass=0.287 r=+0.351 len=293 kl=+5.65e-04 clip=0.0042 gn=0.010 sig=0.07536 d=0.1315
+[r2 mu05] pass=0.287 r=+0.351 len=293 kl=+5.71e-04 clip=0.0049 gn=0.011 sig=0.08418 d=0.1353
+[r2 mu06] pass=0.287 r=+0.351 len=293 kl=+7.59e-04 clip=0.0058 gn=0.010 sig=0.07544 d=0.127
+[r2 mu07] pass=0.287 r=+0.351 len=293 kl=+7.87e-04 clip=0.0062 gn=0.010 sig=0.07652 d=0.1262
+[r2] done: rollout 297.9s oldlogp 125.6s grad 378.1s update 503.7s cum 12288 resp, 0.665 GPU-h, ¥1.38
+[ckpt] runs/mu8_s2/state.pt @ rollout 2
+[r3 mu00] pass=0.344 r=+0.419 len=291 kl=+0.00e+00 clip=0.0000 gn=0.010 sig=0.07548 d=0.133
+[r3 mu01] pass=0.344 r=+0.419 len=291 kl=-5.18e-05 clip=0.0025 gn=0.010 sig=0.0759 d=0.1304
+[r3 mu02] pass=0.344 r=+0.419 len=291 kl=+3.32e-05 clip=0.0026 gn=0.010 sig=0.07565 d=0.1291
+[r3 mu03] pass=0.344 r=+0.419 len=291 kl=+6.79e-05 clip=0.0031 gn=0.009 sig=0.0736 d=0.124
+[r3 mu04] pass=0.344 r=+0.419 len=291 kl=+1.16e-04 clip=0.0034 gn=0.011 sig=0.08601 d=0.1312
+[r3 mu05] pass=0.344 r=+0.419 len=291 kl=+2.58e-04 clip=0.0040 gn=0.010 sig=0.07625 d=0.1368
+[r3 mu06] pass=0.344 r=+0.419 len=291 kl=+3.96e-04 clip=0.0043 gn=0.009 sig=0.07676 d=0.1232
+[r3 mu07] pass=0.344 r=+0.419 len=291 kl=+6.31e-04 clip=0.0046 gn=0.009 sig=0.07013 d=0.1284
+[r3] done: rollout 302.0s oldlogp 124.1s grad 374.1s update 498.3s cum 16384 resp, 0.887 GPU-h, ¥1.84
+[ckpt] runs/mu8_s2/state.pt @ rollout 3
+[r4 mu00] pass=0.385 r=+0.467 len=286 kl=+0.00e+00 clip=0.0000 gn=0.011 sig=0.07831 d=0.1342
+[r4 mu01] pass=0.385 r=+0.467 len=286 kl=+1.28e-04 clip=0.0025 gn=0.011 sig=0.07891 d=0.1339
+[r4 mu02] pass=0.385 r=+0.467 len=286 kl=+7.18e-05 clip=0.0024 gn=0.011 sig=0.07952 d=0.1335
+[r4 mu03] pass=0.385 r=+0.467 len=286 kl=+8.52e-05 clip=0.0030 gn=0.010 sig=0.08143 d=0.1284
+[r4 mu04] pass=0.385 r=+0.467 len=286 kl=+3.04e-04 clip=0.0029 gn=0.010 sig=0.07445 d=0.1406
+[r4 mu05] pass=0.385 r=+0.467 len=286 kl=+2.08e-04 clip=0.0035 gn=0.011 sig=0.08144 d=0.1311
+[r4 mu06] pass=0.385 r=+0.467 len=286 kl=+1.65e-04 clip=0.0037 gn=0.009 sig=0.07617 d=0.1235
+[r4 mu07] pass=0.385 r=+0.467 len=286 kl=+2.03e-04 clip=0.0044 gn=0.010 sig=0.08219 d=0.1242
+[r4] done: rollout 297.2s oldlogp 121.1s grad 362.9s update 484.0s cum 20480 resp, 1.104 GPU-h, ¥2.30
+[ckpt] runs/mu8_s2/state.pt @ rollout 4
+[r5 mu00] pass=0.423 r=+0.508 len=287 kl=+0.00e+00 clip=0.0000 gn=0.011 sig=0.08544 d=0.1316
+[r5 mu01] pass=0.423 r=+0.508 len=287 kl=-2.87e-05 clip=0.0023 gn=0.010 sig=0.07968 d=0.1261
+[r5 mu02] pass=0.423 r=+0.508 len=287 kl=+1.52e-04 clip=0.0025 gn=0.011 sig=0.07959 d=0.1327
+[r5 mu03] pass=0.423 r=+0.508 len=287 kl=+1.05e-04 clip=0.0026 gn=0.010 sig=0.08236 d=0.1258
+[r5 mu04] pass=0.423 r=+0.508 len=287 kl=+3.62e-04 clip=0.0027 gn=0.011 sig=0.08411 d=0.128
+[r5 mu05] pass=0.423 r=+0.508 len=287 kl=+1.18e-04 clip=0.0028 gn=0.011 sig=0.08357 d=0.1264
+[r5 mu06] pass=0.423 r=+0.508 len=287 kl=+2.86e-04 clip=0.0033 gn=0.010 sig=0.07964 d=0.1247
+[r5 mu07] pass=0.423 r=+0.508 len=287 kl=+3.46e-04 clip=0.0033 gn=0.011 sig=0.08652 d=0.1265
+[r5] done: rollout 292.3s oldlogp 120.7s grad 361.8s update 482.5s cum 24576 resp, 1.319 GPU-h, ¥2.74
+[ckpt] runs/mu8_s2/state.pt @ rollout 5
+[r6 mu00] pass=0.468 r=+0.555 len=280 kl=+0.00e+00 clip=0.0000 gn=0.011 sig=0.08411 d=0.1281
+[r6 mu01] pass=0.468 r=+0.555 len=280 kl=-2.05e-04 clip=0.0026 gn=0.010 sig=0.07858 d=0.1285
+[r6 mu02] pass=0.468 r=+0.555 len=280 kl=+6.37e-06 clip=0.0021 gn=0.011 sig=0.08361 d=0.1305
+[r6 mu03] pass=0.468 r=+0.555 len=280 kl=-6.37e-05 clip=0.0025 gn=0.011 sig=0.08608 d=0.1305
+[r6 mu04] pass=0.468 r=+0.555 len=280 kl=-1.11e-05 clip=0.0023 gn=0.010 sig=0.08356 d=0.1243
+[r6 mu05] pass=0.468 r=+0.555 len=280 kl=+1.27e-04 clip=0.0024 gn=0.012 sig=0.08898 d=0.1363
+[r6 mu06] pass=0.468 r=+0.555 len=280 kl=-1.73e-05 clip=0.0025 gn=0.011 sig=0.08233 d=0.1336
+[r6 mu07] pass=0.468 r=+0.555 len=280 kl=-8.94e-05 clip=0.0023 gn=0.012 sig=0.08698 d=0.1341
+[r6] done: rollout 282.5s oldlogp 119.1s grad 356.8s update 475.9s cum 28672 resp, 1.530 GPU-h, ¥3.18
+[ckpt] runs/mu8_s2/state.pt @ rollout 6
+[r7 mu00] pass=0.452 r=+0.540 len=281 kl=+0.00e+00 clip=0.0000 gn=0.011 sig=0.08359 d=0.1317
+[r7 mu01] pass=0.452 r=+0.540 len=281 kl=+1.01e-04 clip=0.0021 gn=0.010 sig=0.08167 d=0.1279
+[r7 mu02] pass=0.452 r=+0.540 len=281 kl=+1.13e-06 clip=0.0021 gn=0.011 sig=0.08165 d=0.1329
+[r7 mu03] pass=0.452 r=+0.540 len=281 kl=+7.23e-05 clip=0.0022 gn=0.011 sig=0.08527 d=0.1292
+[r7 mu04] pass=0.452 r=+0.540 len=281 kl=+6.73e-05 clip=0.0023 gn=0.011 sig=0.08615 d=0.1267
+[r7 mu05] pass=0.452 r=+0.540 len=281 kl=-4.18e-05 clip=0.0020 gn=0.011 sig=0.08319 d=0.1288
+[r7 mu06] pass=0.452 r=+0.540 len=281 kl=-1.49e-04 clip=0.0023 gn=0.012 sig=0.08711 d=0.1345
+[r7 mu07] pass=0.452 r=+0.540 len=281 kl=+3.20e-05 clip=0.0022 gn=0.011 sig=0.08497 d=0.1307
+[r7] done: rollout 287.1s oldlogp 119.5s grad 359.5s update 479.0s cum 32768 resp, 1.743 GPU-h, ¥3.62
+[ckpt] runs/mu8_s2/state.pt @ rollout 7
+(MainProcess pid=220267) INFO 10-25 16:56:02 [utils.py:628] [shutdown] Process manager: send sigterm to process EngineCore
+(EngineCore pid=220780) INFO 10-25 16:56:02 [core.py:1454] [shutdown] EngineCore: trigger received signal=SIGTERM
+(EngineCore pid=220780) INFO 10-25 16:56:02 [core.py:1635] [shutdown] EngineCore: start mode=abort timeout=0s
+(EngineCore pid=220780) INFO 10-25 16:56:02 [core.py:1666] [shutdown] EngineCore: request processing complete; starting resource teardown
+(EngineCore pid=220780) INFO 10-25 16:56:02 [core.py:1499] [shutdown] EngineCore: exiting busy loop
+[OK  ] runs/mu8_s2
+        rows=64 arm=mu8 seed=2 pass=0.452 kl=+3.20e-05 d=0.13066030080984958 cost=¥3.62
+{
+  "npz": "runs/mu8_s2/rollouts/r000.npz",
+  "n_responses": 4096,
+  "sha256_recomputed": "deb3c6df8f7511f7393a513b80f566ce47b88c7f06fad6a2c0dd9f51e8dce247",
+  "prompt_tokens": 296000,
+  "completion_tokens": 1208294,
+  "mean_completion_len": 294.99,
+  "sha256_recorded": "deb3c6df8f7511f7393a513b80f566ce47b88c7f06fad6a2c0dd9f51e8dce247",
+  "sha_matches_record": true,
+  "diversity": {
+    "groups": 512,
+    "group_size": 8,
+    "mean_unique": 7.994,
+    "min_unique": 7,
+    "groups_with_duplicates": 3,
+    "groups_all_identical": 0,
+    "mean_unique_first_token": 7.021,
+    "len_sd_within_group_mean": 150.06,
+    "len_sd_overall": 169.24,
+    "within_over_total_len_sd": 0.887
+  }
+}
+
+[diversity] 512 groups of 8: unique 7.994/8 (min 7), distinct first token 7.021, within-group len sd 150.06 vs overall 169.24 (ratio 0.887)
+=== mu16_s0  2026-10-25T16:56:09Z ===
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 5936.28it/s]
+trainable params: 69,730,304 || all params: 1,790,305,280 || trainable%: 3.8949
+(MainProcess pid=256141) INFO 10-25 16:56:26 [api_utils.py:286] non-default args: {'trust_remote_code': True, 'dtype': 'bfloat16', 'max_model_len': 1024, 'enable_prefix_caching': False, 'gpu_memory_utilization': 0.45, 'max_num_batched_tokens': 2048, 'max_num_seqs': 256, 'disable_log_stats': True, 'enforce_eager': True, 'enable_lora': True, 'max_lora_rank': 64, 'enable_chunked_prefill': False, 'model': '/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base'}
+(MainProcess pid=256141) INFO 10-25 16:56:26 [model.py:733] Resolved architecture: Qwen3ForCausalLM
+(MainProcess pid=256141) INFO 10-25 16:56:26 [model.py:2152] Using max model len 1024
+(MainProcess pid=256141) WARNING 10-25 16:56:26 [arg_utils.py:3005] This model does not officially support disabling chunked prefill. Disabling this manually may cause the engine to crash or produce incorrect outputs.
+(MainProcess pid=256141) WARNING 10-25 16:56:26 [vllm.py:1703] Enforce eager set, disabling torch.compile, CUDAGraphs, and JIT kernel warmup. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none and --kernel_config.enable_jit_warmup=False
+(MainProcess pid=256141) WARNING 10-25 16:56:26 [vllm.py:1727] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+(MainProcess pid=256141) INFO 10-25 16:56:26 [kernel.py:467] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native'])
+(MainProcess pid=256141) WARNING 10-25 16:56:26 [flashinfer.py:99] FlashInfer kernels are disabled: flashinfer-cubin is not installed and nvcc (CUDA_HOME, CUDA_PATH, PATH or /usr/local/cuda) or ninja (PATH) is missing. Set CUDA_HOME to a CUDA toolkit and put ninja on PATH, or run `vllm download-kernels`.
+(MainProcess pid=256141) INFO 10-25 16:56:27 [vllm.py:1929] Cudagraph is disabled under eager mode
+(MainProcess pid=256141) INFO 10-25 16:56:27 [compilation.py:317] Enabled custom fusions: norm_quant, act_quant
+(MainProcess pid=256141) WARNING 10-25 16:56:29 [system_utils.py:153] We must use the `spawn` multiprocessing start method. Overriding VLLM_WORKER_MULTIPROC_METHOD to 'spawn'. See https://docs.vllm.ai/en/latest/usage/troubleshooting.html#python-multiprocessing for more information. Reasons: CUDA is initialized
+(EngineCore pid=256738) INFO 10-25 16:56:37 [core.py:133] Initializing a V1 LLM engine (v0.32.0) with config: model='/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base', speculative_config=None, tokenizer='/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=True, dtype=torch.bfloat16, max_seq_len=1024, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=None, quantization_config=None, enforce_eager=True, aux_output_config=AuxOutputConfig(enable_return_routed_experts=False, max_bytes=None), kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, per_request_spec_decode_metrics='none', kv_cache_metrics=False, kv_cache_metrics_sample=0.01, custom_histogram_buckets=None, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=0, served_model_name=/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base, enable_prefix_caching=False, enable_chunked_prefill=False, pooler_config=None, compilation_config={'mode': <CompilationMode.NONE: 0>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['all'], 'ir_enable_torch_wrap': False, 'splitting_ops': [], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'cudagraph_decoder_replay': True, 'decoder_replay_cudagraph_capture_sizes': [], 'decoder_replay_trim_threshold': 768, 'compile_sizes': [], 'compile_ranges_endpoints': [2048], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.NONE: 0>, 'cudagraph_num_of_warmups': 0, 'cudagraph_capture_sizes': [], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': True, 'fuse_act_quant': True, 'fuse_attn_quant': False, 'fuse_allreduce_rms': False, 'enable_qk_norm_rope_fusion': False, 'fuse_rope_kvcache_cat_mla': False, 'fuse_act_padding': False, 'fuse_qk_norm_rope_kvcache': False}, 'max_cudagraph_capture_size': 0, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native']), enable_flashinfer_autotune=True, enable_rocm_segmented_attn_autotune=False, enable_cutedsl_warmup=True, enable_jit_warmup=False, moe_backend='auto', sparse_indexer_topk_backend='auto', linear_backend='auto', linear_backend_per_quant=None)
+(EngineCore pid=256738) WARNING 10-25 16:56:37 [flashinfer.py:99] FlashInfer kernels are disabled: flashinfer-cubin is not installed and nvcc (CUDA_HOME, CUDA_PATH, PATH or /usr/local/cuda) or ninja (PATH) is missing. Set CUDA_HOME to a CUDA toolkit and put ninja on PATH, or run `vllm download-kernels`.
+(EngineCore pid=256738) INFO 10-25 16:56:38 [parallel_state.py:1906] world_size=1 rank=0 local_rank=0 distributed_init_method=file:///tmp/vllm_dist_eda064ac5ecf46b9b5be6323c3fd5575 backend=nccl
+(EngineCore pid=256738) INFO 10-25 16:56:38 [parallel_state.py:2350] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, ETP rank 0, EP rank N/A, EPLB rank N/A
+(EngineCore pid=256738) INFO 10-25 16:56:38 [gpu_worker.py:518] Using V2 Model Runner
+(EngineCore pid=256738) INFO 10-25 16:56:39 [model_runner.py:392] Loading model from scratch...
+(EngineCore pid=256738) INFO 10-25 16:56:40 [cuda.py:506] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].
+(EngineCore pid=256738) INFO 10-25 16:56:40 [flash_attn.py:1117] Using FlashAttention version 2
+(EngineCore pid=256738) INFO 10-25 16:56:41 [base_loader.py:82] Initializing model took 1.489562 seconds
+(EngineCore pid=256738) INFO 10-25 16:56:41 [weight_utils.py:1108] Filesystem type for checkpoints: EXT4. Checkpoint size: 3.20 GiB. Available RAM: 29.15 GiB.
+(EngineCore pid=256738) INFO 10-25 16:56:41 [weight_utils.py:1131] Auto-prefetch is disabled because the filesystem (EXT4) is not a recognized network FS (NFS/Lustre). If you want to force prefetching, start vLLM with --safetensors-load-strategy=prefetch.
+Loading safetensors checkpoint shards:   0% Completed | 0/1 [00:00<?, ?it/s]
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  1.30it/s]
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  1.29it/s]
+
+(EngineCore pid=256738) INFO 10-25 16:56:42 [default_loader.py:501] Loading weights took 1.05 seconds
+(EngineCore pid=256738) INFO 10-25 16:56:43 [punica_selector.py:20] Using PunicaWrapperGPU.
+(EngineCore pid=256738) INFO 10-25 16:56:43 [model_runner.py:424] Model loading took 3.38 GiB memory and 4.428433 seconds
+(EngineCore pid=256738) INFO 10-25 16:56:43 [topk_topp_sampler.py:124] Using FlashInfer for top-p & top-k sampling.
+(EngineCore pid=256738) INFO 10-25 16:56:43 [torch_utils.py:295] Reducing Torch threads from 22 to 1 for serving. Set OMP_NUM_THREADS in the external environment to override.
+(EngineCore pid=256738) INFO 10-25 16:56:43 [utils.py:347] Using LBNHC KV cache layout.
+(EngineCore pid=256738) WARNING 10-25 16:56:44 [utils.py:276] Using default LoRA kernel configs
+(EngineCore pid=256738) INFO 10-25 16:56:45 [gpu_worker.py:759] Available KV cache memory: 17.53 GiB
+(EngineCore pid=256738) INFO 10-25 16:56:45 [kv_cache_utils.py:2327] GPU KV cache size: 164,064 tokens, Maximum concurrency for 1,024 tokens per request: 160.22x
+(EngineCore pid=256738) INFO 10-25 16:56:46 [gpu_worker.py:1034] Free memory on device (43.13/47.37 GiB) on startup. Desired GPU memory utilization is (0.45, 21.32 GiB). Actual usage is 3.69 GiB for consumed memory (weights + non-torch), 0.1 GiB for peak activation, and 0.0 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory=18660587213` (17.38 GiB) to fit into requested memory, or `--kv-cache-memory=42077317632` (39.19 GiB) to fully utilize gpu memory. Current kv cache memory in use is 17.53 GiB.
+(EngineCore pid=256738) INFO 10-25 16:56:46 [core.py:402] init engine (profile, create kv cache, warmup model) took 2.73 s
+(EngineCore pid=256738) WARNING 10-25 16:56:47 [vllm.py:1703] Enforce eager set, disabling torch.compile, CUDAGraphs, and JIT kernel warmup. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none and --kernel_config.enable_jit_warmup=False
+(EngineCore pid=256738) WARNING 10-25 16:56:47 [vllm.py:1727] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+(EngineCore pid=256738) INFO 10-25 16:56:47 [kernel.py:467] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native'])
+(EngineCore pid=256738) INFO 10-25 16:56:47 [vllm.py:1929] Cudagraph is disabled under eager mode
+(EngineCore pid=256738) INFO 10-25 16:56:47 [compilation.py:317] Enabled custom fusions: norm_quant, act_quant
+(MainProcess pid=256141) INFO 10-25 16:56:47 [hf.py:648] Detected the chat template content format to be 'string'. You can set `--chat-template-content-format` to override this.
+[info] vocab=151669 params=1.790B trainable=69.7M
+[info] est. logits memory per micro-batch ~0.14 GiB (logit_chunk=64)
+[info] micro=4 group=8 -> 64 forward chunks / 32 sigma groups per step
+[info] arm mu=16 b=256 Br=4096 micro=4 M=64 rollouts=8 total_steps=128
+(MainProcess pid=256141) WARNING 10-25 16:56:48 [input_processor.py:289] vLLM has deprecated support for supporting different tokenizers for different LoRAs. By default, vLLM uses base model's tokenizer. If you are using a LoRA with its own tokenizer, consider specifying `--tokenizer [lora_path]` to use the LoRA tokenizer.
+[ids] r000.npz 1.0 MiB sha256=a54b97dc27899823 (4096 resp, max_seq_len 626)
+[r0 mu00] pass=0.223 r=+0.265 len=289 kl=+0.00e+00 clip=0.0000 gn=0.014 sig=0.06998 d=0.2013
+[r0 mu01] pass=0.223 r=+0.265 len=289 kl=+3.82e-04 clip=0.0026 gn=0.012 sig=0.06823 d=0.1796
+[r0 mu02] pass=0.223 r=+0.265 len=289 kl=-6.73e-05 clip=0.0026 gn=0.012 sig=0.06426 d=0.1907
+[r0 mu03] pass=0.223 r=+0.265 len=289 kl=+4.50e-05 clip=0.0022 gn=0.013 sig=0.0687 d=0.1838
+[r0 mu04] pass=0.223 r=+0.265 len=289 kl=-1.60e-04 clip=0.0021 gn=0.011 sig=0.06199 d=0.1828
+[r0 mu05] pass=0.223 r=+0.265 len=289 kl=-1.55e-04 clip=0.0028 gn=0.012 sig=0.06699 d=0.1829
+[r0 mu06] pass=0.223 r=+0.265 len=289 kl=+9.05e-05 clip=0.0028 gn=0.012 sig=0.06926 d=0.1802
+[r0 mu07] pass=0.223 r=+0.265 len=289 kl=+2.86e-05 clip=0.0027 gn=0.013 sig=0.07116 d=0.1817
+[r0 mu08] pass=0.223 r=+0.265 len=289 kl=+2.66e-05 clip=0.0028 gn=0.012 sig=0.06591 d=0.1804
+[r0 mu09] pass=0.223 r=+0.265 len=289 kl=+2.44e-05 clip=0.0026 gn=0.012 sig=0.06766 d=0.1838
+[r0 mu10] pass=0.223 r=+0.265 len=289 kl=+1.11e-04 clip=0.0033 gn=0.011 sig=0.0642 d=0.1784
+[r0 mu11] pass=0.223 r=+0.265 len=289 kl=+1.85e-04 clip=0.0030 gn=0.013 sig=0.07253 d=0.1847
+[r0 mu12] pass=0.223 r=+0.265 len=289 kl=+4.04e-04 clip=0.0037 gn=0.012 sig=0.0675 d=0.1717
+[r0 mu13] pass=0.223 r=+0.265 len=289 kl=+4.36e-04 clip=0.0040 gn=0.014 sig=0.08018 d=0.1808
+[r0 mu14] pass=0.223 r=+0.265 len=289 kl=+1.19e-04 clip=0.0049 gn=0.013 sig=0.07271 d=0.1733
+[r0 mu15] pass=0.223 r=+0.265 len=289 kl=+7.07e-04 clip=0.0049 gn=0.011 sig=0.06323 d=0.1788
+[r0] done: rollout 293.7s oldlogp 124.7s grad 371.3s update 496.0s cum 4096 resp, 0.219 GPU-h, ¥0.46
+[ckpt] runs/mu16_s0/state.pt @ rollout 0
+[r1 mu00] pass=0.264 r=+0.320 len=301 kl=+0.00e+00 clip=0.0000 gn=0.013 sig=0.06837 d=0.1891
+[r1 mu01] pass=0.264 r=+0.320 len=301 kl=-2.05e-04 clip=0.0027 gn=0.014 sig=0.07604 d=0.1835
+[r1 mu02] pass=0.264 r=+0.320 len=301 kl=+2.32e-04 clip=0.0029 gn=0.012 sig=0.06264 d=0.1872
+[r1 mu03] pass=0.264 r=+0.320 len=301 kl=+2.12e-04 clip=0.0031 gn=0.014 sig=0.0773 d=0.1839
+[r1 mu04] pass=0.264 r=+0.320 len=301 kl=+1.59e-04 clip=0.0038 gn=0.011 sig=0.06451 d=0.177
+[r1 mu05] pass=0.264 r=+0.320 len=301 kl=+4.20e-04 clip=0.0049 gn=0.014 sig=0.0802 d=0.179
+[r1 mu06] pass=0.264 r=+0.320 len=301 kl=+9.19e-04 clip=0.0056 gn=0.013 sig=0.07273 d=0.182
+[r1 mu07] pass=0.264 r=+0.320 len=301 kl=+5.17e-04 clip=0.0067 gn=0.012 sig=0.06605 d=0.1801
+[r1 mu08] pass=0.264 r=+0.320 len=301 kl=+6.01e-04 clip=0.0068 gn=0.014 sig=0.07605 d=0.1798
+[r1 mu09] pass=0.264 r=+0.320 len=301 kl=+8.71e-04 clip=0.0076 gn=0.013 sig=0.06952 d=0.1867
+[r1 mu10] pass=0.264 r=+0.320 len=301 kl=+6.76e-04 clip=0.0085 gn=0.012 sig=0.06319 d=0.183
+[r1 mu11] pass=0.264 r=+0.320 len=301 kl=+5.36e-04 clip=0.0085 gn=0.016 sig=0.08205 d=0.1911
+[r1 mu12] pass=0.264 r=+0.320 len=301 kl=+8.20e-04 clip=0.0076 gn=0.014 sig=0.07761 d=0.1751
+[r1 mu13] pass=0.264 r=+0.320 len=301 kl=+1.01e-03 clip=0.0087 gn=0.011 sig=0.06355 d=0.1716
+[r1 mu14] pass=0.264 r=+0.320 len=301 kl=+1.12e-03 clip=0.0086 gn=0.014 sig=0.07315 d=0.194
+[r1 mu15] pass=0.264 r=+0.320 len=301 kl=+5.54e-04 clip=0.0073 gn=0.013 sig=0.07142 d=0.1766
+[r1] done: rollout 307.4s oldlogp 126.2s grad 379.5s update 505.6s cum 8192 resp, 0.445 GPU-h, ¥0.93
+[ckpt] runs/mu16_s0/state.pt @ rollout 1
+[r2 mu00] pass=0.303 r=+0.374 len=294 kl=+0.00e+00 clip=0.0000 gn=0.014 sig=0.07107 d=0.1972
+[r2 mu01] pass=0.303 r=+0.374 len=294 kl=+2.45e-04 clip=0.0025 gn=0.014 sig=0.07991 d=0.1778
+[r2 mu02] pass=0.303 r=+0.374 len=294 kl=-2.12e-04 clip=0.0022 gn=0.013 sig=0.0733 d=0.1779
+[r2 mu03] pass=0.303 r=+0.374 len=294 kl=+1.51e-04 clip=0.0027 gn=0.013 sig=0.07544 d=0.176
+[r2 mu04] pass=0.303 r=+0.374 len=294 kl=-2.53e-04 clip=0.0025 gn=0.013 sig=0.07073 d=0.1835
+[r2 mu05] pass=0.303 r=+0.374 len=294 kl=-7.21e-05 clip=0.0028 gn=0.013 sig=0.07334 d=0.1761
+[r2 mu06] pass=0.303 r=+0.374 len=294 kl=+1.23e-04 clip=0.0031 gn=0.014 sig=0.0806 d=0.1781
+[r2 mu07] pass=0.303 r=+0.374 len=294 kl=+1.90e-04 clip=0.0031 gn=0.012 sig=0.06856 d=0.1762
+[r2 mu08] pass=0.303 r=+0.374 len=294 kl=+1.27e-04 clip=0.0035 gn=0.013 sig=0.06999 d=0.1892
+[r2 mu09] pass=0.303 r=+0.374 len=294 kl=+3.61e-04 clip=0.0041 gn=0.014 sig=0.0731 d=0.192
+[r2 mu10] pass=0.303 r=+0.374 len=294 kl=+1.03e-03 clip=0.0051 gn=0.013 sig=0.07266 d=0.1767
+[r2 mu11] pass=0.303 r=+0.374 len=294 kl=+4.81e-04 clip=0.0053 gn=0.015 sig=0.08288 d=0.1779
+[r2 mu12] pass=0.303 r=+0.374 len=294 kl=+7.74e-04 clip=0.0053 gn=0.015 sig=0.08017 d=0.1888
+[r2 mu13] pass=0.303 r=+0.374 len=294 kl=+6.14e-04 clip=0.0065 gn=0.014 sig=0.07345 d=0.1861
+[r2 mu14] pass=0.303 r=+0.374 len=294 kl=+5.17e-04 clip=0.0066 gn=0.014 sig=0.07293 d=0.1934
+[r2 mu15] pass=0.303 r=+0.374 len=294 kl=+9.20e-04 clip=0.0078 gn=0.013 sig=0.07463 d=0.1771
+[r2] done: rollout 304.8s oldlogp 124.1s grad 370.3s update 494.4s cum 12288 resp, 0.667 GPU-h, ¥1.39
+[ckpt] runs/mu16_s0/state.pt @ rollout 2
+[r3 mu00] pass=0.366 r=+0.446 len=294 kl=+0.00e+00 clip=0.0000 gn=0.013 sig=0.07188 d=0.1852
+[r3 mu01] pass=0.366 r=+0.446 len=294 kl=-1.82e-04 clip=0.0023 gn=0.013 sig=0.07078 d=0.184
+[r3 mu02] pass=0.366 r=+0.446 len=294 kl=-9.97e-06 clip=0.0024 gn=0.014 sig=0.07414 d=0.1851
+[r3 mu03] pass=0.366 r=+0.446 len=294 kl=-1.83e-04 clip=0.0026 gn=0.013 sig=0.07296 d=0.1734
+[r3 mu04] pass=0.366 r=+0.446 len=294 kl=+2.12e-04 clip=0.0028 gn=0.014 sig=0.08022 d=0.1773
+[r3 mu05] pass=0.366 r=+0.446 len=294 kl=+1.25e-04 clip=0.0029 gn=0.014 sig=0.08063 d=0.1775
+[r3 mu06] pass=0.366 r=+0.446 len=294 kl=+3.82e-04 clip=0.0040 gn=0.014 sig=0.07711 d=0.1752
+[r3 mu07] pass=0.366 r=+0.446 len=294 kl=+6.05e-04 clip=0.0039 gn=0.015 sig=0.0805 d=0.1869
+[r3 mu08] pass=0.366 r=+0.446 len=294 kl=+4.42e-04 clip=0.0045 gn=0.015 sig=0.0786 d=0.1852
+[r3 mu09] pass=0.366 r=+0.446 len=294 kl=+3.18e-04 clip=0.0049 gn=0.014 sig=0.07918 d=0.1814
+[r3 mu10] pass=0.366 r=+0.446 len=294 kl=+9.41e-05 clip=0.0055 gn=0.013 sig=0.06882 d=0.1874
+[r3 mu11] pass=0.366 r=+0.446 len=294 kl=+1.78e-04 clip=0.0053 gn=0.013 sig=0.07591 d=0.1721
+[r3 mu12] pass=0.366 r=+0.446 len=294 kl=+9.67e-04 clip=0.0062 gn=0.014 sig=0.08089 d=0.1742
+[r3 mu13] pass=0.366 r=+0.446 len=294 kl=+4.04e-04 clip=0.0061 gn=0.015 sig=0.08407 d=0.1793
+[r3 mu14] pass=0.366 r=+0.446 len=294 kl=+9.80e-04 clip=0.0056 gn=0.014 sig=0.07725 d=0.1795
+[r3 mu15] pass=0.366 r=+0.446 len=294 kl=+6.96e-04 clip=0.0053 gn=0.014 sig=0.08315 d=0.1728
+[r3] done: rollout 297.6s oldlogp 123.0s grad 368.1s update 491.2s cum 16384 resp, 0.886 GPU-h, ¥1.84
+[ckpt] runs/mu16_s0/state.pt @ rollout 3
+[r4 mu00] pass=0.456 r=+0.542 len=279 kl=+0.00e+00 clip=0.0000 gn=0.014 sig=0.07769 d=0.1854
+[r4 mu01] pass=0.456 r=+0.542 len=279 kl=-1.10e-04 clip=0.0020 gn=0.014 sig=0.08204 d=0.1734
+[r4 mu02] pass=0.456 r=+0.542 len=279 kl=+1.43e-04 clip=0.0020 gn=0.013 sig=0.07215 d=0.1744
+[r4 mu03] pass=0.456 r=+0.542 len=279 kl=-3.35e-04 clip=0.0026 gn=0.015 sig=0.08467 d=0.1797
+[r4 mu04] pass=0.456 r=+0.542 len=279 kl=+1.19e-05 clip=0.0023 gn=0.015 sig=0.08413 d=0.1805
+[r4 mu05] pass=0.456 r=+0.542 len=279 kl=+6.36e-04 clip=0.0032 gn=0.016 sig=0.08666 d=0.1805
+[r4 mu06] pass=0.456 r=+0.542 len=279 kl=+2.37e-05 clip=0.0029 gn=0.016 sig=0.08583 d=0.1839
+[r4 mu07] pass=0.456 r=+0.542 len=279 kl=+2.04e-04 clip=0.0032 gn=0.014 sig=0.07505 d=0.1925
+[r4 mu08] pass=0.456 r=+0.542 len=279 kl=+1.52e-04 clip=0.0034 gn=0.014 sig=0.07846 d=0.1799
+[r4 mu09] pass=0.456 r=+0.542 len=279 kl=+8.67e-05 clip=0.0034 gn=0.015 sig=0.08283 d=0.1817
+[r4 mu10] pass=0.456 r=+0.542 len=279 kl=+5.00e-04 clip=0.0040 gn=0.015 sig=0.08165 d=0.1839
+[r4 mu11] pass=0.456 r=+0.542 len=279 kl=+3.10e-04 clip=0.0036 gn=0.017 sig=0.08738 d=0.1961
+[r4 mu12] pass=0.456 r=+0.542 len=279 kl=+3.70e-04 clip=0.0038 gn=0.013 sig=0.07391 d=0.1806
+[r4 mu13] pass=0.456 r=+0.542 len=279 kl=+2.37e-04 clip=0.0046 gn=0.016 sig=0.0891 d=0.1742
+[r4 mu14] pass=0.456 r=+0.542 len=279 kl=+4.73e-04 clip=0.0040 gn=0.015 sig=0.08461 d=0.1774
+[r4 mu15] pass=0.456 r=+0.542 len=279 kl=+5.50e-04 clip=0.0052 gn=0.016 sig=0.08658 d=0.1793
+[r4] done: rollout 281.9s oldlogp 117.7s grad 352.0s update 469.7s cum 20480 resp, 1.095 GPU-h, ¥2.28
+[ckpt] runs/mu16_s0/state.pt @ rollout 4
+[r5 mu00] pass=0.475 r=+0.562 len=285 kl=+0.00e+00 clip=0.0000 gn=0.017 sig=0.09188 d=0.1854
+[r5 mu01] pass=0.475 r=+0.562 len=285 kl=+2.15e-05 clip=0.0022 gn=0.016 sig=0.08946 d=0.1804
+[r5 mu02] pass=0.475 r=+0.562 len=285 kl=+1.93e-04 clip=0.0027 gn=0.014 sig=0.08133 d=0.1749
+[r5 mu03] pass=0.475 r=+0.562 len=285 kl=+4.41e-04 clip=0.0028 gn=0.017 sig=0.08894 d=0.189
+[r5 mu04] pass=0.475 r=+0.562 len=285 kl=+2.86e-04 clip=0.0025 gn=0.014 sig=0.07966 d=0.1757
+[r5 mu05] pass=0.475 r=+0.562 len=285 kl=+1.30e-04 clip=0.0029 gn=0.015 sig=0.08153 d=0.1845
+[r5 mu06] pass=0.475 r=+0.562 len=285 kl=-1.33e-04 clip=0.0030 gn=0.017 sig=0.08264 d=0.2033
+[r5 mu07] pass=0.475 r=+0.562 len=285 kl=+2.88e-04 clip=0.0033 gn=0.015 sig=0.08788 d=0.1724
+[r5 mu08] pass=0.475 r=+0.562 len=285 kl=+4.12e-04 clip=0.0034 gn=0.015 sig=0.08156 d=0.1778
+[r5 mu09] pass=0.475 r=+0.562 len=285 kl=+2.86e-04 clip=0.0036 gn=0.017 sig=0.09452 d=0.1766
+[r5 mu10] pass=0.475 r=+0.562 len=285 kl=+2.01e-04 clip=0.0030 gn=0.016 sig=0.08528 d=0.1925
+[r5 mu11] pass=0.475 r=+0.562 len=285 kl=+3.36e-04 clip=0.0028 gn=0.014 sig=0.08098 d=0.1773
+[r5 mu12] pass=0.475 r=+0.562 len=285 kl=+7.02e-04 clip=0.0037 gn=0.015 sig=0.08021 d=0.1813
+[r5 mu13] pass=0.475 r=+0.562 len=285 kl=+1.38e-04 clip=0.0035 gn=0.015 sig=0.08335 d=0.1774
+[r5 mu14] pass=0.475 r=+0.562 len=285 kl=+5.44e-05 clip=0.0033 gn=0.016 sig=0.08875 d=0.1761
+[r5 mu15] pass=0.475 r=+0.562 len=285 kl=+3.70e-04 clip=0.0035 gn=0.017 sig=0.08958 d=0.1847
+[r5] done: rollout 284.9s oldlogp 119.6s grad 360.7s update 480.3s cum 24576 resp, 1.308 GPU-h, ¥2.72
+[ckpt] runs/mu16_s0/state.pt @ rollout 5
+[r6 mu00] pass=0.515 r=+0.605 len=273 kl=+0.00e+00 clip=0.0000 gn=0.015 sig=0.08555 d=0.1801
+[r6 mu01] pass=0.515 r=+0.605 len=273 kl=-9.69e-05 clip=0.0020 gn=0.017 sig=0.09106 d=0.1892
+[r6 mu02] pass=0.515 r=+0.605 len=273 kl=+1.57e-04 clip=0.0022 gn=0.015 sig=0.08205 d=0.182
+[r6 mu03] pass=0.515 r=+0.605 len=273 kl=+1.10e-04 clip=0.0021 gn=0.015 sig=0.08566 d=0.1803
+[r6 mu04] pass=0.515 r=+0.605 len=273 kl=-3.81e-04 clip=0.0021 gn=0.015 sig=0.08909 d=0.1671
+[r6 mu05] pass=0.515 r=+0.605 len=273 kl=+6.00e-05 clip=0.0022 gn=0.018 sig=0.1027 d=0.175
+[r6 mu06] pass=0.515 r=+0.605 len=273 kl=-2.82e-04 clip=0.0026 gn=0.016 sig=0.09113 d=0.1746
+[r6 mu07] pass=0.515 r=+0.605 len=273 kl=-1.86e-04 clip=0.0023 gn=0.016 sig=0.08756 d=0.1834
+[r6 mu08] pass=0.515 r=+0.605 len=273 kl=-2.71e-05 clip=0.0023 gn=0.016 sig=0.08693 d=0.1817
+[r6 mu09] pass=0.515 r=+0.605 len=273 kl=+4.03e-04 clip=0.0021 gn=0.016 sig=0.09049 d=0.1753
+[r6 mu10] pass=0.515 r=+0.605 len=273 kl=+3.51e-04 clip=0.0022 gn=0.016 sig=0.08872 d=0.1814
+[r6 mu11] pass=0.515 r=+0.605 len=273 kl=-1.95e-04 clip=0.0027 gn=0.017 sig=0.09291 d=0.1853
+[r6 mu12] pass=0.515 r=+0.605 len=273 kl=-7.55e-05 clip=0.0026 gn=0.015 sig=0.08369 d=0.1817
+[r6 mu13] pass=0.515 r=+0.605 len=273 kl=+3.17e-04 clip=0.0024 gn=0.015 sig=0.0846 d=0.175
+[r6 mu14] pass=0.515 r=+0.605 len=273 kl=-1.84e-04 clip=0.0021 gn=0.016 sig=0.09402 d=0.1728
+[r6 mu15] pass=0.515 r=+0.605 len=273 kl=+2.61e-04 clip=0.0023 gn=0.017 sig=0.09146 d=0.184
+[r6] done: rollout 278.6s oldlogp 114.3s grad 343.1s update 457.4s cum 28672 resp, 1.512 GPU-h, ¥3.15
+[ckpt] runs/mu16_s0/state.pt @ rollout 6
+[r7 mu00] pass=0.507 r=+0.598 len=269 kl=+0.00e+00 clip=0.0000 gn=0.016 sig=0.08197 d=0.1936
+[r7 mu01] pass=0.507 r=+0.598 len=269 kl=+2.55e-04 clip=0.0021 gn=0.015 sig=0.09089 d=0.1695
+[r7 mu02] pass=0.507 r=+0.598 len=269 kl=+2.52e-06 clip=0.0021 gn=0.017 sig=0.09153 d=0.1818
+[r7 mu03] pass=0.507 r=+0.598 len=269 kl=-2.90e-04 clip=0.0022 gn=0.015 sig=0.08243 d=0.1821
+[r7 mu04] pass=0.507 r=+0.598 len=269 kl=-1.24e-04 clip=0.0020 gn=0.017 sig=0.09743 d=0.1786
+[r7 mu05] pass=0.507 r=+0.598 len=269 kl=-1.51e-04 clip=0.0016 gn=0.015 sig=0.08436 d=0.1756
+[r7 mu06] pass=0.507 r=+0.598 len=269 kl=+1.17e-04 clip=0.0023 gn=0.016 sig=0.09016 d=0.1757
+[r7 mu07] pass=0.507 r=+0.598 len=269 kl=+1.68e-05 clip=0.0020 gn=0.018 sig=0.09938 d=0.1791
+[r7 mu08] pass=0.507 r=+0.598 len=269 kl=-1.25e-04 clip=0.0020 gn=0.017 sig=0.09629 d=0.1816
+[r7 mu09] pass=0.507 r=+0.598 len=269 kl=-2.27e-04 clip=0.0022 gn=0.018 sig=0.09767 d=0.1826
+[r7 mu10] pass=0.507 r=+0.598 len=269 kl=+2.50e-05 clip=0.0021 gn=0.017 sig=0.09598 d=0.181
+[r7 mu11] pass=0.507 r=+0.598 len=269 kl=-4.69e-05 clip=0.0017 gn=0.014 sig=0.0773 d=0.1802
+[r7 mu12] pass=0.507 r=+0.598 len=269 kl=-1.46e-04 clip=0.0020 gn=0.017 sig=0.09603 d=0.1787
+[r7 mu13] pass=0.507 r=+0.598 len=269 kl=+2.17e-04 clip=0.0021 gn=0.016 sig=0.09039 d=0.1735
+[r7 mu14] pass=0.507 r=+0.598 len=269 kl=+1.28e-04 clip=0.0021 gn=0.017 sig=0.08967 d=0.184
+[r7 mu15] pass=0.507 r=+0.598 len=269 kl=-8.73e-08 clip=0.0022 gn=0.017 sig=0.09121 d=0.181
+[r7] done: rollout 272.8s oldlogp 113.5s grad 340.6s update 454.1s cum 32768 resp, 1.714 GPU-h, ¥3.57
+[ckpt] runs/mu16_s0/state.pt @ rollout 7
+(MainProcess pid=256141) INFO 10-25 18:40:05 [utils.py:628] [shutdown] Process manager: send sigterm to process EngineCore
+(EngineCore pid=256738) INFO 10-25 18:40:05 [core.py:1454] [shutdown] EngineCore: trigger received signal=SIGTERM
+(EngineCore pid=256738) INFO 10-25 18:40:05 [core.py:1635] [shutdown] EngineCore: start mode=abort timeout=0s
+(EngineCore pid=256738) INFO 10-25 18:40:05 [core.py:1666] [shutdown] EngineCore: request processing complete; starting resource teardown
+(EngineCore pid=256738) INFO 10-25 18:40:05 [core.py:1499] [shutdown] EngineCore: exiting busy loop
+[OK  ] runs/mu16_s0
+        rows=128 arm=mu16 seed=0 pass=0.507 kl=-8.73e-08 d=0.18102418518555466 cost=¥3.57
+{
+  "npz": "runs/mu16_s0/rollouts/r000.npz",
+  "n_responses": 4096,
+  "sha256_recomputed": "a54b97dc278998235f16bbf55d3f4fc684d58c31e4479b13b1ed4040d6d40b0f",
+  "prompt_tokens": 294240,
+  "completion_tokens": 1183331,
+  "mean_completion_len": 288.9,
+  "sha256_recorded": "a54b97dc278998235f16bbf55d3f4fc684d58c31e4479b13b1ed4040d6d40b0f",
+  "sha_matches_record": true,
+  "diversity": {
+    "groups": 512,
+    "group_size": 8,
+    "mean_unique": 7.996,
+    "min_unique": 7,
+    "groups_with_duplicates": 2,
+    "groups_all_identical": 0,
+    "mean_unique_first_token": 7.082,
+    "len_sd_within_group_mean": 153.65,
+    "len_sd_overall": 169.56,
+    "within_over_total_len_sd": 0.906
+  }
+}
+
+[diversity] 512 groups of 8: unique 7.996/8 (min 7), distinct first token 7.082, within-group len sd 153.65 vs overall 169.56 (ratio 0.906)
+=== mu16_s1  2026-10-25T18:40:13Z ===
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 5660.48it/s]
+trainable params: 69,730,304 || all params: 1,790,305,280 || trainable%: 3.8949
+(MainProcess pid=290267) INFO 10-25 18:40:28 [api_utils.py:286] non-default args: {'trust_remote_code': True, 'dtype': 'bfloat16', 'max_model_len': 1024, 'enable_prefix_caching': False, 'gpu_memory_utilization': 0.45, 'max_num_batched_tokens': 2048, 'max_num_seqs': 256, 'disable_log_stats': True, 'enforce_eager': True, 'enable_lora': True, 'max_lora_rank': 64, 'enable_chunked_prefill': False, 'model': '/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base'}
+(MainProcess pid=290267) INFO 10-25 18:40:28 [model.py:733] Resolved architecture: Qwen3ForCausalLM
+(MainProcess pid=290267) INFO 10-25 18:40:28 [model.py:2152] Using max model len 1024
+(MainProcess pid=290267) WARNING 10-25 18:40:28 [arg_utils.py:3005] This model does not officially support disabling chunked prefill. Disabling this manually may cause the engine to crash or produce incorrect outputs.
+(MainProcess pid=290267) WARNING 10-25 18:40:28 [vllm.py:1703] Enforce eager set, disabling torch.compile, CUDAGraphs, and JIT kernel warmup. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none and --kernel_config.enable_jit_warmup=False
+(MainProcess pid=290267) WARNING 10-25 18:40:28 [vllm.py:1727] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+(MainProcess pid=290267) INFO 10-25 18:40:28 [kernel.py:467] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native'])
+(MainProcess pid=290267) WARNING 10-25 18:40:28 [flashinfer.py:99] FlashInfer kernels are disabled: flashinfer-cubin is not installed and nvcc (CUDA_HOME, CUDA_PATH, PATH or /usr/local/cuda) or ninja (PATH) is missing. Set CUDA_HOME to a CUDA toolkit and put ninja on PATH, or run `vllm download-kernels`.
+(MainProcess pid=290267) INFO 10-25 18:40:28 [vllm.py:1929] Cudagraph is disabled under eager mode
+(MainProcess pid=290267) INFO 10-25 18:40:28 [compilation.py:317] Enabled custom fusions: norm_quant, act_quant
+(MainProcess pid=290267) WARNING 10-25 18:40:31 [system_utils.py:153] We must use the `spawn` multiprocessing start method. Overriding VLLM_WORKER_MULTIPROC_METHOD to 'spawn'. See https://docs.vllm.ai/en/latest/usage/troubleshooting.html#python-multiprocessing for more information. Reasons: CUDA is initialized
+(EngineCore pid=290744) INFO 10-25 18:40:39 [core.py:133] Initializing a V1 LLM engine (v0.32.0) with config: model='/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base', speculative_config=None, tokenizer='/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=True, dtype=torch.bfloat16, max_seq_len=1024, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=None, quantization_config=None, enforce_eager=True, aux_output_config=AuxOutputConfig(enable_return_routed_experts=False, max_bytes=None), kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, per_request_spec_decode_metrics='none', kv_cache_metrics=False, kv_cache_metrics_sample=0.01, custom_histogram_buckets=None, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=0, served_model_name=/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base, enable_prefix_caching=False, enable_chunked_prefill=False, pooler_config=None, compilation_config={'mode': <CompilationMode.NONE: 0>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['all'], 'ir_enable_torch_wrap': False, 'splitting_ops': [], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'cudagraph_decoder_replay': True, 'decoder_replay_cudagraph_capture_sizes': [], 'decoder_replay_trim_threshold': 768, 'compile_sizes': [], 'compile_ranges_endpoints': [2048], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.NONE: 0>, 'cudagraph_num_of_warmups': 0, 'cudagraph_capture_sizes': [], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': True, 'fuse_act_quant': True, 'fuse_attn_quant': False, 'fuse_allreduce_rms': False, 'enable_qk_norm_rope_fusion': False, 'fuse_rope_kvcache_cat_mla': False, 'fuse_act_padding': False, 'fuse_qk_norm_rope_kvcache': False}, 'max_cudagraph_capture_size': 0, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native']), enable_flashinfer_autotune=True, enable_rocm_segmented_attn_autotune=False, enable_cutedsl_warmup=True, enable_jit_warmup=False, moe_backend='auto', sparse_indexer_topk_backend='auto', linear_backend='auto', linear_backend_per_quant=None)
+(EngineCore pid=290744) WARNING 10-25 18:40:39 [flashinfer.py:99] FlashInfer kernels are disabled: flashinfer-cubin is not installed and nvcc (CUDA_HOME, CUDA_PATH, PATH or /usr/local/cuda) or ninja (PATH) is missing. Set CUDA_HOME to a CUDA toolkit and put ninja on PATH, or run `vllm download-kernels`.
+(EngineCore pid=290744) INFO 10-25 18:40:40 [parallel_state.py:1906] world_size=1 rank=0 local_rank=0 distributed_init_method=file:///tmp/vllm_dist_61bf0de4fe894af983b380fa764bad32 backend=nccl
+(EngineCore pid=290744) INFO 10-25 18:40:40 [parallel_state.py:2350] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, ETP rank 0, EP rank N/A, EPLB rank N/A
+(EngineCore pid=290744) INFO 10-25 18:40:40 [gpu_worker.py:518] Using V2 Model Runner
+(EngineCore pid=290744) INFO 10-25 18:40:41 [model_runner.py:392] Loading model from scratch...
+(EngineCore pid=290744) INFO 10-25 18:40:42 [cuda.py:506] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].
+(EngineCore pid=290744) INFO 10-25 18:40:42 [flash_attn.py:1117] Using FlashAttention version 2
+(EngineCore pid=290744) INFO 10-25 18:40:42 [base_loader.py:82] Initializing model took 1.422570 seconds
+(EngineCore pid=290744) INFO 10-25 18:40:42 [weight_utils.py:1108] Filesystem type for checkpoints: EXT4. Checkpoint size: 3.20 GiB. Available RAM: 26.24 GiB.
+(EngineCore pid=290744) INFO 10-25 18:40:42 [weight_utils.py:1131] Auto-prefetch is disabled because the filesystem (EXT4) is not a recognized network FS (NFS/Lustre). If you want to force prefetching, start vLLM with --safetensors-load-strategy=prefetch.
+Loading safetensors checkpoint shards:   0% Completed | 0/1 [00:00<?, ?it/s]
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  1.27it/s]
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  1.26it/s]
+
+(EngineCore pid=290744) INFO 10-25 18:40:43 [default_loader.py:501] Loading weights took 1.07 seconds
+(EngineCore pid=290744) INFO 10-25 18:40:44 [punica_selector.py:20] Using PunicaWrapperGPU.
+(EngineCore pid=290744) INFO 10-25 18:40:45 [model_runner.py:424] Model loading took 3.38 GiB memory and 4.159990 seconds
+(EngineCore pid=290744) INFO 10-25 18:40:45 [topk_topp_sampler.py:124] Using FlashInfer for top-p & top-k sampling.
+(EngineCore pid=290744) INFO 10-25 18:40:45 [torch_utils.py:295] Reducing Torch threads from 22 to 1 for serving. Set OMP_NUM_THREADS in the external environment to override.
+(EngineCore pid=290744) INFO 10-25 18:40:45 [utils.py:347] Using LBNHC KV cache layout.
+(EngineCore pid=290744) WARNING 10-25 18:40:45 [utils.py:276] Using default LoRA kernel configs
+(EngineCore pid=290744) INFO 10-25 18:40:47 [gpu_worker.py:759] Available KV cache memory: 17.53 GiB
+(EngineCore pid=290744) INFO 10-25 18:40:47 [kv_cache_utils.py:2327] GPU KV cache size: 164,064 tokens, Maximum concurrency for 1,024 tokens per request: 160.22x
+(EngineCore pid=290744) INFO 10-25 18:40:47 [gpu_worker.py:1034] Free memory on device (43.13/47.37 GiB) on startup. Desired GPU memory utilization is (0.45, 21.32 GiB). Actual usage is 3.69 GiB for consumed memory (weights + non-torch), 0.1 GiB for peak activation, and 0.0 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory=18660587213` (17.38 GiB) to fit into requested memory, or `--kv-cache-memory=42077317632` (39.19 GiB) to fully utilize gpu memory. Current kv cache memory in use is 17.53 GiB.
+(EngineCore pid=290744) INFO 10-25 18:40:47 [core.py:402] init engine (profile, create kv cache, warmup model) took 2.67 s
+(EngineCore pid=290744) WARNING 10-25 18:40:48 [vllm.py:1703] Enforce eager set, disabling torch.compile, CUDAGraphs, and JIT kernel warmup. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none and --kernel_config.enable_jit_warmup=False
+(EngineCore pid=290744) WARNING 10-25 18:40:48 [vllm.py:1727] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+(EngineCore pid=290744) INFO 10-25 18:40:48 [kernel.py:467] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native'])
+(EngineCore pid=290744) INFO 10-25 18:40:48 [vllm.py:1929] Cudagraph is disabled under eager mode
+(EngineCore pid=290744) INFO 10-25 18:40:48 [compilation.py:317] Enabled custom fusions: norm_quant, act_quant
+(MainProcess pid=290267) INFO 10-25 18:40:48 [hf.py:648] Detected the chat template content format to be 'string'. You can set `--chat-template-content-format` to override this.
+[info] vocab=151669 params=1.790B trainable=69.7M
+[info] est. logits memory per micro-batch ~0.14 GiB (logit_chunk=64)
+[info] micro=4 group=8 -> 64 forward chunks / 32 sigma groups per step
+[info] arm mu=16 b=256 Br=4096 micro=4 M=64 rollouts=8 total_steps=128
+(MainProcess pid=290267) WARNING 10-25 18:40:49 [input_processor.py:289] vLLM has deprecated support for supporting different tokenizers for different LoRAs. By default, vLLM uses base model's tokenizer. If you are using a LoRA with its own tokenizer, consider specifying `--tokenizer [lora_path]` to use the LoRA tokenizer.
+[ids] r000.npz 1.1 MiB sha256=775d0e11b94639bf (4096 resp, max_seq_len 626)
+[r0 mu00] pass=0.220 r=+0.266 len=297 kl=+0.00e+00 clip=0.0000 gn=0.011 sig=0.06366 d=0.1739
+[r0 mu01] pass=0.220 r=+0.266 len=297 kl=+1.84e-04 clip=0.0025 gn=0.011 sig=0.05953 d=0.1845
+[r0 mu02] pass=0.220 r=+0.266 len=297 kl=-4.38e-05 clip=0.0026 gn=0.011 sig=0.0611 d=0.1729
+[r0 mu03] pass=0.220 r=+0.266 len=297 kl=+6.81e-05 clip=0.0027 gn=0.012 sig=0.06739 d=0.1759
+[r0 mu04] pass=0.220 r=+0.266 len=297 kl=-1.77e-04 clip=0.0028 gn=0.011 sig=0.0603 d=0.1795
+[r0 mu05] pass=0.220 r=+0.266 len=297 kl=+1.01e-04 clip=0.0025 gn=0.010 sig=0.05777 d=0.1814
+[r0 mu06] pass=0.220 r=+0.266 len=297 kl=+2.34e-05 clip=0.0028 gn=0.012 sig=0.06779 d=0.1838
+[r0 mu07] pass=0.220 r=+0.266 len=297 kl=+7.05e-05 clip=0.0027 gn=0.013 sig=0.07174 d=0.187
+[r0 mu08] pass=0.220 r=+0.266 len=297 kl=-1.45e-04 clip=0.0028 gn=0.013 sig=0.06908 d=0.1861
+[r0 mu09] pass=0.220 r=+0.266 len=297 kl=-4.11e-05 clip=0.0028 gn=0.013 sig=0.0694 d=0.1863
+[r0 mu10] pass=0.220 r=+0.266 len=297 kl=+1.29e-04 clip=0.0034 gn=0.011 sig=0.06221 d=0.1775
+[r0 mu11] pass=0.220 r=+0.266 len=297 kl=+2.08e-04 clip=0.0032 gn=0.012 sig=0.06931 d=0.1761
+[r0 mu12] pass=0.220 r=+0.266 len=297 kl=+2.61e-04 clip=0.0035 gn=0.012 sig=0.06365 d=0.1855
+[r0 mu13] pass=0.220 r=+0.266 len=297 kl=+1.73e-04 clip=0.0044 gn=0.012 sig=0.06689 d=0.1786
+[r0 mu14] pass=0.220 r=+0.266 len=297 kl=+1.68e-04 clip=0.0042 gn=0.013 sig=0.07111 d=0.1783
+[r0 mu15] pass=0.220 r=+0.266 len=297 kl=+7.85e-04 clip=0.0050 gn=0.013 sig=0.06955 d=0.1889
+[r0] done: rollout 297.8s oldlogp 125.2s grad 374.2s update 499.4s cum 4096 resp, 0.221 GPU-h, ¥0.46
+[ckpt] runs/mu16_s1/state.pt @ rollout 0
+[r1 mu00] pass=0.264 r=+0.323 len=295 kl=+0.00e+00 clip=0.0000 gn=0.012 sig=0.06324 d=0.1892
+[r1 mu01] pass=0.264 r=+0.323 len=295 kl=-1.36e-04 clip=0.0023 gn=0.012 sig=0.0668 d=0.177
+[r1 mu02] pass=0.264 r=+0.323 len=295 kl=+8.55e-05 clip=0.0029 gn=0.012 sig=0.06427 d=0.1817
+[r1 mu03] pass=0.264 r=+0.323 len=295 kl=-5.47e-05 clip=0.0027 gn=0.013 sig=0.07375 d=0.1793
+[r1 mu04] pass=0.264 r=+0.323 len=295 kl=+1.67e-04 clip=0.0043 gn=0.013 sig=0.07271 d=0.1751
+[r1 mu05] pass=0.264 r=+0.323 len=295 kl=+4.56e-04 clip=0.0041 gn=0.012 sig=0.06948 d=0.1779
+[r1 mu06] pass=0.264 r=+0.323 len=295 kl=+8.33e-04 clip=0.0044 gn=0.013 sig=0.07459 d=0.1765
+[r1 mu07] pass=0.264 r=+0.323 len=295 kl=+4.96e-04 clip=0.0057 gn=0.014 sig=0.07393 d=0.1856
+[r1 mu08] pass=0.264 r=+0.323 len=295 kl=+5.47e-04 clip=0.0070 gn=0.014 sig=0.08009 d=0.1765
+[r1 mu09] pass=0.264 r=+0.323 len=295 kl=+5.78e-04 clip=0.0077 gn=0.013 sig=0.07396 d=0.1822
+[r1 mu10] pass=0.264 r=+0.323 len=295 kl=+6.68e-04 clip=0.0071 gn=0.014 sig=0.07678 d=0.1874
+[r1 mu11] pass=0.264 r=+0.323 len=295 kl=+9.00e-04 clip=0.0075 gn=0.013 sig=0.07031 d=0.1808
+[r1 mu12] pass=0.264 r=+0.323 len=295 kl=+8.14e-04 clip=0.0080 gn=0.012 sig=0.06696 d=0.1846
+[r1 mu13] pass=0.264 r=+0.323 len=295 kl=+1.18e-03 clip=0.0083 gn=0.013 sig=0.07015 d=0.1891
+[r1 mu14] pass=0.264 r=+0.323 len=295 kl=+5.89e-04 clip=0.0073 gn=0.014 sig=0.07235 d=0.1937
+[r1 mu15] pass=0.264 r=+0.323 len=295 kl=+7.18e-04 clip=0.0079 gn=0.016 sig=0.08025 d=0.1965
+[r1] done: rollout 293.0s oldlogp 125.3s grad 371.0s update 496.3s cum 8192 resp, 0.441 GPU-h, ¥0.92
+[ckpt] runs/mu16_s1/state.pt @ rollout 1
+[r2 mu00] pass=0.323 r=+0.395 len=299 kl=+0.00e+00 clip=0.0000 gn=0.012 sig=0.06647 d=0.1842
+[r2 mu01] pass=0.323 r=+0.395 len=299 kl=+4.57e-06 clip=0.0027 gn=0.015 sig=0.08477 d=0.1802
+[r2 mu02] pass=0.323 r=+0.395 len=299 kl=+1.65e-04 clip=0.0029 gn=0.013 sig=0.07103 d=0.184
+[r2 mu03] pass=0.323 r=+0.395 len=299 kl=+4.85e-05 clip=0.0025 gn=0.013 sig=0.0701 d=0.1817
+[r2 mu04] pass=0.323 r=+0.395 len=299 kl=+3.03e-04 clip=0.0027 gn=0.014 sig=0.07479 d=0.1853
+[r2 mu05] pass=0.323 r=+0.395 len=299 kl=+1.13e-04 clip=0.0028 gn=0.014 sig=0.07423 d=0.1831
+[r2 mu06] pass=0.323 r=+0.395 len=299 kl=+8.65e-05 clip=0.0028 gn=0.011 sig=0.06373 d=0.1789
+[r2 mu07] pass=0.323 r=+0.395 len=299 kl=+4.23e-04 clip=0.0034 gn=0.012 sig=0.06444 d=0.1851
+[r2 mu08] pass=0.323 r=+0.395 len=299 kl=-1.45e-04 clip=0.0029 gn=0.012 sig=0.07143 d=0.1686
+[r2 mu09] pass=0.323 r=+0.395 len=299 kl=+1.25e-04 clip=0.0034 gn=0.013 sig=0.07099 d=0.1794
+[r2 mu10] pass=0.323 r=+0.395 len=299 kl=+3.67e-04 clip=0.0036 gn=0.015 sig=0.07976 d=0.1866
+[r2 mu11] pass=0.323 r=+0.395 len=299 kl=+5.55e-04 clip=0.0038 gn=0.011 sig=0.06189 d=0.1808
+[r2 mu12] pass=0.323 r=+0.395 len=299 kl=+5.95e-04 clip=0.0046 gn=0.014 sig=0.07743 d=0.1866
+[r2 mu13] pass=0.323 r=+0.395 len=299 kl=+4.91e-04 clip=0.0055 gn=0.014 sig=0.08179 d=0.1706
+[r2 mu14] pass=0.323 r=+0.395 len=299 kl=+6.77e-04 clip=0.0057 gn=0.012 sig=0.06968 d=0.1714
+[r2 mu15] pass=0.323 r=+0.395 len=299 kl=+7.36e-04 clip=0.0063 gn=0.014 sig=0.0753 d=0.1802
+[r2] done: rollout 299.2s oldlogp 125.0s grad 372.4s update 497.4s cum 12288 resp, 0.662 GPU-h, ¥1.38
+[ckpt] runs/mu16_s1/state.pt @ rollout 2
+[r3 mu00] pass=0.382 r=+0.462 len=285 kl=+0.00e+00 clip=0.0000 gn=0.014 sig=0.07993 d=0.1714
+[r3 mu01] pass=0.382 r=+0.462 len=285 kl=+3.30e-04 clip=0.0026 gn=0.014 sig=0.07798 d=0.1841
+[r3 mu02] pass=0.382 r=+0.462 len=285 kl=+2.03e-04 clip=0.0027 gn=0.015 sig=0.08403 d=0.1767
+[r3 mu03] pass=0.382 r=+0.462 len=285 kl=+1.15e-04 clip=0.0027 gn=0.015 sig=0.08095 d=0.1799
+[r3 mu04] pass=0.382 r=+0.462 len=285 kl=+5.94e-05 clip=0.0031 gn=0.014 sig=0.07511 d=0.1837
+[r3 mu05] pass=0.382 r=+0.462 len=285 kl=+2.23e-04 clip=0.0034 gn=0.012 sig=0.07187 d=0.1732
+[r3 mu06] pass=0.382 r=+0.462 len=285 kl=+2.27e-04 clip=0.0041 gn=0.013 sig=0.074 d=0.1768
+[r3 mu07] pass=0.382 r=+0.462 len=285 kl=+5.70e-04 clip=0.0051 gn=0.015 sig=0.07588 d=0.1939
+[r3 mu08] pass=0.382 r=+0.462 len=285 kl=+7.01e-04 clip=0.0053 gn=0.012 sig=0.07117 d=0.1705
+[r3 mu09] pass=0.382 r=+0.462 len=285 kl=+5.72e-04 clip=0.0052 gn=0.014 sig=0.07703 d=0.1803
+[r3 mu10] pass=0.382 r=+0.462 len=285 kl=+6.48e-04 clip=0.0058 gn=0.015 sig=0.08357 d=0.1756
+[r3 mu11] pass=0.382 r=+0.462 len=285 kl=+8.13e-04 clip=0.0060 gn=0.015 sig=0.08244 d=0.1794
+[r3 mu12] pass=0.382 r=+0.462 len=285 kl=+6.36e-04 clip=0.0063 gn=0.015 sig=0.08372 d=0.1748
+[r3 mu13] pass=0.382 r=+0.462 len=285 kl=+6.94e-04 clip=0.0066 gn=0.014 sig=0.08134 d=0.1739
+[r3 mu14] pass=0.382 r=+0.462 len=285 kl=+8.28e-04 clip=0.0065 gn=0.015 sig=0.08888 d=0.1734
+[r3 mu15] pass=0.382 r=+0.462 len=285 kl=+4.86e-04 clip=0.0065 gn=0.015 sig=0.08183 d=0.1797
+[r3] done: rollout 288.1s oldlogp 121.3s grad 363.0s update 484.3s cum 16384 resp, 0.877 GPU-h, ¥1.82
+[ckpt] runs/mu16_s1/state.pt @ rollout 3
+[r4 mu00] pass=0.413 r=+0.499 len=284 kl=+0.00e+00 clip=0.0000 gn=0.014 sig=0.07588 d=0.1855
+[r4 mu01] pass=0.413 r=+0.499 len=284 kl=-1.57e-04 clip=0.0022 gn=0.017 sig=0.08467 d=0.1954
+[r4 mu02] pass=0.413 r=+0.499 len=284 kl=+1.32e-04 clip=0.0023 gn=0.015 sig=0.08159 d=0.1879
+[r4 mu03] pass=0.413 r=+0.499 len=284 kl=-4.24e-05 clip=0.0025 gn=0.015 sig=0.08746 d=0.1757
+[r4 mu04] pass=0.413 r=+0.499 len=284 kl=+5.20e-06 clip=0.0026 gn=0.014 sig=0.07916 d=0.1751
+[r4 mu05] pass=0.413 r=+0.499 len=284 kl=+1.01e-04 clip=0.0025 gn=0.015 sig=0.08182 d=0.186
+[r4 mu06] pass=0.413 r=+0.499 len=284 kl=-1.37e-04 clip=0.0028 gn=0.015 sig=0.08185 d=0.1793
+[r4 mu07] pass=0.413 r=+0.499 len=284 kl=+4.80e-04 clip=0.0031 gn=0.015 sig=0.08042 d=0.1811
+[r4 mu08] pass=0.413 r=+0.499 len=284 kl=+4.47e-04 clip=0.0029 gn=0.015 sig=0.08306 d=0.1828
+[r4 mu09] pass=0.413 r=+0.499 len=284 kl=+4.26e-04 clip=0.0033 gn=0.016 sig=0.0856 d=0.1832
+[r4 mu10] pass=0.413 r=+0.499 len=284 kl=+3.10e-04 clip=0.0035 gn=0.015 sig=0.08081 d=0.187
+[r4 mu11] pass=0.413 r=+0.499 len=284 kl=+5.86e-04 clip=0.0039 gn=0.014 sig=0.07446 d=0.1844
+[r4 mu12] pass=0.413 r=+0.499 len=284 kl=+4.89e-04 clip=0.0043 gn=0.014 sig=0.07863 d=0.172
+[r4 mu13] pass=0.413 r=+0.499 len=284 kl=+2.56e-04 clip=0.0050 gn=0.014 sig=0.07978 d=0.1751
+[r4 mu14] pass=0.413 r=+0.499 len=284 kl=+7.51e-04 clip=0.0050 gn=0.015 sig=0.08737 d=0.1759
+[r4 mu15] pass=0.413 r=+0.499 len=284 kl=+4.66e-04 clip=0.0046 gn=0.014 sig=0.07456 d=0.1821
+[r4] done: rollout 287.2s oldlogp 119.7s grad 357.2s update 476.9s cum 20480 resp, 1.089 GPU-h, ¥2.26
+[ckpt] runs/mu16_s1/state.pt @ rollout 4
+[r5 mu00] pass=0.473 r=+0.561 len=272 kl=+0.00e+00 clip=0.0000 gn=0.014 sig=0.07824 d=0.1822
+[r5 mu01] pass=0.473 r=+0.561 len=272 kl=-1.73e-04 clip=0.0016 gn=0.016 sig=0.08861 d=0.1843
+[r5 mu02] pass=0.473 r=+0.561 len=272 kl=-7.95e-05 clip=0.0023 gn=0.014 sig=0.0812 d=0.1758
+[r5 mu03] pass=0.473 r=+0.561 len=272 kl=-8.96e-05 clip=0.0019 gn=0.015 sig=0.0837 d=0.176
+[r5 mu04] pass=0.473 r=+0.561 len=272 kl=+8.79e-05 clip=0.0027 gn=0.015 sig=0.08612 d=0.1746
+[r5 mu05] pass=0.473 r=+0.561 len=272 kl=-1.44e-04 clip=0.0021 gn=0.016 sig=0.08538 d=0.1852
+[r5 mu06] pass=0.473 r=+0.561 len=272 kl=+2.81e-04 clip=0.0032 gn=0.014 sig=0.08323 d=0.1724
+[r5 mu07] pass=0.473 r=+0.561 len=272 kl=-1.63e-04 clip=0.0028 gn=0.016 sig=0.08833 d=0.1802
+[r5 mu08] pass=0.473 r=+0.561 len=272 kl=+1.55e-04 clip=0.0032 gn=0.016 sig=0.08792 d=0.1782
+[r5 mu09] pass=0.473 r=+0.561 len=272 kl=-1.05e-04 clip=0.0032 gn=0.014 sig=0.08006 d=0.1778
+[r5 mu10] pass=0.473 r=+0.561 len=272 kl=+3.32e-04 clip=0.0037 gn=0.016 sig=0.08886 d=0.1819
+[r5 mu11] pass=0.473 r=+0.561 len=272 kl=+9.77e-06 clip=0.0035 gn=0.015 sig=0.08549 d=0.1742
+[r5 mu12] pass=0.473 r=+0.561 len=272 kl=+1.87e-04 clip=0.0034 gn=0.017 sig=0.09689 d=0.1796
+[r5 mu13] pass=0.473 r=+0.561 len=272 kl=+3.23e-04 clip=0.0042 gn=0.018 sig=0.0968 d=0.1817
+[r5 mu14] pass=0.473 r=+0.561 len=272 kl=+3.26e-04 clip=0.0040 gn=0.015 sig=0.08381 d=0.1752
+[r5 mu15] pass=0.473 r=+0.561 len=272 kl=+4.93e-04 clip=0.0041 gn=0.015 sig=0.08688 d=0.1782
+[r5] done: rollout 270.7s oldlogp 115.6s grad 347.8s update 463.5s cum 24576 resp, 1.293 GPU-h, ¥2.69
+[ckpt] runs/mu16_s1/state.pt @ rollout 5
+[r6 mu00] pass=0.494 r=+0.584 len=270 kl=+0.00e+00 clip=0.0000 gn=0.016 sig=0.08219 d=0.1895
+[r6 mu01] pass=0.494 r=+0.584 len=270 kl=-1.70e-04 clip=0.0017 gn=0.016 sig=0.08966 d=0.1759
+[r6 mu02] pass=0.494 r=+0.584 len=270 kl=+3.15e-04 clip=0.0021 gn=0.014 sig=0.07919 d=0.1811
+[r6 mu03] pass=0.494 r=+0.584 len=270 kl=+9.19e-05 clip=0.0021 gn=0.015 sig=0.08173 d=0.1834
+[r6 mu04] pass=0.494 r=+0.584 len=270 kl=+3.39e-05 clip=0.0023 gn=0.016 sig=0.09201 d=0.1716
+[r6 mu05] pass=0.494 r=+0.584 len=270 kl=+3.88e-05 clip=0.0026 gn=0.015 sig=0.08577 d=0.1786
+[r6 mu06] pass=0.494 r=+0.584 len=270 kl=+1.64e-04 clip=0.0020 gn=0.014 sig=0.08293 d=0.1723
+[r6 mu07] pass=0.494 r=+0.584 len=270 kl=+9.33e-05 clip=0.0026 gn=0.015 sig=0.08488 d=0.1781
+[r6 mu08] pass=0.494 r=+0.584 len=270 kl=-7.04e-05 clip=0.0024 gn=0.016 sig=0.08785 d=0.1801
+[r6 mu09] pass=0.494 r=+0.584 len=270 kl=-3.40e-04 clip=0.0026 gn=0.016 sig=0.0892 d=0.177
+[r6 mu10] pass=0.494 r=+0.584 len=270 kl=+1.79e-04 clip=0.0028 gn=0.017 sig=0.0886 d=0.1869
+[r6 mu11] pass=0.494 r=+0.584 len=270 kl=+5.34e-05 clip=0.0026 gn=0.018 sig=0.09943 d=0.1823
+[r6 mu12] pass=0.494 r=+0.584 len=270 kl=-1.60e-04 clip=0.0025 gn=0.014 sig=0.08748 d=0.1656
+[r6 mu13] pass=0.494 r=+0.584 len=270 kl=-8.74e-05 clip=0.0027 gn=0.017 sig=0.09614 d=0.1779
+[r6 mu14] pass=0.494 r=+0.584 len=270 kl=+1.20e-06 clip=0.0029 gn=0.015 sig=0.0841 d=0.1761
+[r6 mu15] pass=0.494 r=+0.584 len=270 kl=+1.05e-04 clip=0.0027 gn=0.016 sig=0.09162 d=0.1746
+[r6] done: rollout 270.7s oldlogp 114.4s grad 346.1s update 460.5s cum 28672 resp, 1.496 GPU-h, ¥3.11
+[ckpt] runs/mu16_s1/state.pt @ rollout 6
+[r7 mu00] pass=0.528 r=+0.619 len=270 kl=+0.00e+00 clip=0.0000 gn=0.015 sig=0.08606 d=0.1796
+[r7 mu01] pass=0.528 r=+0.619 len=270 kl=+1.62e-04 clip=0.0022 gn=0.016 sig=0.09158 d=0.1801
+[r7 mu02] pass=0.528 r=+0.619 len=270 kl=+2.57e-05 clip=0.0023 gn=0.014 sig=0.08193 d=0.1672
+[r7 mu03] pass=0.528 r=+0.619 len=270 kl=-1.57e-04 clip=0.0020 gn=0.015 sig=0.09043 d=0.168
+[r7 mu04] pass=0.528 r=+0.619 len=270 kl=+1.69e-04 clip=0.0020 gn=0.016 sig=0.08868 d=0.1793
+[r7 mu05] pass=0.528 r=+0.619 len=270 kl=+8.07e-05 clip=0.0020 gn=0.016 sig=0.09203 d=0.1712
+[r7 mu06] pass=0.528 r=+0.619 len=270 kl=+1.70e-04 clip=0.0017 gn=0.017 sig=0.09174 d=0.1808
+[r7 mu07] pass=0.528 r=+0.619 len=270 kl=+2.93e-04 clip=0.0021 gn=0.017 sig=0.09135 d=0.1907
+[r7 mu08] pass=0.528 r=+0.619 len=270 kl=-4.47e-05 clip=0.0017 gn=0.016 sig=0.09128 d=0.18
+[r7 mu09] pass=0.528 r=+0.619 len=270 kl=+1.53e-04 clip=0.0022 gn=0.018 sig=0.0939 d=0.1967
+[r7 mu10] pass=0.528 r=+0.619 len=270 kl=+2.22e-04 clip=0.0022 gn=0.015 sig=0.08715 d=0.1738
+[r7 mu11] pass=0.528 r=+0.619 len=270 kl=-1.81e-04 clip=0.0020 gn=0.017 sig=0.0922 d=0.1811
+[r7 mu12] pass=0.528 r=+0.619 len=270 kl=+2.14e-04 clip=0.0024 gn=0.015 sig=0.08482 d=0.1762
+[r7 mu13] pass=0.528 r=+0.619 len=270 kl=+1.07e-04 clip=0.0022 gn=0.015 sig=0.08385 d=0.1775
+[r7 mu14] pass=0.528 r=+0.619 len=270 kl=+3.47e-05 clip=0.0018 gn=0.014 sig=0.079 d=0.1811
+[r7 mu15] pass=0.528 r=+0.619 len=270 kl=+6.50e-05 clip=0.0021 gn=0.016 sig=0.08659 d=0.18
+[r7] done: rollout 270.8s oldlogp 113.7s grad 343.0s update 456.7s cum 32768 resp, 1.698 GPU-h, ¥3.53
+[ckpt] runs/mu16_s1/state.pt @ rollout 7
+(MainProcess pid=290267) INFO 10-25 20:23:09 [utils.py:628] [shutdown] Process manager: send sigterm to process EngineCore
+(EngineCore pid=290744) INFO 10-25 20:23:09 [core.py:1454] [shutdown] EngineCore: trigger received signal=SIGTERM
+(EngineCore pid=290744) INFO 10-25 20:23:09 [core.py:1635] [shutdown] EngineCore: start mode=abort timeout=0s
+(EngineCore pid=290744) INFO 10-25 20:23:09 [core.py:1666] [shutdown] EngineCore: request processing complete; starting resource teardown
+(EngineCore pid=290744) INFO 10-25 20:23:09 [core.py:1499] [shutdown] EngineCore: exiting busy loop
+[OK  ] runs/mu16_s1
+        rows=128 arm=mu16 seed=1 pass=0.528 kl=+6.50e-05 d=0.1799506591052354 cost=¥3.53
+{
+  "npz": "runs/mu16_s1/rollouts/r000.npz",
+  "n_responses": 4096,
+  "sha256_recomputed": "775d0e11b94639bfaa10fbbdbe3f869f15fe5641a0857817aee22fbacc88ac4a",
+  "prompt_tokens": 297080,
+  "completion_tokens": 1216249,
+  "mean_completion_len": 296.94,
+  "sha256_recorded": "775d0e11b94639bfaa10fbbdbe3f869f15fe5641a0857817aee22fbacc88ac4a",
+  "sha_matches_record": true,
+  "diversity": {
+    "groups": 512,
+    "group_size": 8,
+    "mean_unique": 7.996,
+    "min_unique": 7,
+    "groups_with_duplicates": 2,
+    "groups_all_identical": 0,
+    "mean_unique_first_token": 6.941,
+    "len_sd_within_group_mean": 152.95,
+    "len_sd_overall": 168.26,
+    "within_over_total_len_sd": 0.909
+  }
+}
+
+[diversity] 512 groups of 8: unique 7.996/8 (min 7), distinct first token 6.941, within-group len sd 152.95 vs overall 168.26 (ratio 0.909)
+=== mu16_s2  2026-10-25T20:23:16Z ===
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+Loading weights:   0%|          | 0/310 [00:00<?, ?it/s]Loading weights: 100%|██████████| 310/310 [00:00<00:00, 4483.37it/s]
+trainable params: 69,730,304 || all params: 1,790,305,280 || trainable%: 3.8949
+(MainProcess pid=331357) INFO 10-25 20:23:32 [api_utils.py:286] non-default args: {'trust_remote_code': True, 'dtype': 'bfloat16', 'max_model_len': 1024, 'enable_prefix_caching': False, 'gpu_memory_utilization': 0.45, 'max_num_batched_tokens': 2048, 'max_num_seqs': 256, 'disable_log_stats': True, 'enforce_eager': True, 'enable_lora': True, 'max_lora_rank': 64, 'enable_chunked_prefill': False, 'model': '/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base'}
+(MainProcess pid=331357) INFO 10-25 20:23:32 [model.py:733] Resolved architecture: Qwen3ForCausalLM
+(MainProcess pid=331357) INFO 10-25 20:23:32 [model.py:2152] Using max model len 1024
+(MainProcess pid=331357) WARNING 10-25 20:23:32 [arg_utils.py:3005] This model does not officially support disabling chunked prefill. Disabling this manually may cause the engine to crash or produce incorrect outputs.
+(MainProcess pid=331357) WARNING 10-25 20:23:32 [vllm.py:1703] Enforce eager set, disabling torch.compile, CUDAGraphs, and JIT kernel warmup. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none and --kernel_config.enable_jit_warmup=False
+(MainProcess pid=331357) WARNING 10-25 20:23:32 [vllm.py:1727] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+(MainProcess pid=331357) INFO 10-25 20:23:32 [kernel.py:467] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native'])
+(MainProcess pid=331357) WARNING 10-25 20:23:32 [flashinfer.py:99] FlashInfer kernels are disabled: flashinfer-cubin is not installed and nvcc (CUDA_HOME, CUDA_PATH, PATH or /usr/local/cuda) or ninja (PATH) is missing. Set CUDA_HOME to a CUDA toolkit and put ninja on PATH, or run `vllm download-kernels`.
+(MainProcess pid=331357) INFO 10-25 20:23:32 [vllm.py:1929] Cudagraph is disabled under eager mode
+(MainProcess pid=331357) INFO 10-25 20:23:32 [compilation.py:317] Enabled custom fusions: norm_quant, act_quant
+(MainProcess pid=331357) WARNING 10-25 20:23:35 [system_utils.py:153] We must use the `spawn` multiprocessing start method. Overriding VLLM_WORKER_MULTIPROC_METHOD to 'spawn'. See https://docs.vllm.ai/en/latest/usage/troubleshooting.html#python-multiprocessing for more information. Reasons: CUDA is initialized
+(EngineCore pid=331858) INFO 10-25 20:23:43 [core.py:133] Initializing a V1 LLM engine (v0.32.0) with config: model='/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base', speculative_config=None, tokenizer='/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=True, dtype=torch.bfloat16, max_seq_len=1024, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=None, quantization_config=None, enforce_eager=True, aux_output_config=AuxOutputConfig(enable_return_routed_experts=False, max_bytes=None), kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, per_request_spec_decode_metrics='none', kv_cache_metrics=False, kv_cache_metrics_sample=0.01, custom_histogram_buckets=None, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=0, served_model_name=/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base, enable_prefix_caching=False, enable_chunked_prefill=False, pooler_config=None, compilation_config={'mode': <CompilationMode.NONE: 0>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['all'], 'ir_enable_torch_wrap': False, 'splitting_ops': [], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'cudagraph_decoder_replay': True, 'decoder_replay_cudagraph_capture_sizes': [], 'decoder_replay_trim_threshold': 768, 'compile_sizes': [], 'compile_ranges_endpoints': [2048], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.NONE: 0>, 'cudagraph_num_of_warmups': 0, 'cudagraph_capture_sizes': [], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': True, 'fuse_act_quant': True, 'fuse_attn_quant': False, 'fuse_allreduce_rms': False, 'enable_qk_norm_rope_fusion': False, 'fuse_rope_kvcache_cat_mla': False, 'fuse_act_padding': False, 'fuse_qk_norm_rope_kvcache': False}, 'max_cudagraph_capture_size': 0, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native']), enable_flashinfer_autotune=True, enable_rocm_segmented_attn_autotune=False, enable_cutedsl_warmup=True, enable_jit_warmup=False, moe_backend='auto', sparse_indexer_topk_backend='auto', linear_backend='auto', linear_backend_per_quant=None)
+(EngineCore pid=331858) WARNING 10-25 20:23:43 [flashinfer.py:99] FlashInfer kernels are disabled: flashinfer-cubin is not installed and nvcc (CUDA_HOME, CUDA_PATH, PATH or /usr/local/cuda) or ninja (PATH) is missing. Set CUDA_HOME to a CUDA toolkit and put ninja on PATH, or run `vllm download-kernels`.
+(EngineCore pid=331858) INFO 10-25 20:23:44 [parallel_state.py:1906] world_size=1 rank=0 local_rank=0 distributed_init_method=file:///tmp/vllm_dist_58a8a808a2a64f33b09d922d78153098 backend=nccl
+(EngineCore pid=331858) INFO 10-25 20:23:44 [parallel_state.py:2350] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, ETP rank 0, EP rank N/A, EPLB rank N/A
+(EngineCore pid=331858) INFO 10-25 20:23:44 [gpu_worker.py:518] Using V2 Model Runner
+(EngineCore pid=331858) INFO 10-25 20:23:45 [model_runner.py:392] Loading model from scratch...
+(EngineCore pid=331858) INFO 10-25 20:23:46 [cuda.py:506] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].
+(EngineCore pid=331858) INFO 10-25 20:23:46 [flash_attn.py:1117] Using FlashAttention version 2
+(EngineCore pid=331858) INFO 10-25 20:23:46 [base_loader.py:82] Initializing model took 1.369562 seconds
+(EngineCore pid=331858) INFO 10-25 20:23:46 [weight_utils.py:1108] Filesystem type for checkpoints: EXT4. Checkpoint size: 3.20 GiB. Available RAM: 23.31 GiB.
+(EngineCore pid=331858) INFO 10-25 20:23:46 [weight_utils.py:1131] Auto-prefetch is disabled because the filesystem (EXT4) is not a recognized network FS (NFS/Lustre). If you want to force prefetching, start vLLM with --safetensors-load-strategy=prefetch.
+Loading safetensors checkpoint shards:   0% Completed | 0/1 [00:00<?, ?it/s]
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  1.57it/s]
+Loading safetensors checkpoint shards: 100% Completed | 1/1 [00:00<00:00,  1.57it/s]
+
+(EngineCore pid=331858) INFO 10-25 20:23:47 [default_loader.py:501] Loading weights took 0.87 seconds
+(EngineCore pid=331858) INFO 10-25 20:23:48 [punica_selector.py:20] Using PunicaWrapperGPU.
+(EngineCore pid=331858) INFO 10-25 20:23:49 [model_runner.py:424] Model loading took 3.38 GiB memory and 3.922010 seconds
+(EngineCore pid=331858) INFO 10-25 20:23:49 [topk_topp_sampler.py:124] Using FlashInfer for top-p & top-k sampling.
+(EngineCore pid=331858) INFO 10-25 20:23:49 [torch_utils.py:295] Reducing Torch threads from 22 to 1 for serving. Set OMP_NUM_THREADS in the external environment to override.
+(EngineCore pid=331858) INFO 10-25 20:23:49 [utils.py:347] Using LBNHC KV cache layout.
+(EngineCore pid=331858) WARNING 10-25 20:23:49 [utils.py:276] Using default LoRA kernel configs
+(EngineCore pid=331858) INFO 10-25 20:23:51 [gpu_worker.py:759] Available KV cache memory: 17.53 GiB
+(EngineCore pid=331858) INFO 10-25 20:23:51 [kv_cache_utils.py:2327] GPU KV cache size: 164,064 tokens, Maximum concurrency for 1,024 tokens per request: 160.22x
+(EngineCore pid=331858) INFO 10-25 20:23:51 [gpu_worker.py:1034] Free memory on device (43.13/47.37 GiB) on startup. Desired GPU memory utilization is (0.45, 21.32 GiB). Actual usage is 3.69 GiB for consumed memory (weights + non-torch), 0.1 GiB for peak activation, and 0.0 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory=18660587213` (17.38 GiB) to fit into requested memory, or `--kv-cache-memory=42077317632` (39.19 GiB) to fully utilize gpu memory. Current kv cache memory in use is 17.53 GiB.
+(EngineCore pid=331858) INFO 10-25 20:23:51 [core.py:402] init engine (profile, create kv cache, warmup model) took 2.44 s
+(EngineCore pid=331858) WARNING 10-25 20:23:52 [vllm.py:1703] Enforce eager set, disabling torch.compile, CUDAGraphs, and JIT kernel warmup. This is equivalent to setting -cc.mode=none -cc.cudagraph_mode=none and --kernel_config.enable_jit_warmup=False
+(EngineCore pid=331858) WARNING 10-25 20:23:52 [vllm.py:1727] Inductor compilation was disabled by user settings, optimizations settings that are only active during inductor compilation will be ignored.
+(EngineCore pid=331858) INFO 10-25 20:23:52 [kernel.py:467] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['vllm_c', 'native'], fused_add_rms_norm=['vllm_c', 'native'], gelu_and_mul_sparse=['triton', 'native'])
+(EngineCore pid=331858) INFO 10-25 20:23:52 [vllm.py:1929] Cudagraph is disabled under eager mode
+(EngineCore pid=331858) INFO 10-25 20:23:52 [compilation.py:317] Enabled custom fusions: norm_quant, act_quant
+(MainProcess pid=331357) INFO 10-25 20:23:52 [hf.py:648] Detected the chat template content format to be 'string'. You can set `--chat-template-content-format` to override this.
+[info] vocab=151669 params=1.790B trainable=69.7M
+[info] est. logits memory per micro-batch ~0.14 GiB (logit_chunk=64)
+[info] micro=4 group=8 -> 64 forward chunks / 32 sigma groups per step
+[info] arm mu=16 b=256 Br=4096 micro=4 M=64 rollouts=8 total_steps=128
+(MainProcess pid=331357) WARNING 10-25 20:23:53 [input_processor.py:289] vLLM has deprecated support for supporting different tokenizers for different LoRAs. By default, vLLM uses base model's tokenizer. If you are using a LoRA with its own tokenizer, consider specifying `--tokenizer [lora_path]` to use the LoRA tokenizer.
+[ids] r000.npz 1.1 MiB sha256=db4e2dbfb591c9d4 (4096 resp, max_seq_len 628)
+[r0 mu00] pass=0.222 r=+0.266 len=293 kl=+0.00e+00 clip=0.0000 gn=0.012 sig=0.06288 d=0.1846
+[r0 mu01] pass=0.222 r=+0.266 len=293 kl=+1.35e-04 clip=0.0023 gn=0.013 sig=0.07094 d=0.1817
+[r0 mu02] pass=0.222 r=+0.266 len=293 kl=+7.22e-05 clip=0.0028 gn=0.013 sig=0.07157 d=0.1801
+[r0 mu03] pass=0.222 r=+0.266 len=293 kl=+1.21e-04 clip=0.0022 gn=0.013 sig=0.0738 d=0.1784
+[r0 mu04] pass=0.222 r=+0.266 len=293 kl=-5.47e-05 clip=0.0028 gn=0.013 sig=0.07035 d=0.1813
+[r0 mu05] pass=0.222 r=+0.266 len=293 kl=-1.40e-04 clip=0.0024 gn=0.014 sig=0.07149 d=0.1894
+[r0 mu06] pass=0.222 r=+0.266 len=293 kl=+2.65e-04 clip=0.0024 gn=0.012 sig=0.06888 d=0.1776
+[r0 mu07] pass=0.222 r=+0.266 len=293 kl=+4.66e-05 clip=0.0024 gn=0.011 sig=0.06376 d=0.1748
+[r0 mu08] pass=0.222 r=+0.266 len=293 kl=+2.21e-05 clip=0.0025 gn=0.012 sig=0.06529 d=0.1831
+[r0 mu09] pass=0.222 r=+0.266 len=293 kl=+1.67e-04 clip=0.0027 gn=0.012 sig=0.06842 d=0.1788
+[r0 mu10] pass=0.222 r=+0.266 len=293 kl=+8.51e-06 clip=0.0031 gn=0.011 sig=0.06069 d=0.1789
+[r0 mu11] pass=0.222 r=+0.266 len=293 kl=+1.88e-04 clip=0.0030 gn=0.013 sig=0.06984 d=0.1868
+[r0 mu12] pass=0.222 r=+0.266 len=293 kl=+4.39e-04 clip=0.0033 gn=0.011 sig=0.0621 d=0.173
+[r0 mu13] pass=0.222 r=+0.266 len=293 kl=+1.17e-04 clip=0.0033 gn=0.013 sig=0.07021 d=0.184
+[r0 mu14] pass=0.222 r=+0.266 len=293 kl=+2.89e-04 clip=0.0043 gn=0.011 sig=0.06351 d=0.1747
+[r0 mu15] pass=0.222 r=+0.266 len=293 kl=+5.92e-04 clip=0.0053 gn=0.013 sig=0.07293 d=0.1814
+[r0] done: rollout 291.4s oldlogp 124.7s grad 374.1s update 498.8s cum 4096 resp, 0.220 GPU-h, ¥0.46
+[ckpt] runs/mu16_s2/state.pt @ rollout 0
+[r1 mu00] pass=0.253 r=+0.309 len=298 kl=+0.00e+00 clip=0.0000 gn=0.013 sig=0.06798 d=0.1909
+[r1 mu01] pass=0.253 r=+0.309 len=298 kl=-4.97e-06 clip=0.0024 gn=0.012 sig=0.06865 d=0.1787
+[r1 mu02] pass=0.253 r=+0.309 len=298 kl=+2.47e-04 clip=0.0031 gn=0.012 sig=0.06676 d=0.1816
+[r1 mu03] pass=0.253 r=+0.309 len=298 kl=-1.54e-05 clip=0.0033 gn=0.013 sig=0.0726 d=0.1776
+[r1 mu04] pass=0.253 r=+0.309 len=298 kl=+3.46e-04 clip=0.0046 gn=0.013 sig=0.07272 d=0.1807
+[r1 mu05] pass=0.253 r=+0.309 len=298 kl=+2.04e-04 clip=0.0047 gn=0.012 sig=0.06853 d=0.1745
+[r1 mu06] pass=0.253 r=+0.309 len=298 kl=+4.30e-04 clip=0.0054 gn=0.016 sig=0.08257 d=0.1895
+[r1 mu07] pass=0.253 r=+0.309 len=298 kl=+7.21e-04 clip=0.0068 gn=0.015 sig=0.08056 d=0.1899
+[r1 mu08] pass=0.253 r=+0.309 len=298 kl=+8.24e-04 clip=0.0076 gn=0.014 sig=0.0707 d=0.1956
+[r1 mu09] pass=0.253 r=+0.309 len=298 kl=+1.11e-03 clip=0.0079 gn=0.015 sig=0.08195 d=0.179
+[r1 mu10] pass=0.253 r=+0.309 len=298 kl=+5.75e-04 clip=0.0069 gn=0.015 sig=0.07723 d=0.1891
+[r1 mu11] pass=0.253 r=+0.309 len=298 kl=+8.94e-04 clip=0.0067 gn=0.013 sig=0.07313 d=0.1737
+[r1 mu12] pass=0.253 r=+0.309 len=298 kl=+8.19e-04 clip=0.0072 gn=0.012 sig=0.06843 d=0.174
+[r1 mu13] pass=0.253 r=+0.309 len=298 kl=+6.76e-04 clip=0.0079 gn=0.014 sig=0.07094 d=0.1919
+[r1 mu14] pass=0.253 r=+0.309 len=298 kl=+9.41e-04 clip=0.0076 gn=0.013 sig=0.07422 d=0.1807
+[r1 mu15] pass=0.253 r=+0.309 len=298 kl=+6.01e-04 clip=0.0067 gn=0.013 sig=0.06973 d=0.1828
+[r1] done: rollout 297.1s oldlogp 125.9s grad 373.3s update 499.2s cum 8192 resp, 0.441 GPU-h, ¥0.92
+[ckpt] runs/mu16_s2/state.pt @ rollout 1
+[r2 mu00] pass=0.316 r=+0.386 len=292 kl=+0.00e+00 clip=0.0000 gn=0.015 sig=0.07857 d=0.1896
+[r2 mu01] pass=0.316 r=+0.386 len=292 kl=-7.61e-05 clip=0.0025 gn=0.012 sig=0.06623 d=0.1795
+[r2 mu02] pass=0.316 r=+0.386 len=292 kl=+2.79e-04 clip=0.0028 gn=0.016 sig=0.08745 d=0.1797
+[r2 mu03] pass=0.316 r=+0.386 len=292 kl=-7.95e-05 clip=0.0031 gn=0.013 sig=0.06903 d=0.1889
+[r2 mu04] pass=0.316 r=+0.386 len=292 kl=+2.28e-04 clip=0.0023 gn=0.012 sig=0.06677 d=0.1861
+[r2 mu05] pass=0.316 r=+0.386 len=292 kl=+2.43e-05 clip=0.0032 gn=0.012 sig=0.06917 d=0.1773
+[r2 mu06] pass=0.316 r=+0.386 len=292 kl=+1.78e-05 clip=0.0031 gn=0.013 sig=0.07396 d=0.1793
+[r2 mu07] pass=0.316 r=+0.386 len=292 kl=+4.04e-04 clip=0.0040 gn=0.015 sig=0.0826 d=0.182
+[r2 mu08] pass=0.316 r=+0.386 len=292 kl=-2.07e-06 clip=0.0037 gn=0.015 sig=0.0851 d=0.173
+[r2 mu09] pass=0.316 r=+0.386 len=292 kl=+2.25e-05 clip=0.0042 gn=0.013 sig=0.07619 d=0.1684
+[r2 mu10] pass=0.316 r=+0.386 len=292 kl=+2.56e-04 clip=0.0049 gn=0.014 sig=0.08062 d=0.1746
+[r2 mu11] pass=0.316 r=+0.386 len=292 kl=+6.17e-04 clip=0.0056 gn=0.012 sig=0.07047 d=0.172
+[r2 mu12] pass=0.316 r=+0.386 len=292 kl=+5.16e-04 clip=0.0065 gn=0.013 sig=0.07045 d=0.1808
+[r2 mu13] pass=0.316 r=+0.386 len=292 kl=+7.10e-04 clip=0.0066 gn=0.013 sig=0.06894 d=0.1885
+[r2 mu14] pass=0.316 r=+0.386 len=292 kl=+5.27e-04 clip=0.0073 gn=0.013 sig=0.07533 d=0.1769
+[r2 mu15] pass=0.316 r=+0.386 len=292 kl=+5.16e-04 clip=0.0064 gn=0.014 sig=0.07742 d=0.1755
+[r2] done: rollout 291.9s oldlogp 123.6s grad 368.9s update 492.5s cum 12288 resp, 0.659 GPU-h, ¥1.37
+[ckpt] runs/mu16_s2/state.pt @ rollout 2
+[r3 mu00] pass=0.377 r=+0.456 len=296 kl=+0.00e+00 clip=0.0000 gn=0.016 sig=0.08596 d=0.1837
+[r3 mu01] pass=0.377 r=+0.456 len=296 kl=-2.75e-04 clip=0.0023 gn=0.012 sig=0.06506 d=0.1769
+[r3 mu02] pass=0.377 r=+0.456 len=296 kl=-2.97e-04 clip=0.0023 gn=0.016 sig=0.08814 d=0.1789
+[r3 mu03] pass=0.377 r=+0.456 len=296 kl=+1.02e-04 clip=0.0026 gn=0.012 sig=0.07036 d=0.1761
+[r3 mu04] pass=0.377 r=+0.456 len=296 kl=+1.83e-04 clip=0.0027 gn=0.014 sig=0.07746 d=0.1846
+[r3 mu05] pass=0.377 r=+0.456 len=296 kl=+3.22e-04 clip=0.0028 gn=0.016 sig=0.08702 d=0.183
+[r3 mu06] pass=0.377 r=+0.456 len=296 kl=+4.01e-04 clip=0.0034 gn=0.014 sig=0.07729 d=0.1804
+[r3 mu07] pass=0.377 r=+0.456 len=296 kl=+3.42e-04 clip=0.0040 gn=0.013 sig=0.07299 d=0.1783
+[r3 mu08] pass=0.377 r=+0.456 len=296 kl=+2.99e-04 clip=0.0042 gn=0.015 sig=0.08462 d=0.1805
+[r3 mu09] pass=0.377 r=+0.456 len=296 kl=+3.56e-04 clip=0.0043 gn=0.014 sig=0.07555 d=0.1793
+[r3 mu10] pass=0.377 r=+0.456 len=296 kl=+1.70e-04 clip=0.0041 gn=0.014 sig=0.07802 d=0.1763
+[r3 mu11] pass=0.377 r=+0.456 len=296 kl=+5.02e-04 clip=0.0050 gn=0.014 sig=0.07782 d=0.1758
+[r3 mu12] pass=0.377 r=+0.456 len=296 kl=+7.00e-04 clip=0.0057 gn=0.012 sig=0.0691 d=0.174
+[r3 mu13] pass=0.377 r=+0.456 len=296 kl=+8.19e-04 clip=0.0063 gn=0.013 sig=0.07072 d=0.1771
+[r3 mu14] pass=0.377 r=+0.456 len=296 kl=+8.87e-04 clip=0.0068 gn=0.015 sig=0.07667 d=0.1905
+[r3 mu15] pass=0.377 r=+0.456 len=296 kl=+2.81e-04 clip=0.0056 gn=0.013 sig=0.07103 d=0.1825
+[r3] done: rollout 295.9s oldlogp 122.9s grad 371.2s update 494.1s cum 16384 resp, 0.878 GPU-h, ¥1.83
+[ckpt] runs/mu16_s2/state.pt @ rollout 3
+[r4 mu00] pass=0.439 r=+0.522 len=285 kl=+0.00e+00 clip=0.0000 gn=0.015 sig=0.0822 d=0.1795
+[r4 mu01] pass=0.439 r=+0.522 len=285 kl=-1.51e-04 clip=0.0021 gn=0.013 sig=0.07655 d=0.1763
+[r4 mu02] pass=0.439 r=+0.522 len=285 kl=+1.10e-04 clip=0.0025 gn=0.015 sig=0.0815 d=0.187
+[r4 mu03] pass=0.439 r=+0.522 len=285 kl=-1.97e-04 clip=0.0023 gn=0.018 sig=0.09562 d=0.1841
+[r4 mu04] pass=0.439 r=+0.522 len=285 kl=-7.65e-05 clip=0.0027 gn=0.016 sig=0.08811 d=0.1842
+[r4 mu05] pass=0.439 r=+0.522 len=285 kl=+3.64e-04 clip=0.0029 gn=0.015 sig=0.07799 d=0.1904
+[r4 mu06] pass=0.439 r=+0.522 len=285 kl=+4.76e-05 clip=0.0026 gn=0.015 sig=0.08156 d=0.1784
+[r4 mu07] pass=0.439 r=+0.522 len=285 kl=+2.08e-04 clip=0.0035 gn=0.015 sig=0.08196 d=0.1815
+[r4 mu08] pass=0.439 r=+0.522 len=285 kl=-1.03e-04 clip=0.0034 gn=0.015 sig=0.08343 d=0.1757
+[r4 mu09] pass=0.439 r=+0.522 len=285 kl=+3.54e-04 clip=0.0039 gn=0.015 sig=0.08542 d=0.1765
+[r4 mu10] pass=0.439 r=+0.522 len=285 kl=+4.04e-04 clip=0.0041 gn=0.017 sig=0.08567 d=0.1979
+[r4 mu11] pass=0.439 r=+0.522 len=285 kl=+9.04e-05 clip=0.0047 gn=0.016 sig=0.08715 d=0.1806
+[r4 mu12] pass=0.439 r=+0.522 len=285 kl=+1.66e-04 clip=0.0045 gn=0.015 sig=0.08625 d=0.1717
+[r4 mu13] pass=0.439 r=+0.522 len=285 kl=+4.06e-04 clip=0.0043 gn=0.014 sig=0.07879 d=0.177
+[r4 mu14] pass=0.439 r=+0.522 len=285 kl=+5.74e-04 clip=0.0055 gn=0.015 sig=0.08093 d=0.1815
+[r4 mu15] pass=0.439 r=+0.522 len=285 kl=+4.08e-04 clip=0.0054 gn=0.014 sig=0.07946 d=0.1743
+[r4] done: rollout 288.3s oldlogp 118.9s grad 353.0s update 471.9s cum 20480 resp, 1.089 GPU-h, ¥2.27
+[ckpt] runs/mu16_s2/state.pt @ rollout 4
+[r5 mu00] pass=0.469 r=+0.557 len=287 kl=+0.00e+00 clip=0.0000 gn=0.016 sig=0.08646 d=0.1832
+[r5 mu01] pass=0.469 r=+0.557 len=287 kl=-2.49e-04 clip=0.0021 gn=0.015 sig=0.07793 d=0.189
+[r5 mu02] pass=0.469 r=+0.557 len=287 kl=+5.38e-05 clip=0.0022 gn=0.017 sig=0.09595 d=0.1786
+[r5 mu03] pass=0.469 r=+0.557 len=287 kl=-1.74e-04 clip=0.0024 gn=0.013 sig=0.07334 d=0.1708
+[r5 mu04] pass=0.469 r=+0.557 len=287 kl=-2.02e-04 clip=0.0018 gn=0.015 sig=0.08367 d=0.1782
+[r5 mu05] pass=0.469 r=+0.557 len=287 kl=-3.81e-04 clip=0.0024 gn=0.016 sig=0.086 d=0.1826
+[r5 mu06] pass=0.469 r=+0.557 len=287 kl=+2.52e-04 clip=0.0022 gn=0.014 sig=0.08222 d=0.1744
+[r5 mu07] pass=0.469 r=+0.557 len=287 kl=+1.94e-04 clip=0.0025 gn=0.017 sig=0.09268 d=0.1808
+[r5 mu08] pass=0.469 r=+0.557 len=287 kl=+2.58e-05 clip=0.0027 gn=0.015 sig=0.08307 d=0.1807
+[r5 mu09] pass=0.469 r=+0.557 len=287 kl=+5.03e-05 clip=0.0025 gn=0.016 sig=0.0932 d=0.176
+[r5 mu10] pass=0.469 r=+0.557 len=287 kl=+1.18e-04 clip=0.0032 gn=0.016 sig=0.09072 d=0.1782
+[r5 mu11] pass=0.469 r=+0.557 len=287 kl=+4.82e-05 clip=0.0032 gn=0.015 sig=0.07896 d=0.1856
+[r5 mu12] pass=0.469 r=+0.557 len=287 kl=+2.66e-04 clip=0.0030 gn=0.014 sig=0.08152 d=0.1707
+[r5 mu13] pass=0.469 r=+0.557 len=287 kl=+6.47e-06 clip=0.0030 gn=0.017 sig=0.09238 d=0.184
+[r5 mu14] pass=0.469 r=+0.557 len=287 kl=+9.02e-05 clip=0.0035 gn=0.015 sig=0.08694 d=0.1779
+[r5 mu15] pass=0.469 r=+0.557 len=287 kl=+1.94e-04 clip=0.0037 gn=0.014 sig=0.08251 d=0.1754
+[r5] done: rollout 284.8s oldlogp 118.0s grad 353.4s update 471.4s cum 24576 resp, 1.299 GPU-h, ¥2.70
+[ckpt] runs/mu16_s2/state.pt @ rollout 5
+[r6 mu00] pass=0.521 r=+0.611 len=269 kl=+0.00e+00 clip=0.0000 gn=0.015 sig=0.07861 d=0.1857
+[r6 mu01] pass=0.521 r=+0.611 len=269 kl=+1.97e-04 clip=0.0024 gn=0.015 sig=0.07718 d=0.1925
+[r6 mu02] pass=0.521 r=+0.611 len=269 kl=-6.76e-05 clip=0.0023 gn=0.017 sig=0.09725 d=0.1766
+[r6 mu03] pass=0.521 r=+0.611 len=269 kl=+4.82e-04 clip=0.0023 gn=0.018 sig=0.09401 d=0.1863
+[r6 mu04] pass=0.521 r=+0.611 len=269 kl=+1.75e-04 clip=0.0021 gn=0.015 sig=0.08751 d=0.1752
+[r6 mu05] pass=0.521 r=+0.611 len=269 kl=+3.41e-05 clip=0.0024 gn=0.017 sig=0.08876 d=0.1883
+[r6 mu06] pass=0.521 r=+0.611 len=269 kl=-1.14e-04 clip=0.0019 gn=0.015 sig=0.08917 d=0.1711
+[r6 mu07] pass=0.521 r=+0.611 len=269 kl=+1.10e-04 clip=0.0017 gn=0.015 sig=0.08416 d=0.1733
+[r6 mu08] pass=0.521 r=+0.611 len=269 kl=+1.25e-04 clip=0.0023 gn=0.016 sig=0.0937 d=0.1724
+[r6 mu09] pass=0.521 r=+0.611 len=269 kl=+1.23e-04 clip=0.0023 gn=0.016 sig=0.09392 d=0.17
+[r6 mu10] pass=0.521 r=+0.611 len=269 kl=+3.00e-04 clip=0.0023 gn=0.018 sig=0.09821 d=0.1784
+[r6 mu11] pass=0.521 r=+0.611 len=269 kl=+1.75e-04 clip=0.0029 gn=0.016 sig=0.09189 d=0.1732
+[r6 mu12] pass=0.521 r=+0.611 len=269 kl=+2.58e-04 clip=0.0024 gn=0.015 sig=0.08609 d=0.1718
+[r6 mu13] pass=0.521 r=+0.611 len=269 kl=+1.64e-04 clip=0.0028 gn=0.016 sig=0.08693 d=0.1895
+[r6 mu14] pass=0.521 r=+0.611 len=269 kl=+3.21e-05 clip=0.0025 gn=0.016 sig=0.09161 d=0.1795
+[r6 mu15] pass=0.521 r=+0.611 len=269 kl=+1.32e-04 clip=0.0026 gn=0.015 sig=0.08823 d=0.1728
+[r6] done: rollout 271.1s oldlogp 114.2s grad 342.2s update 456.4s cum 28672 resp, 1.501 GPU-h, ¥3.12
+[ckpt] runs/mu16_s2/state.pt @ rollout 6
+[r7 mu00] pass=0.515 r=+0.606 len=275 kl=+0.00e+00 clip=0.0000 gn=0.019 sig=0.1031 d=0.1803
+[r7 mu01] pass=0.515 r=+0.606 len=275 kl=+3.05e-04 clip=0.0022 gn=0.016 sig=0.08706 d=0.1794
+[r7 mu02] pass=0.515 r=+0.606 len=275 kl=+2.23e-04 clip=0.0022 gn=0.015 sig=0.08932 d=0.1682
+[r7 mu03] pass=0.515 r=+0.606 len=275 kl=-4.04e-05 clip=0.0022 gn=0.071 sig=0.4017 d=0.1772
+[r7 mu04] pass=0.515 r=+0.606 len=275 kl=-4.32e-05 clip=0.0021 gn=0.014 sig=0.08116 d=0.1771
+[r7 mu05] pass=0.515 r=+0.606 len=275 kl=-8.12e-05 clip=0.0022 gn=0.017 sig=0.09373 d=0.1805
+[r7 mu06] pass=0.515 r=+0.606 len=275 kl=+5.63e-05 clip=0.0021 gn=0.015 sig=0.08728 d=0.1757
+[r7 mu07] pass=0.515 r=+0.606 len=275 kl=-1.80e-05 clip=0.0023 gn=0.015 sig=0.08634 d=0.1782
+[r7 mu08] pass=0.515 r=+0.606 len=275 kl=-8.47e-05 clip=0.0025 gn=0.015 sig=0.08486 d=0.181
+[r7 mu09] pass=0.515 r=+0.606 len=275 kl=+1.21e-04 clip=0.0021 gn=0.016 sig=0.08253 d=0.1888
+[r7 mu10] pass=0.515 r=+0.606 len=275 kl=-5.27e-05 clip=0.0019 gn=0.015 sig=0.08481 d=0.1817
+[r7 mu11] pass=0.515 r=+0.606 len=275 kl=-1.52e-05 clip=0.0021 gn=0.015 sig=0.08443 d=0.1801
+[r7 mu12] pass=0.515 r=+0.606 len=275 kl=-5.05e-05 clip=0.0019 gn=0.017 sig=0.09426 d=0.176
+[r7 mu13] pass=0.515 r=+0.606 len=275 kl=-8.71e-05 clip=0.0023 gn=0.017 sig=0.09275 d=0.1793
+[r7 mu14] pass=0.515 r=+0.606 len=275 kl=-9.36e-05 clip=0.0018 gn=0.015 sig=0.0881 d=0.1715
+[r7 mu15] pass=0.515 r=+0.606 len=275 kl=+1.30e-04 clip=0.0022 gn=0.016 sig=0.09373 d=0.1747
+[r7] done: rollout 277.7s oldlogp 115.2s grad 345.4s update 460.6s cum 32768 resp, 1.706 GPU-h, ¥3.55
+[ckpt] runs/mu16_s2/state.pt @ rollout 7
+(MainProcess pid=331357) INFO 10-25 22:06:43 [utils.py:628] [shutdown] Process manager: send sigterm to process EngineCore
+(EngineCore pid=331858) INFO 10-25 22:06:43 [core.py:1454] [shutdown] EngineCore: trigger received signal=SIGTERM
+(EngineCore pid=331858) INFO 10-25 22:06:43 [core.py:1635] [shutdown] EngineCore: start mode=abort timeout=0s
+(EngineCore pid=331858) INFO 10-25 22:06:43 [core.py:1666] [shutdown] EngineCore: request processing complete; starting resource teardown
+(EngineCore pid=331858) INFO 10-25 22:06:43 [core.py:1499] [shutdown] EngineCore: exiting busy loop
+[OK  ] runs/mu16_s2
+        rows=128 arm=mu16 seed=2 pass=0.515 kl=+1.30e-04 d=0.17466152647679004 cost=¥3.55
+{
+  "npz": "runs/mu16_s2/rollouts/r000.npz",
+  "n_responses": 4096,
+  "sha256_recomputed": "db4e2dbfb591c9d41ce60e46e98ab7a3c282a1e1cbd19f30e1e1065712f528b7",
+  "prompt_tokens": 296000,
+  "completion_tokens": 1198948,
+  "mean_completion_len": 292.71,
+  "sha256_recorded": "db4e2dbfb591c9d41ce60e46e98ab7a3c282a1e1cbd19f30e1e1065712f528b7",
+  "sha_matches_record": true,
+  "diversity": {
+    "groups": 512,
+    "group_size": 8,
+    "mean_unique": 7.994,
+    "min_unique": 7,
+    "groups_with_duplicates": 3,
+    "groups_all_identical": 0,
+    "mean_unique_first_token": 7.039,
+    "len_sd_within_group_mean": 151.39,
+    "len_sd_overall": 169.5,
+    "within_over_total_len_sd": 0.893
+  }
+}
+
+[diversity] 512 groups of 8: unique 7.994/8 (min 7), distinct first token 7.039, within-group len sd 151.39 vs overall 169.5 (ratio 0.893)
+=== analysis ===
+# Two Clocks audit -- run summary
+
+runs: 11  |  boot resamples: 2000 (seed 12345)
+
+| arm | seed | mu | b | rollouts | pass (last half) | boot 2.5% | boot 97.5% | KL@last mu | KL@mu_step0 | clip frac | d (first) | d (last) | cross d/d0>=1.5 | cross d/d0>=2 | zero-var groups | ¥ |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| mu1 | 0 | 1 | 512 | 1 | 0.2383 | -- | -- | 0 | 0 | 0 | 0.1812 | 0.1812 | cens. | cens. | 0.875 | 0.0323 |
+| mu1 | 1 | 1 | 4096 | 8 | 0.2656 | 0.2501 | 0.2745 | 0 | 0 | 0 | 0.0682 | 0.0749 | cens. | cens. | 0.0046 | 3.65 |
+| mu1 | 2 | 1 | 4096 | 8 | 0.2585 | 0.2449 | 0.2739 | 0 | 0 | 0 | 0.0661 | 0.0712 | cens. | cens. | 0.0027 | 3.665 |
+| mu2 | 0 | 2 | 32 | 1 | 0.1875 | -- | -- | -7.84e-05 | 0 | +6.70e-04 | 0.7325 | 0.7325 | cens. | cens. | 0 | 0.0373 |
+| mu2 | 7 | 2 | 32 | 2 | 0.4141 | -- | -- | -3.93e-04 | 0 | 0 | 0.39 | 0.3446 | cens. | cens. | 0 | 0.008 |
+| mu8 | 0 | 8 | 512 | 8 | 0.3516 | 0.293 | 0.4086 | +3.09e-04 | 0 | 0.00264 | 0.1341 | 0.1298 | cens. | cens. | 0.0356 | 3.577 |
+| mu8 | 1 | 8 | 512 | 8 | 0.364 | 0.2975 | 0.4215 | +3.36e-04 | 0 | 0.0027 | 0.1322 | 0.1291 | cens. | cens. | 0.0391 | 3.565 |
+| mu8 | 2 | 8 | 512 | 8 | 0.3538 | 0.2946 | 0.4134 | +3.18e-04 | 0 | 0.00275 | 0.133 | 0.1303 | cens. | cens. | 0.0334 | 3.624 |
+| mu16 | 0 | 16 | 256 | 8 | 0.3886 | 0.3103 | 0.461 | +5.07e-04 | 0 | 0.00335 | 0.1822 | 0.1799 | cens. | cens. | 0.0396 | 3.565 |
+| mu16 | 1 | 16 | 256 | 8 | 0.3872 | 0.3139 | 0.4564 | +4.82e-04 | 0 | 0.00333 | 0.181 | 0.1789 | cens. | cens. | 0.0447 | 3.532 |
+| mu16 | 2 | 16 | 256 | 8 | 0.3892 | 0.3115 | 0.4643 | +3.57e-04 | 0 | 0.00331 | 0.1805 | 0.1781 | cens. | cens. | 0.0408 | 3.549 |
+
+## Paired differences
+
+| seed | mu8 - mu1 | mu16 - mu1 |
+|---|---|---|
+| 0 | +0.1133 | +0.1503 |
+| 1 | +0.0984 | +0.1216 |
+| 2 | +0.0953 | +0.1307 |
+
+_Differences are per seed, not a CI: with <3 seeds a bootstrap interval would be misleading._
+
+[ ok ] C1: tools/check_schema.py exists
+[ ok ] C2: pending (no evidence required)
+[ ok ] C3: pending (no evidence required)
+[ ok ] C4: pending (no evidence required)
+[ ok ] C5: pending (no evidence required)
+[ ok ] C6: pending (no evidence required)
+[ ok ] C7: pending (no evidence required)
+[ ok ] D1: tests/test_grpo.py exists
+[ ok ] D2: data/MANIFEST.json ok
+[ ok ] D3: configs/base.yaml exists
+[ ok ] P1: pending (no evidence required)
+
+11 claims: pending=7, verified=1, default=3
+done. Cost so far:
+     ab_g4m4     128 resp  0.01 GPU-h  CNY 0.01
+     ab_g8m4     128 resp  0.01 GPU-h  CNY 0.01
+     ab_g8m8     128 resp  0.00 GPU-h  CNY 0.01
+  cloud48g_m8     512 resp  0.04 GPU-h  CNY 0.08
+  cloud48g_throughput     512 resp  0.03 GPU-h  CNY 0.06
+  cloud48g_throughput_g8     512 resp  0.03 GPU-h  CNY 0.06
+  cloud48g_vllm64      64 resp  0.01 GPU-h  CNY 0.02
+       det_a     512 resp  0.03 GPU-h  CNY 0.06
+       det_b     512 resp  0.03 GPU-h  CNY 0.06
+  det_base_a     512 resp  0.03 GPU-h  CNY 0.06
+  det_base_b     512 resp  0.03 GPU-h  CNY 0.06
+   det_fix_a     512 resp  0.03 GPU-h  CNY 0.05
+   det_fix_b     512 resp  0.03 GPU-h  CNY 0.06
+  det_seed_a     512 resp  0.03 GPU-h  CNY 0.06
+  det_sf1024_a    1024 resp  0.05 GPU-h  CNY 0.10
+  det_sf1024_b    1024 resp  0.05 GPU-h  CNY 0.10
+    det_sf_a     512 resp  0.03 GPU-h  CNY 0.06
+    det_sf_b     512 resp  0.03 GPU-h  CNY 0.06
+    det_sf_c     512 resp  0.03 GPU-h  CNY 0.06
+      dryrun     128 resp  0.01 GPU-h  CNY 0.01
+       hf48g      64 resp  0.02 GPU-h  CNY 0.04
+     mu16_s0   32768 resp  1.71 GPU-h  CNY 3.57
+     mu16_s1   32768 resp  1.70 GPU-h  CNY 3.53
+     mu16_s2   32768 resp  1.71 GPU-h  CNY 3.55
+      mu1_s0   32768 resp  1.77 GPU-h  CNY 3.67
+      mu1_s1   32768 resp  1.75 GPU-h  CNY 3.65
+      mu1_s2   32768 resp  1.76 GPU-h  CNY 3.67
+      mu8_s0   32768 resp  1.72 GPU-h  CNY 3.58
+      mu8_s1   32768 resp  1.71 GPU-h  CNY 3.57
+      mu8_s2   32768 resp  1.74 GPU-h  CNY 3.62
+     reg_g4b     512 resp  0.03 GPU-h  CNY 0.06
+     reg_g8c     512 resp  0.03 GPU-h  CNY 0.06
+      vllm64       0 resp  0.00 GPU-h  CNY 0.00
+  total CNY 33.58

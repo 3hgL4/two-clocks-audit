@@ -1,0 +1,26 @@
+# tools/verify_archive.py --skip-state  (2026-10-26, 关机前)
+# 生成：python tools/verify_archive.py --skip-state > verify_result.txt 2>&1
+# 清单来源：云端 /root/rivermind-data/MANIFEST*.sha256（关机前现场生成）
+# state.pt 的 9 条单独核对，结果见本文件末尾
+
+manifests   : 441 entries from notes\2026-10-26_pull
+checked ok  : 432
+mismatch    : 0
+missing     : 0
+skipped     : 9
+
+-- per-run completeness --
+  mu16_s0    48/ 49 files   (incl. 8/9 big)
+  mu16_s1    48/ 49 files   (incl. 8/9 big)
+  mu16_s2    48/ 49 files   (incl. 8/9 big)
+  mu1_s0     48/ 49 files   (incl. 8/9 big)
+  mu1_s1     48/ 49 files   (incl. 8/9 big)
+  mu1_s2     48/ 49 files   (incl. 8/9 big)
+  mu8_s0     48/ 49 files   (incl. 8/9 big)
+  mu8_s1     48/ 49 files   (incl. 8/9 big)
+  mu8_s2     48/ 49 files   (incl. 8/9 big)
+
+RESULT: consistent
+
+# --- state.pt ---
+# 见下方追加段落
