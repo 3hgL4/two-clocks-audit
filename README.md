@@ -69,14 +69,33 @@ python analysis/slope_ratio.py --json analysis/out/slope_ratio.json   # C8 的 N
 
 ---
 
+## 3.5 复算报告里的数字（不需要 GPU、不需要重训）
+
+9 个正式 run 的 `metrics.jsonl` / `samples.jsonl` / `summary.json` / `run_meta.json` / `config.resolved.yaml` 已在仓库里（合计约 1.3 MB）。克隆下来直接跑：
+
+```bash
+git clone https://github.com/3hgL4/two-clocks-audit && cd two-clocks-audit
+python analysis/slope_ratio.py          # C8 的 N_τ 比，末行打印 6.136
+python analysis/make_table.py --runs runs --out analysis/out
+python analysis/report_stats.py --runs runs --out analysis/out/report_stats.json
+```
+
+**这组命令的意义**：README 与 `REPORT.md` 里每个数字都能被读者自己复算，不必相信作者。仓库里没有的是 `state.pt`（837 MB/run）、`adapters/`、`rollouts/*.npz`——那三样只影响"能不能继续训"，不影响"结论对不对"。
+
+> 实测（2026-10-26，干净克隆 + 无 GPU）：`slope_ratio.py` 直接输出 `measured 6.136 in [3.594, 9.17]`，与 `REPORT.md` §6 一致。
+
+---
+
 ## 4. 数据流（本地 / 云端各放什么）
 
 | 内容 | 放哪 | 通道 |
 |---|---|---|
 | 代码、configs、题池、MANIFEST、测试 | GitHub 公开仓 | git |
+| 9 个正式 run 的 `metrics/samples/summary/run_meta/config.resolved` | **GitHub 公开仓 `runs/mu*/`** | git（约 1.3 MB，见 §3.5） |
 | 权重（Qwen3-1.7B-Base） | 只在云端缓存 | ModelScope `snapshot_download`（HF 常 429） |
-| `metrics.jsonl` / `samples.jsonl` / `state.pt` | 云盘 → 回传本地 | ModelScope 私有 dataset 仓 `modelscope upload --repo-type dataset` |
+| `state.pt` / `adapters/` / `rollouts/*.npz` | 云盘 → 回传本地 | ModelScope 私有 dataset 仓（27 GB，只在本地） |
 | 最终冻结的分析产物 | GitHub 仓 `analysis/out/` | git（跑完之后才提交） |
+
 
 两条纪律：
 
