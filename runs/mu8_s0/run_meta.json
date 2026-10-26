@@ -1,0 +1,48 @@
+{
+  "meta": {
+    "created": "2026-10-25T11:41:59+0000",
+    "host": "jupyter-2xc0vrtudfbcphgw",
+    "platform": "Linux-5.15.0-191-generic-x86_64-with-glibc2.35",
+    "python": "3.11.13",
+    "torch": "2.13.0+cu130",
+    "transformers": "5.19.0",
+    "cuda": "13.0",
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "vllm": "0.32.0",
+    "numpy": "2.3.2",
+    "nvidia_driver": "580.119.02",
+    "git_commit": "f04df9ff697d0d4fb22d39a31f405a1def0789c1",
+    "git_commit_source": "file",
+    "git_head_in_checkout": "",
+    "git_dirty": null,
+    "argv": [
+      "src/train.py",
+      "--config",
+      "configs/cloud48g_main.yaml",
+      "--mu",
+      "8",
+      "--seed",
+      "0",
+      "--tag",
+      "mu8_s0"
+    ],
+    "cwd": "/root/rivermind-data/two-clocks-audit",
+    "gpu_total_gb": 50.86
+  },
+  "pool": {
+    "n_items": 2000,
+    "depth_hist": {
+      "1": 318,
+      "2": 345,
+      "3": 346,
+      "4": 460,
+      "5": 259,
+      "6": 179,
+      "7": 93
+    },
+    "answer_mean": 8387.803,
+    "answer_min": -3129138,
+    "answer_max": 5055800,
+    "n_distinct_prompts": 2000
+  }
+}
