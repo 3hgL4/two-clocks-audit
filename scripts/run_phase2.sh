@@ -32,6 +32,18 @@ mkdir -p runs/_logs
 fail() { printf '\n[fail] %s\n' "$*" >&2; exit 1; }
 banner() { printf '\n========== %s ==========\n' "$*"; }
 
+# Distinct completed rollouts in a metrics.jsonl (0 if absent).
+count_rollouts() {
+  "$PY" - "$1" <<'PY'
+import json, sys
+try:
+    rows = {json.loads(l)["rollout_idx"] for l in open(sys.argv[1], encoding="utf-8") if l.strip()}
+except Exception:
+    rows = set()
+print(len(rows))
+PY
+}
+
 # One run. Skips if summary.json exists (a finished run is never re-billed).
 run_one() {
   local cfg="$1" tag="$2"; shift 2
@@ -127,13 +139,33 @@ if [[ "$STAGE" == "all" || "$STAGE" == "r4a" ]]; then
   # --resume needs runs/mu1_s{0,1,2}/state.pt to be present already. The resumed
   # run re-plans total_steps = 19*mu (train.py:430), so mu=1's lr jumps 13.6x at
   # r8: this is a two-segment schedule, and C12 forbids reading a slope across it.
-  for s in 0 1 2; do
-    if [[ ! -f "runs/mu1_s$s/state.pt" ]]; then
+  #
+  # This stage cannot use run_one's summary.json skip: the pre-resume run already
+  # shipped its own summary.json (8 rollouts), which would make every seed look
+  # finished and silently skip the whole stage. Completion is read from the
+  # rollout count inside metrics.jsonl instead, so a crash mid-stage resumes.
+  r4a_one() {
+    local s="$1" tag="mu1_s$s" dir="runs/mu1_s$s"
+    [[ -f "$dir/state.pt" ]] || {
       printf '[fail] runs/mu1_s%s/state.pt missing -- upload it before R4-A\n' "$s" >&2
       exit 1
+    }
+    local n; n=$(count_rollouts "$dir/metrics.jsonl")
+    if [[ "$n" -ge 19 ]]; then
+      echo "[skip] $tag already at $n rollouts"
+      return 0
     fi
-    run_one configs/cloud48g_main.yaml "mu1_s$s" --mu 1 --seed "$s" --resume --num-rollouts 19 \
-      || fail "R4-A seed $s"
+    local log="runs/_logs/${tag}_r4a.log"
+    printf '[start] %s  from r%s -> 19  (seed %s)\n' "$tag" "$n" "$s"
+    local t0=$SECONDS
+    "$PY" src/train.py --config configs/cloud48g_main.yaml --tag "$tag" --rollout vllm \
+      --mu 1 --seed "$s" --resume --num-rollouts 19 2>&1 | tee "$log"
+    local rc=${PIPESTATUS[0]} dt=$(( SECONDS - t0 ))
+    [[ $rc -ne 0 ]] && { printf '[fail] %s exited %d after %d min; log %s\n' "$tag" "$rc" "$((dt/60))" "$log" >&2; return 1; }
+    printf '[done] %s in %d min, now %s rollouts\n' "$tag" "$((dt/60))" "$(count_rollouts "$dir/metrics.jsonl")"
+  }
+  for s in 0 1 2; do
+    r4a_one "$s" || fail "R4-A seed $s"
   done
 fi
 
