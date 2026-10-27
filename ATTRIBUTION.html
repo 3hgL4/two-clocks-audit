@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>归因与延展实验报告：µ 到底改变了什么</title>
+<meta name="description" content="µ 扫描实验报告：量化 Two Clocks 假设 A2 的代价">
+<style>
+:root{
+  --ink:#1b1c1e; --ink-2:#4a4d52; --ink-3:#74797f;
+  --bg:#f4f4f2; --card:#ffffff; --line:#e2e1dd; --line-2:#cfcec9;
+  --accent:#2f5d8a; --accent-soft:#eaf1f8;
+  --ok:#1f6b45; --ok-bg:#e8f3ec;
+  --bad:#9b2c2c; --bad-bg:#fbeceb;
+  --warn:#8a5a1a; --warn-bg:#fbf1e2;
+  --explore:#5b4b8a; --explore-bg:#efecf7;
+  --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  --sans:"Inter","Segoe UI","PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;
+  --serif:"Source Han Serif SC","Songti SC","Georgia","Noto Serif SC",serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:var(--sans); font-size:16px; line-height:1.78;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1240px;margin:0 auto;padding:0 28px 96px;}
+.layout{display:grid;grid-template-columns:212px minmax(0,1fr);gap:52px;align-items:start;}
+main{background:var(--card);border:1px solid var(--line);border-radius:10px;
+     padding:46px 56px 60px;box-shadow:0 1px 2px rgba(0,0,0,.03);min-width:0;}
+
+/* ---------- header ---------- */
+header.masthead{padding:56px 0 30px;}
+.eyebrow{font-size:12.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3);margin-bottom:14px}
+h1.title{font-family:var(--serif);font-size:34px;line-height:1.3;margin:0 0 10px;letter-spacing:-.01em;font-weight:700}
+.subtitle{font-size:16px;color:var(--ink-2);margin:0 0 22px;max-width:78ch}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+.chip{font-size:12.5px;color:var(--ink-2);background:#fff;border:1px solid var(--line);
+      border-radius:999px;padding:3px 11px;white-space:nowrap}
+.chip b{color:var(--ink);font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:18px;font-size:12.5px;color:var(--ink-3)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:9px;height:9px;border-radius:2px;display:inline-block}
+
+/* ---------- toc ---------- */
+nav.toc{position:sticky;top:26px;max-height:calc(100vh - 52px);overflow:auto;
+        font-size:13px;padding:8px 4px 8px 0;}
+nav.toc .toc-h{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;
+               color:var(--ink-3);margin:0 0 12px;padding-left:10px}
+nav.toc ul{list-style:none;margin:0;padding:0}
+nav.toc li{margin:0}
+nav.toc a{display:block;padding:5px 10px;color:var(--ink-2);text-decoration:none;
+          border-left:2px solid transparent;line-height:1.45}
+nav.toc a:hover{color:var(--accent);background:var(--accent-soft)}
+nav.toc a.active{color:var(--accent);border-left-color:var(--accent);
+                 background:var(--accent-soft);font-weight:600}
+nav.toc ul ul a{padding-left:22px;font-size:12.4px;color:var(--ink-3)}
+
+/* ---------- typography ---------- */
+main h2{font-family:var(--serif);font-size:25px;font-weight:700;margin:54px 0 16px;
+        padding-top:22px;border-top:1px solid var(--line);scroll-margin-top:20px}
+main h2:first-of-type{border-top:0;padding-top:0;margin-top:8px}
+main h3{font-size:18px;font-weight:650;margin:34px 0 10px;color:#26282b;scroll-margin-top:20px}
+main h4{font-size:15.5px;margin:24px 0 8px}
+main p{margin:0 0 15px}
+main a{color:var(--accent);text-decoration:none;border-bottom:1px solid #c9d8e8}
+main a:hover{border-bottom-color:var(--accent)}
+strong{font-weight:650;color:#111}
+hr{border:0;border-top:1px solid var(--line);margin:38px 0}
+ul,ol{margin:0 0 16px;padding-left:24px}
+li{margin:5px 0}
+code{font-family:var(--mono);font-size:.87em;background:#f2f2ef;border:1px solid #e6e5e1;
+     border-radius:4px;padding:1px 5px;color:#3d4046;word-break:break-word}
+pre{background:#1f2226;color:#e8e8e6;padding:16px 18px;border-radius:8px;overflow:auto;
+    font-size:13px;line-height:1.65;margin:0 0 18px}
+pre code{background:none;border:0;color:inherit;padding:0;font-size:13px}
+
+/* ---------- blockquote / callout ---------- */
+blockquote{margin:0 0 18px;padding:14px 18px;background:#faf9f6;border-left:3px solid var(--line-2);
+           color:var(--ink-2);border-radius:0 6px 6px 0;font-size:15px}
+blockquote p:last-child{margin-bottom:0}
+blockquote.lead{background:var(--accent-soft);border-left-color:var(--accent);color:#2b3d4f}
+
+/* ---------- tables ---------- */
+.tw{overflow-x:auto;margin:0 0 22px;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;line-height:1.6;background:#fff}
+thead th{background:#f7f7f4;text-align:left;font-weight:650;color:#33363a;
+         padding:9px 12px;border-bottom:1px solid var(--line-2);white-space:nowrap;
+         position:sticky;top:0}
+tbody td{padding:8px 12px;border-bottom:1px solid #eeedea;vertical-align:top}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:#fbfbf9}
+td.num,th.num{font-variant-numeric:tabular-nums}
+
+/* ---------- verdict chips inside cells ---------- */
+.v{display:inline-block;font-size:11.5px;font-weight:650;line-height:1.5;
+   padding:1px 7px;border-radius:4px;border:1px solid transparent;white-space:nowrap}
+.v-ok{color:var(--ok);background:var(--ok-bg);border-color:#cfe4d7}
+.v-bad{color:var(--bad);background:var(--bad-bg);border-color:#f0d3d0}
+.v-warn{color:var(--warn);background:var(--warn-bg);border-color:#f0dfc4}
+.v-explore{color:var(--explore);background:var(--explore-bg);border-color:#ddd6ef}
+
+/* ---------- figures ---------- */
+figure.fig{margin:26px 0 26px;text-align:center}
+figure.fig img{max-width:100%;height:auto;border:1px solid var(--line);border-radius:8px;background:#fff}
+figure.fig figcaption{font-size:13px;color:var(--ink-3);margin-top:9px}
+
+/* ---------- footer ---------- */
+footer.foot{border-top:1px solid var(--line);margin-top:56px;padding-top:18px;
+            font-size:12.5px;color:var(--ink-3);display:flex;flex-wrap:wrap;gap:16px;
+            justify-content:space-between}
+
+/* ---------- responsive ---------- */
+@media (max-width:1080px){
+  .layout{grid-template-columns:1fr}
+  nav.toc{display:none}
+  main{padding:32px 24px 40px}
+  .wrap{padding:0 14px 60px}
+}
+@media print{
+  body{background:#fff;font-size:10.5pt}
+  nav.toc,.legend,footer.foot .build{display:none}
+  .wrap{max-width:none;padding:0}
+  .layout{display:block}
+  main{border:0;box-shadow:none;padding:0}
+  main h2{border-top:0;page-break-after:avoid}
+  main h3{page-break-after:avoid}
+  .tw{overflow:visible;border:0}
+  table{font-size:9.5pt}
+  thead th{position:static}
+  figure.fig{page-break-inside:avoid}
+  tr,blockquote{page-break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <div class="eyebrow">Audit report · Two Clocks / arXiv:2610.18853 · 假设 A2</div>
+  <h1 class="title">归因与延展实验报告：µ 到底改变了什么</h1>
+  <p class="subtitle">固定 <code>Br=4096</code>、<code>G=8</code>、每 run 32,768 responses 的同一预算，只操纵「一个 rollout 被重复用于几次优化更新」：µ ∈ {1, 8, 16} × 3 seeds。测量 A2 显式忽略的陈旧性项，以及它能否被 progress clock 的判据识别。</p>
+  <div class="chips">
+    <span class="chip"><b>9</b> run</span>
+    <span class="chip"><b>294,912</b> responses</span>
+    <span class="chip"><b>15.578</b> GPU-h</span>
+    <span class="chip"><b>¥32.40</b> 内部记账</span>
+    <span class="chip"><b>608/608</b> 文件哈希相符</span>
+    <span class="chip">Qwen3-1.7B-Base + LoRA r64</span>
+  </div>
+  <div class="legend">
+    <span><i class="dot" style="background:#cfe4d7"></i>通过 / 成立</span>
+    <span><i class="dot" style="background:#f0d3d0"></i>相反 / 未复现</span>
+    <span><i class="dot" style="background:#f0dfc4"></i>部分 / 未检验 / 不可识别</span>
+    <span><i class="dot" style="background:#ddd6ef"></i>探索性（未预注册）</span>
+  </div>
+</header>
+
+<div class="layout">
+<nav class="toc" aria-label="目录"><p class="toc-h">目录</p><ul><li><a href="#sec-1">1. 为什么要做这三组归因</a></li><li><a href="#sec-2">2. 三个实验的设计，以及为什么只能这么设计</a><ul><li><a href="#sec-21-c10b-22-22">2.1 C10：b×µ 2×2 为什么不是干净的 2×2</a></li><li><a href="#sec-22-c11">2.2 C11：唯一单变量</a></li><li><a href="#sec-23-c9">2.3 C9：原始设计在数学上就不可能成立</a></li></ul></li><li><a href="#sec-3">3. 结果：能说什么 / 不能说什么</a><ul><li><a href="#sec-31-c8-c3">3.1 C8：斜率比代理（描述性，不是 C3 的替代品）</a></li><li><a href="#sec-32-c10-b">3.2 C10：µ 是主因，b 不是（本报告主结论，已升格）</a></li><li><a href="#sec-33-c9">3.3 C9：σ 的 µ 依赖既不是切分也不是陈旧 —— 本项目没有解释它</a></li><li><a href="#sec-34-c11dual-clip">3.4 C11：dual clip 是惰性的，不是无害的</a></li></ul></li><li><a href="#sec-4-c12">4. 长视界：C12 与一个口径陷阱</a></li><li><a href="#sec-5">5. 合并的&quot;能说 / 不能说&quot;表</a></li><li><a href="#sec-6">6. 不可消除的局限</a></li><li><a href="#sec-7">7. 复现</a></li><li><a href="#sec-_2">附录：数值出处一览</a></li></ul></nav>
+<main>
+
+<blockquote class="lead">
+<p><strong>本报告的性质</strong>：<strong>全部为 post-hoc。</strong> 这里出现的每一条判据（C8–C12）都是看过主审计的 9 个 run 之后才登记进 <code>analysis/claims.yaml</code> 的，每条都带 <code>revisions</code> 行自我披露登记时点。本报告<strong>不改变</strong>主报告 <code>REPORT.md</code> 的主结论（C3 不可识别）。</p>
+<p><strong>与主报告的分工</strong>：<code>REPORT.md</code> 回答"论文的判据在这个配置下能不能测"（预注册判据 C1–C7 + P1）；本报告回答"那到底是什么在起作用"（事后判据 C8–C12）。两份的分工表见 <code>REPORT.md</code> §8.5。</p>
+<p><strong>本报告的主结论</strong>：<strong>C10 —— µ 是主因，b 不是。</strong> 这一条已由作者拍板升格为项目的第二条主结论（第一条是 C3 不可识别）。它带 <code>tier: post_hoc_promoted</code> 标签：<strong>能说"同一批数据里 µ 是主因"，不能说"这被预注册预测过"。</strong></p>
+<p><strong>升格的捆绑条件</strong>：C9 的否定结论必须与它并列读——σ 的 µ 依赖既不是切分造成的，也不是策略陈旧造成的，本项目<strong>没有解释它</strong>。只读本报告的正向结论、跳过 §3.3 与 §6，得到的是一个比数据更强的故事。</p>
+<p><strong>交付物</strong>：本文件是归因侧的事实源。数字均可在 <code>analysis/out/*.json</code> 找到，复现命令见 §7。</p>
+</blockquote>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>项</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>判据</td>
+<td>C8（斜率比代理）、C9（离线 σ 分解）、C10（b×µ 2×2）、C11（dual-clip 消融）、C12（长视界续跑）</td>
+</tr>
+<tr>
+<td>登记时点</td>
+<td>全部 2026-10-26，主审计 9 run 落地并检视之后</td>
+</tr>
+<tr>
+<td>新增数据</td>
+<td>12 次启动（9 个新 run 目录）+ 3 次 resume + 1 次零训练离线计算</td>
+</tr>
+<tr>
+<td>规模</td>
+<td>+479,232 responses（去重后与主审计合计 774,144）</td>
+</tr>
+<tr>
+<td>成本</td>
+<td>+¥54.28（合计 ¥86.68）</td>
+</tr>
+<tr>
+<td>阈值是否事后改动</td>
+<td><strong>否。</strong> <code>analysis/trace.py --strict</code> 显示 16 条 <code>[ok]</code></td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="sec-1">1. 为什么要做这三组归因</h2>
+<p>主审计给出两条互相矛盾的事实：</p>
+<ol>
+<li>同一预算下 pass 排序 <strong>µ16 0.484 &gt; µ8 0.435 &gt; µ1 0.262</strong>（3/3 seed 同向）；</li>
+<li>但 µ 在固定 <code>Br</code> 时与 b 完全共线（<code>b = Br/µ</code>），所以"µ 大更好"至少有三种互斥解释：
+   - <strong>µ 本身</strong>（同一批数据被切成更多次更新 → 每步的 off-policy 程度不同）；
+   - <strong>b</strong>（每步用的样本更少 → 梯度噪声更大，可能恰好有利或不利）；
+   - <strong>σ 的估计口径</strong>（<code>micro_group_responses=8</code> 固定，不随 b 缩放）。</li>
+</ol>
+<p>三种解释指向完全不同的工程处方：若主因是 µ，处方是"同一批数据多切几次更新"；若主因是 b，处方是"每步少取样本、多走几步"，两者在实现上不是一回事。所以必须拆。</p>
+<p>三组实验各自负责一刀：</p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>实验</th>
+<th>切什么</th>
+<th>代价</th>
+<th>结论方向</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>C10</strong> b×µ 2×2</td>
+<td>µ 与 b 的共线</td>
+<td>6 run / ¥27.33</td>
+<td><strong>正向</strong>：µ 是主因</td>
+</tr>
+<tr>
+<td><strong>C11</strong> dual-clip 消融</td>
+<td>clip 上界是不是承重墙</td>
+<td>3 run / ¥11.06</td>
+<td><strong>惰性</strong>：clamp 从不触发</td>
+</tr>
+<tr>
+<td><strong>C9</strong> 离线 σ 分解</td>
+<td>σ 的 µ 依赖来自切分还是陈旧</td>
+<td>¥0（不训练）</td>
+<td><strong>否定</strong>：两个都不是</td>
+</tr>
+<tr>
+<td>C8 斜率比代理</td>
+<td>换一个不需要阈值的判据</td>
+<td>¥0（再分析）</td>
+<td>描述性</td>
+</tr>
+<tr>
+<td>C12 长视界续跑</td>
+<td>判据到底要多少样本才触发</td>
+<td>3 resume / ¥15.89</td>
+<td>描述性 + 口径陷阱</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="sec-2">2. 三个实验的设计，以及为什么只能这么设计</h2>
+<h3 id="sec-21-c10b-22-22">2.1 C10：b×µ 2×2 为什么不是干净的 2×2</h3>
+<p><code>Br = b · µ</code> 是恒等式。固定 <code>Br=4096</code>、让 µ ∈ {8,16}、b ∈ {256,512}，四个组合里只有两个存在（µ8@b512 与 µ16@b256）；另外两格必然改变 <code>Br</code>：</p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>格</th>
+<th>µ</th>
+<th>b</th>
+<th>Br</th>
+<th>相对标准格</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>mu8_b512</td>
+<td>8</td>
+<td>512</td>
+<td>4096</td>
+<td>1.00×（标准）</td>
+</tr>
+<tr>
+<td>mu16_b256</td>
+<td>16</td>
+<td>256</td>
+<td>4096</td>
+<td>1.00×（标准）</td>
+</tr>
+<tr>
+<td>mu8_b256</td>
+<td>8</td>
+<td>256</td>
+<td><strong>2048</strong></td>
+<td><strong>0.50×</strong>（偏保守）</td>
+</tr>
+<tr>
+<td>mu16_b512</td>
+<td>16</td>
+<td>512</td>
+<td><strong>8192</strong></td>
+<td><strong>2.00×</strong>（偏乐观）</td>
+</tr>
+</tbody>
+</table></div>
+<p>两个偏差方向相反：第 3 格数据少一半，会低估它自己的 pass；第 4 格数据多一倍，会高估。若"b 是主因"，这两个偏差分别把 b 效应往下、往上拉——<strong>净效果不确定，这一点必须在读结果前说清</strong>。</p>
+<p>另有一层：<code>prompts_per_rollout</code> 在两格里不同（256 vs 1024），所以四格的 pass 是在<strong>不同 prompt 子集</strong>上估的。这不是可修的瑕疵，是"想改 b 就得改每 rollout 的 prompt 数"的直接后果。</p>
+<h3 id="sec-22-c11">2.2 C11：唯一单变量</h3>
+<p><code>clip_delta</code> 上界从 10.0 改成 <code>null</code>，其余一个字节不动。这是三项归因里唯一没有混淆的实验，也就是它给出的结论最硬——而它给出的结论是<strong>没有效应</strong>。</p>
+<h3 id="sec-23-c9">2.3 C9：原始设计在数学上就不可能成立</h3>
+<p>这条要单独记，因为它是本项目唯一一次"写脚本时才发现判据本身错了"。</p>
+<p>原始设计是：离线用不同的 b 切分同一份数据，算 σ，若离线 σ 曲线与训练中的 σ 曲线一致，则 σ 的 µ 依赖得到归因。<strong>这个设计不成立</strong>：σ 是<strong>组内</strong>梯度范数的变异系数，而组大小固定为 8（<code>micro_group_responses</code>）；改 b 只改变"有多少个组"，不改变"每组多大"。变异系数的期望与组数无关，所以离线 σ 在 b 变化下<strong>必然平坦</strong>，不可能"复现"训练中的增长。</p>
+<p>改成可做的形式：固定一份归档数据 D（<code>mu1_s0/r000</code>，4096 条 responses，由初始策略产生），在三个 adapter（r000 / r003 / r007，累积 off-policy 陈旧度递增）× 三种切分（µ'=1/8/16，即每片 4096/512/256 条）下各算一次 σ，得 3×3 表。两个假设：</p>
+<ul>
+<li><strong>H1（切分无关）</strong>：同一 adapter 下三种切分的 σ 相对极差 &lt; 5%；</li>
+<li><strong>H2（陈旧相关）</strong>：σ(a7)/σ(a0) ≥ 1.20。</li>
+</ul>
+<hr />
+<h2 id="sec-3">3. 结果：能说什么 / 不能说什么</h2>
+<h3 id="sec-31-c8-c3">3.1 C8：斜率比代理（描述性，不是 C3 的替代品）</h3>
+<p><strong>方法。</strong> 若 pass 对 responses 在窗口内近似线性，则 <code>N_τ(µ)/N_τ(µ') = slope(µ')/slope(µ)</code>，<strong>τ 自动消掉</strong>。这是它相对"续跑穿越"的主要优势：<code>τ</code> 取 0.30 还是 0.35 不再是一个会跑空预算的参数。</p>
+<p>主窗 r0–r7（三臂共享），逐 seed 比值后再取均值：</p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>比值</th>
+<th>点估计</th>
+<th>逐 seed</th>
+<th>离散</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>N_τ(µ1)/N_τ(µ8)</code></td>
+<td><strong>4.98</strong></td>
+<td>4.66 / 4.80 / 5.47</td>
+<td>极差 0.81</td>
+</tr>
+<tr>
+<td><code>N_τ(µ1)/N_τ(µ16)</code></td>
+<td><strong>6.14</strong></td>
+<td>5.99 / 5.62 / 6.80</td>
+<td>极差 1.18</td>
+</tr>
+<tr>
+<td><code>N_τ(µ8)/N_τ(µ16)</code></td>
+<td>1.23</td>
+<td>1.28 / 1.17 / 1.24</td>
+<td>极差 0.11</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>方法自检（这是这条判据最该看的一段）。</strong> 唯一能被独立检验的一对是 µ8 vs µ16：两者都能在窗口内穿越某些阈值，因此可以把"直接读穿越点"（不依赖线性假设）与"斜率比"（依赖线性假设）对照。直接读穿越点得 1.11 / 1.17 / 1.13（均值 1.14），斜率比给 1.23，<strong>差 +8%，落在 ±1 rollout 的网格分辨率之内</strong>。结论：线性假设在唯一可检验的那一对上<strong>没有被打翻</strong>，但也没有被证实——这只是一个不自相矛盾的检查。</p>
+<p><strong>窗口敏感性：系统误差比统计误差大一个数量级。</strong></p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>窗口</th>
+<th>µ1/µ8</th>
+<th>µ1/µ16</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>r0–r4（5 点）</td>
+<td>7.31</td>
+<td><strong>9.17</strong></td>
+</tr>
+<tr>
+<td>r1–r7</td>
+<td>4.77</td>
+<td>5.87</td>
+</tr>
+<tr>
+<td>r2–r7</td>
+<td>4.11</td>
+<td>5.10</td>
+</tr>
+<tr>
+<td><strong>r0–r7（主窗）</strong></td>
+<td><strong>4.98</strong></td>
+<td><strong>6.14</strong></td>
+</tr>
+<tr>
+<td>r4–r7（4 点）</td>
+<td><strong>2.82</strong></td>
+<td><strong>3.59</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>窗口区间 [3.59, 9.17] 是 −41% / +49%，而三元统计 CI 的宽度只有约 ±10%。<strong>两套误差必须同时报，只报一套就是选择性呈现。</strong></p>
+<p><strong>能说</strong>：在这批数据、这个窗口、这个线性假设下，达到同一 pass 水平所需 responses 的比值约为 4.98（vs µ8）与 6.14（vs µ16），且三个 seed 方向一致。
+<strong>不能说</strong>：这是 C3 的 <code>N_τ</code>（判据不同）；不能说这是复现论文的 6.1×（任务、模型、题池全不同，且本判据本身是事后登记）；不能说 τ=0.30 时也成立（τ 无关是线性假设的推论，不是测量结果）。</p>
+<h3 id="sec-32-c10-b">3.2 C10：µ 是主因，b 不是（<strong>本报告主结论，已升格</strong>）</h3>
+<p>响应取 r7 端点 pass（<code>.git-ignored</code> 的 <code>analysis/out/bmu_2x2.json</code> 可重算）：</p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>格</th>
+<th>µ</th>
+<th>b</th>
+<th>responses/rollout</th>
+<th>r7 pass（s0 / s1 / s2）</th>
+<th>均值</th>
+<th>单 run 成本</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>mu8_b512</td>
+<td>8</td>
+<td>512</td>
+<td>4,096</td>
+<td>0.4453 / 0.4805 / 0.4521</td>
+<td>0.4593</td>
+<td>¥3.59</td>
+</tr>
+<tr>
+<td>mu16_b256</td>
+<td>16</td>
+<td>256</td>
+<td>4,096</td>
+<td>0.5071 / 0.5283 / 0.5149</td>
+<td>0.5168</td>
+<td>¥3.55</td>
+</tr>
+<tr>
+<td>mu8_b256</td>
+<td>8</td>
+<td>256</td>
+<td>2,048</td>
+<td>0.4189 / 0.4316 / 0.4644</td>
+<td>0.4383</td>
+<td>¥1.88</td>
+</tr>
+<tr>
+<td>mu16_b512</td>
+<td>16</td>
+<td>512</td>
+<td>8,192</td>
+<td>0.5670 / 0.5780 / 0.5562</td>
+<td>0.5671</td>
+<td>¥7.23</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>主效应（n=3，t(0.975, df=2)=4.303）：</strong></p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>效应</th>
+<th>均值</th>
+<th>95% CI</th>
+<th>sd</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>µ 主效应（8→16）</td>
+<td><strong>+9.31 pp</strong></td>
+<td><strong>[+5.77, +12.85]</strong></td>
+<td>1.43</td>
+</tr>
+<tr>
+<td>b 主效应（256→512）</td>
+<td>+3.56 pp</td>
+<td>[−1.04, +8.17]</td>
+<td>1.85</td>
+</tr>
+<tr>
+<td>交互</td>
+<td>+2.93 pp</td>
+<td>[−3.67, +9.53]</td>
+<td>2.66</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>µ 主效应 CI <strong>不含 0</strong>；b 主效应 CI <strong>含 0</strong>；交互 CI 含 0，故两效应在本数据上<strong>可加</strong>。</li>
+<li>逐 seed 配对差（µ 效应 − b 效应）：<strong>+6.18 / +4.79 / +6.27</strong>，均值 <strong>+5.75 pp [+3.68, +7.82]</strong>，3/3 同号。</li>
+</ul>
+<p><strong>为什么两个主效应可以直接比。</strong> 这是本条最关键的一步论证：两个效应各自都是在"固定另一个因子"下把<strong>预算翻倍</strong>——b=256 列比较 2048→4096，b=512 列比较 4096→8192；mu=8 列比较 2048→4096，mu=16 列比较 4096→8192。所以两句话是同一句：</p>
+<blockquote>
+<p>同样把预算翻一倍，拿去多切几次更新的收益是 <strong>+9.31 pp</strong>，拿去每轮多采数据的收益是 <strong>+3.56 pp</strong>。</p>
+</blockquote>
+<p><strong>能说</strong>：
+- 在本数据上，<strong>µ 是主因</strong>：同一 b 下 µ 翻倍的收益约为 b 翻倍的 <strong>2.6 倍</strong>（配对差 +5.75 pp，CI 不含 0）；
+- 两效应可加：没有证据表明"µ16 的劣势能靠加大 b 补回来"（交互 CI 含 0，这一支判据不成立）。
+<strong>不能说</strong>：
+- <strong>不能说"b 完全无效"</strong>——CI 含 0 只说明"在这 3 个 seed、这个量级上测不出来"，不等于零；
+- <strong>不能说"µ16 的劣势能用 b 补偿"</strong>——交互不显著就是不可判定，不是"差不多能补"；
+- <strong>不能说这是严格的 2×2</strong>——两新格的预算分别是 0.5× 与 2×，且 prompt 子集不同（§2.1）。</p>
+<blockquote>
+<p><strong>α 校正未做，必须写在这里：</strong> 上述 CI 都是 α=0.05 口径。本项目有 2 条主结论（C3 预注册 + C10 事后升格），严格应校正到 0.025（t 分位 4.303 → 6.205）。按 6.205 重算区间会变宽、下界下移；以逐 seed 配对差 6/6 同号、均值 +5.75 pp 的量级看，下界大概率仍为正——<strong>但"大概率"是外推，本项目没有做这一步计算</strong>。简历与口头陈述里不要省略这一条。</p>
+</blockquote>
+<h3 id="sec-33-c9">3.3 C9：σ 的 µ 依赖既不是切分也不是陈旧 —— <strong>本项目没有解释它</strong></h3>
+<p>3×3 表（σ，组内梯度范数的变异系数）：</p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>adapter</th>
+<th>累积 off-policy 步</th>
+<th>σ(µ'=1)</th>
+<th>σ(µ'=8)</th>
+<th>σ(µ'=16)</th>
+<th>组内相对极差</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>init</td>
+<td>—</td>
+<td>0.070378</td>
+<td>0.070289</td>
+<td>0.070189</td>
+<td>0.27%</td>
+</tr>
+<tr>
+<td>r000</td>
+<td>0</td>
+<td>0.068831</td>
+<td>0.068744</td>
+<td>0.068645</td>
+<td>0.27%</td>
+</tr>
+<tr>
+<td>r003</td>
+<td>3</td>
+<td>0.069368</td>
+<td>0.069294</td>
+<td>0.069191</td>
+<td>0.26%</td>
+</tr>
+<tr>
+<td>r007</td>
+<td>7</td>
+<td>0.070199</td>
+<td>0.070128</td>
+<td>0.070013</td>
+<td>0.26%</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong>H1（切分无关）成立</strong>：极差 0.26–0.27%，判据要求 &lt; 5%，余量约 20 倍。</li>
+<li><strong>H2（陈旧相关 ≥ 1.20）不成立</strong>：σ(a7)/σ(a0) = <strong>1.0199 / 1.0201 / 1.0199</strong>（三个 µ' 一致），相差一个数量级。</li>
+</ul>
+<p>按 C9 自己写的判定规则，这落到第三支：<strong>"σ 的 µ 依赖既非切分也非策略陈旧，必须列为未解释的混淆项"</strong>。</p>
+<p>为什么这条重要：σ 是 d 的<strong>分母</strong>，而 <code>d0</code> 随 µ 上升 2.63×（<code>REPORT.md</code> §5.3）主要就是靠 σ 不动、‖ḡ‖ 涨 2.69× 实现的。也就是说，<strong>主报告里那个最反直觉的观测（d 随 µ 上升）所依赖的那个量，本项目查不出它为什么不动</strong>。</p>
+<p><strong>能说</strong>：切分本身不重要（20 倍余量）；策略陈旧度在 7 步内不足以把 σ 推过阈值。
+<strong>不能说</strong>：不能说"σ 与 µ 无关"——恰恰相反，训练中的 σ 在 r7 时三臂分别是 0.0663 / 0.0830 / 0.0958（极差 44%），<strong>µ 依赖是存在的</strong>，只是不来自这两个候选机制。
+<strong>不能说</strong>：不能说"所以 σ 不重要"。它是一个<strong>未解释的混淆项</strong>，不是一个被排除的项。</p>
+<p>补充一个零成本佐证：<code>mu1</code> 与 <code>mu8</code> 的 r0 <code>rollout_data_sha</code> 完全相同（<code>82bbd063…</code>），而 r0 三臂 σ = 0.0663 / 0.0695 / 0.0700（极差 5%）——<strong>µ 依赖在起点几乎不存在，只在训练之后长出来</strong>。这排除了"初始权重不同"这一解释，但离"为什么长出来"还差一步。</p>
+<h3 id="sec-34-c11dual-clip">3.4 C11：dual clip 是惰性的，不是无害的</h3>
+<p>三种 pass 口径的差值（noclip − clip@10，µ16，3 seed）：</p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>口径</th>
+<th>均值</th>
+<th>逐 seed（pp）</th>
+<th>95% CI</th>
+<th>判定</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>端点 r7</td>
+<td>+0.97 pp</td>
+<td>+1.05 / +1.37 / +0.49</td>
+<td>[−0.14, +2.07]</td>
+<td>不可识别</td>
+</tr>
+<tr>
+<td><strong>后半程 r4–r7（主口径）</strong></td>
+<td><strong>+0.60 pp</strong></td>
+<td>+0.43 / +0.99 / +0.37</td>
+<td>[−0.25, +1.45]</td>
+<td>不可识别</td>
+</tr>
+<tr>
+<td>全 8 rollout</td>
+<td>+0.48 pp</td>
+<td>+0.34 / +0.64 / +0.44</td>
+<td>[+0.10, +0.85]</td>
+<td>不可识别</td>
+</tr>
+</tbody>
+</table></div>
+<p>三种口径全部落在 3.0 pp 阈值内（约为阈值的 1/5），3/3 seed 同号。<strong>口径选择不改变判定，只改变幅度</strong>——但确实改变幅度（端点比后半程大 1.6 倍），所以 C11 登记时补了一条 annotation 把主口径定为"后半程"。</p>
+<p><strong>但这条的主结论不是"不可识别"，是"惰性"。</strong></p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>量</th>
+<th>有 clip</th>
+<th>无 clip</th>
+<th>上界</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ratio_p95</code> 最大</td>
+<td>1.0931</td>
+<td>1.0906</td>
+<td><strong>10.0</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>余量 <strong>9.17 倍</strong>——该上界在本配置下<strong>从未进入工作区间</strong>。所以：</p>
+<p><strong>能说</strong>：在本配置下，把 <code>clip_delta</code> 上界从 10 改成无上界，行为几乎不变（<code>ratio_p95</code> 1.0906 vs 1.0931）。
+<strong>不能说</strong>：<strong>不能说"dual clip 无害"</strong>。只能说"本配置从不触发它"。长轨迹、多 off-policy 步的场景下 <code>ratio</code> 上界真会撞 10，本实验不提供任何信息。
+<strong>别读错</strong>：noclip 臂的 <code>clip_frac_high</code> 仍非零（max 0.0018–0.0022），那是 <code>eps_high=0.28</code> 那段在 clip，不是上界 10。不是"没关干净"。</p>
+<hr />
+<h2 id="sec-4-c12">4. 长视界：C12 与一个口径陷阱</h2>
+<p>µ1 从 8 续跑到 19 rollout（3 seed），用<strong>网格口径</strong>判定——只在每个 rollout 结束处检查 <code>pass ≥ 0.30</code>，不做 rollout 间插值（插值等于把线性假设当已知，对 C8 是循环论证）。</p>
+<p><strong>3/3 命中</strong>：</p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>seed</th>
+<th>首达 rollout</th>
+<th>pass</th>
+<th>累计 responses</th>
+<th>累计成本</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>s0</td>
+<td><strong>r12</strong></td>
+<td>0.3130</td>
+<td>53,248</td>
+<td>¥6.14</td>
+</tr>
+<tr>
+<td>s1</td>
+<td><strong>r10</strong></td>
+<td>0.3057</td>
+<td>45,056</td>
+<td>¥5.06</td>
+</tr>
+<tr>
+<td>s2</td>
+<td><strong>r10</strong></td>
+<td>0.3193</td>
+<td>45,056</td>
+<td>¥5.13</td>
+</tr>
+</tbody>
+</table></div>
+<p>命中点逐 seed 不同：<strong>s0 在 r11 只有 0.2937，还没过线</strong>。不要概括成"µ1 在 r11 命中"。</p>
+<p><strong>真正值得记的不是命中，是同一份数据在两套口径下差 1.7 倍。</strong></p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>口径</th>
+<th>µ1/µ8</th>
+<th>µ1/µ16</th>
+<th>相对 C8</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>C8 斜率比（主窗 r0–r7 线性）</td>
+<td>4.98</td>
+<td>6.14</td>
+<td>—</td>
+</tr>
+<tr>
+<td>R4-A 网格（只查 rollout 边界）</td>
+<td>3.58</td>
+<td>3.89</td>
+<td><strong>−28% / −37%</strong></td>
+</tr>
+</tbody>
+</table></div>
+<p>根因是<strong>分辨率不对称</strong>：µ1 有 19 个检查点，µ8/µ16 只有 8 个（只在 rollout 边界有 pass）。网格化对快臂的膨胀更严重——µ8 的 pass 从 0.2987（连续）到 0.300 需要等一整格，把穿越点推到 idx3，膨胀约 <strong>2.0×</strong>；µ1 只膨胀 <strong>1.04×</strong>。</p>
+<p>所以：<strong>网格数不能当作 C8 的修正值</strong>，两者测的不是同一个量。网格口径的价值在别处——它给出一个<strong>不依赖线性假设</strong>的下界：若把 µ1 再续跑到 19 仍未命中，<code>µ1/µ16 ≥ 6.33</code>。这次 3/3 命中，这个下界支没用上。</p>
+<hr />
+<h2 id="sec-5">5. 合并的"能说 / 不能说"表</h2>
+<p>四组实验的边界收在一页里看，比散在各节有用：</p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>结论</th>
+<th>能说</th>
+<th>不能说</th>
+<th>主要威胁</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>µ 是主因</strong>（C10，已升格）</td>
+<td>同一 b 下 µ 翻倍的收益约为 b 翻倍的 2.6 倍；CI [+5.77,+12.85] 不含 0</td>
+<td>b 无效；µ16 劣势可由 b 补偿；这是严格 2×2</td>
+<td>两新格预算 0.5×/2×、prompt 子集不同、α 未做 Bonferroni</td>
+</tr>
+<tr>
+<td><strong>参数效率比</strong>（C8）</td>
+<td>窗口内约 4.98（vs µ8）/ 6.14（vs µ16）</td>
+<td>这是 C3 的 <code>N_τ</code>；这是复现 6.1×</td>
+<td>线性假设只在一对上自检过；窗口系统误差 ±40–50%</td>
+</tr>
+<tr>
+<td><strong>σ 未归因</strong>（C9）</td>
+<td>切分不影响 σ（20 倍余量）；7 步陈旧度不足以推动 σ</td>
+<td>σ 与 µ 无关；σ 不重要</td>
+<td>只有 4 个 adapter、7 步范围，外推到更长 off-policy 无依据</td>
+</tr>
+<tr>
+<td><strong>clamp 惰性</strong>（C11）</td>
+<td>本配置下上界 10 从未触发（余量 9.17×）</td>
+<td>dual clip 无害；长轨迹下也无害</td>
+<td>单任务、短轨迹、LoRA 小更新</td>
+</tr>
+<tr>
+<td><strong>判据需要多少数据</strong>（C12）</td>
+<td>µ1 到 r10–r12（45–53k responses）达 0.30</td>
+<td>网格比 3.58/3.89 能替代 4.98/6.14</td>
+<td>分辨率不对称（19 vs 8 检查点）</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="sec-6">6. 不可消除的局限</h2>
+<p>前四条是设计与预算的函数，补不了；后四条是测量范围的边界。</p>
+<ol>
+<li><strong><code>Br = b·µ</code> 是恒等式</strong> → 真 2×2 不可能固定预算。两新格被迫是 0.5× 与 2×，且 <code>prompts_per_rollout</code> 不同（256 vs 1024），pass 在不同 prompt 子集上估。</li>
+<li><strong>µ 同时改三样东西</strong>：更新次数、每步样本数 b、以及每步的 off-policy 程度。C10 只把 µ 与 b 拆开，第三项（off-policy 程度）仍与 µ 绑在一起，而 C9 恰恰在这个方向上给出否定结论。</li>
+<li><strong>3 个 seed</strong> → t 区间只有 2 个自由度。所有 CI 都宽，且 C10 的效应量虽 6.5 倍于组内离散，仍只是一次小样本估计。</li>
+<li><strong>α 未做 Bonferroni</strong>（2 条主结论，见 §3.2 末尾）。</li>
+<li><strong>单模型 1.7B-Base + LoRA r=64（可训 3.89%）</strong>：绝对标度不可外推，<code>σ</code> 与 <code>‖ḡ‖</code> 的量级都受 LoRA 子空间限制。</li>
+<li><strong>单任务 counting、响应 285–300 token、生成上限 512</strong>：轨迹短意味着 off-policy 代价可能被<strong>低估</strong>；C11 的"clamp 从不触发"尤其只在这个长度域成立。</li>
+<li><strong>组粒度只能抽样估</strong>：<code>samples.jsonl</code> 每 rollout 只留第一组，故每臂 24 组（全局 72 组），不是全部 512 组。据此得到的全错组比例（µ1 37.5%）与 ICC（0.198/0.296/0.258）<strong>只足以推翻旧字段给的 0.000，不足以支撑逐臂排序</strong>（<code>REPORT.md</code> §5.10.1）。</li>
+<li><strong>µ1 的 19 rollout 不是一条连续曲线</strong>：续跑会把 lr 在 r8 从 2.48e-6 拉到 3.36e-5（13.6×），是两个调度段的拼接。C12 只用"是否穿越"这一与调度形状无关的事实，任何依赖曲线形状的推断都不能用它。</li>
+</ol>
+<hr />
+<h2 id="sec-7">7. 复现</h2>
+<pre><code class="language-bash">PY=&lt;python-with-numpy&gt;     # analysis/ 需要 numpy；系统 3.13 无 numpy
+cd &lt;repo&gt;
+
+# C8 斜率比代理（零训练，只用主审计 9 run 的 metrics）
+$PY analysis/slope_ratio.py  --runs &lt;8-rollout-runs&gt; --json analysis/out/slope_ratio.json
+
+# C9 离线 σ 分解（零训练，需 base 权重 + 3 个 adapter，默认 --adapters 000 003 007）
+$PY tools/offline_sigma.py   --json analysis/out/offline_sigma.json
+
+# C10 b×µ 2×2（两新格在 02_bxmu，标准两格在 01_original_8rollout）
+$PY analysis/bmu_2x2.py --runs &lt;8-rollout-runs&gt; \
+                        --ab   20_实验数据/02_bxmu/runs \
+                        --json analysis/out/bmu_2x2.json --md analysis/out/bmu_2x2.md
+
+# C11 dual-clip（脚本 ROOT 相对自身，故需一个把 mu16 与 noclip 放在同一 runs/ 的视图）
+$PY analysis/noclip_ablation.py --json analysis/out/noclip_mu16.json
+
+# C12 长视界网格
+$PY analysis/r4a_grid.py --runs 20_实验数据/04_r4a/runs \
+                         --base 20_实验数据/01_original_8rollout/runs \
+                         --json analysis/out/r4a_grid.json --md analysis/out/r4a_grid.md
+
+# 组粒度（§6 第 7 条的数字）
+$PY analysis/group_grain.py --runs &lt;8-rollout-runs&gt; --json analysis/out/group_grain.json
+
+# 证据链
+$PY analysis/trace.py --strict      # 16 条，verified 5 / default 3 / pending 8
+</code></pre>
+<p><strong>数据路径。</strong> <code>&lt;8-rollout-runs&gt;</code> 指 <code>mu{1,8,16}_s{0,1,2}</code> 各 8 行 metrics 的版本：归档副本 <code>20_实验数据/01_original_8rollout/runs</code>，或 <code>git show HEAD:runs/mu1_s0/metrics.jsonl</code>。<strong>工作区的 <code>runs/mu1_s*</code> 已是 19-rollout 版</strong>，直接用它跑 <code>bmu_2x2.py</code> 会把标准两格之一算成 19 行口径，<code>make_table.py</code> 同理。细节见 <code>REPORT.md</code> §9。</p>
+<hr />
+<h2 id="sec-_2">附录：数值出处一览</h2>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>陈述</th>
+<th>出处</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>µ1/µ8 = 4.98、µ1/µ16 = 6.14、µ8/µ16 = 1.23</td>
+<td><code>analysis/out/slope_ratio.json</code> → <code>slope_ratio.*.mean</code></td>
+</tr>
+<tr>
+<td>窗口区间 [3.59, 9.17]</td>
+<td>同上 → <code>window_sensitivity</code>（r4-r7 与 r0-r4）</td>
+</tr>
+<tr>
+<td>四格 pass、主效应、配对差</td>
+<td><code>analysis/out/bmu_2x2.json</code> → <code>cells</code> / <code>verdict</code></td>
+</tr>
+<tr>
+<td>3×3 σ 表、H1/H2</td>
+<td><code>analysis/out/offline_sigma.json</code> → <code>table</code> / <code>verdict</code></td>
+</tr>
+<tr>
+<td>三种 pass 口径的差值</td>
+<td><code>analysis/out/noclip_mu16.json</code> → <code>comparisons</code></td>
+</tr>
+<tr>
+<td><code>ratio_p95</code> 1.0906 / 1.0931 / 余量 9.17×</td>
+<td>同上 → <code>mechanism</code></td>
+</tr>
+<tr>
+<td>C12 首达 r12 / r10 / r10</td>
+<td><code>analysis/out/r4a_grid.json</code> → <code>mu1_hits</code></td>
+</tr>
+<tr>
+<td>网格比 3.58 / 3.89</td>
+<td>同上 → <code>grid_ratios</code>（3 seed 均值）</td>
+</tr>
+<tr>
+<td>全错组 37.5%、ICC 0.198/0.296/0.258</td>
+<td><code>analysis/out/group_grain.json</code> → <code>by_arm</code></td>
+</tr>
+<tr>
+<td>18 序列 / 774,144 responses / ¥86.68</td>
+<td>各 run 末行 <code>responses_cum</code> / <code>cost_cny_cum</code>，µ1 只计 19-rollout 版一次</td>
+</tr>
+</tbody>
+</table></div>
+<footer class="foot">
+  <div>事实源：<code>ATTRIBUTION.md</code> · sha256:9957dc0f6289 · 由 <code>tools/build_report_html.py</code> 生成</div>
+  <div class="build">commit 7835ace (dirty) · built 2026-10-27 22:44 · 图内嵌：</div>
+</footer>
+</main>
+</div>
+</div>
+<script>
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('nav.toc a'));
+  var targets = links.map(function(a){
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    return document.getElementById(id);
+  }).filter(Boolean);
+  if(!targets.length) return;
+  function setActive(id){
+    links.forEach(function(a){
+      var on = decodeURIComponent(a.getAttribute('href').slice(1)) === id;
+      a.classList.toggle('active', on);
+    });
+  }
+  var visible = {};
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting) visible[e.target.id] = e.boundingClientRect.top;
+      else delete visible[e.target.id];
+    });
+    var ids = Object.keys(visible);
+    if(ids.length){
+      ids.sort(function(a,b){ return visible[a] - visible[b]; });
+      setActive(ids[0]);
+    }
+  }, {rootMargin:'-10% 0px -70% 0px', threshold:[0,1]});
+  targets.forEach(function(t){ io.observe(t); });
+})();
+</script>
+</body>
+</html>
