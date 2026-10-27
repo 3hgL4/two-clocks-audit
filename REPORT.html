@@ -236,7 +236,7 @@ footer.foot{border-top:1px solid var(--line);margin-top:56px;padding-top:18px;
 <tr>
 <td>A2 忽略的 KL 项在 rollout 内确实累积</td>
 <td>末步 3.21e-4（µ8）/ 4.49e-4（µ16）nats/token；µ16 是 µ8 的 1.40×</td>
-<td>C2 <strong class="v v-warn">部分</strong>（净增长成立，逐步单调不成立）</td>
+<td>C2 <strong class="v v-warn">部分</strong>（跨 rollout 均值的净增长成立，单条 rollout 内部的逐步单调不成立——两个层次见 §7.3）</td>
 </tr>
 <tr>
 <td>初始 drift clock 随 µ <strong>上升</strong></td>
@@ -1197,7 +1197,7 @@ footer.foot{border-top:1px solid var(--line);margin-top:56px;padding-top:18px;
 <p>三条读法：</p>
 <ol>
 <li><strong>按"单调"的字面判据，C2 不通过</strong>：上升比例 50–66%，与抛硬币无异；能称 monotonish 的只有 4/48 个 rollout。</li>
-<li><strong>按"净增长"读，C2 成立</strong>：末步 KL 比第 1 步高 11.3–86.8 倍（6 个 run 中 4 个可算：三个落在 11.3–13.4，一个为 86.8；另 2 个 run 首步为负，比值无定义）。</li>
+<li><strong>按"净增长"读，C2 成立</strong>：把同臂的 8 条 rollout 在<strong>同一 µ_step 位置</strong>上取均值后，末步 KL 比第 1 步高 11.3–86.8 倍（6 个 run 中 4 个可算：三个落在 11.3–13.4，一个为 86.8；另 2 个 run 首步均值为负，比值无定义）。<strong>上表两列都是跨-rollout 均值，不是单条 rollout 的首末值</strong>；按单条 rollout 数，0/48 条全程单调。两个层次不可互换，分界见 §7.3 第 3 条。</li>
 <li><strong>负 KL 每 run 11–29 行</strong>：精确 KL ≥ 0，负值说明这是<strong>采样估计</strong>，早期步的估计噪声大于信号本身。这解释了为什么"逐步单调"不可能被观测到——不是策略不走，是仪器的分辨率在这个量级上不够。</li>
 </ol>
 <p><strong>µ=1 臂的 KL 恒为 0 是结构性的</strong>：每 rollout 只有 1 步，而该步是基線步（step 0），所以"C2 在 µ1 上不可测"是设计的必然，不是结果。</p>
@@ -1577,7 +1577,7 @@ footer.foot{border-top:1px solid var(--line);margin-top:56px;padding-top:18px;
 <ol>
 <li><strong><code>N_τ</code> 的代理不成立。</strong> 预注册用"d/d0 达到 2"代理 progress 阈值。实测 d 是平稳量（0.93–1.12），而 pass 从 0.22 涨到 0.48——<strong>progress 在动，代理不动</strong>。这说明该代理在本任务上无效，C3 的"未检验"首先是代理失效，其次才是视界不足。若要重做，应直接测 held-out 的 progress 曲线（每题固定评估集），而不是用 drift clock 的比值当阈值。</li>
 <li><strong><code>d</code> 的绝对标度不可比。</strong> κ 是量纲约定，取 1.0；所有比较只用比值。跨模型/跨任务的 d 数值没有意义。</li>
-<li><strong>KL 是采样估计。</strong> 每 run 11–29 行负值，早期步噪声大于信号。因此"C2 单调"这条判据在现有测量精度下<strong>原则上不可判定</strong>，不是策略不走。</li>
+<li><strong>KL 是采样估计，而"单调"与"净增"分属两个聚合层次。</strong> 每 run 11–29 行负值（|负值| 最大 3.8e-4），逐 step 的估计噪声与信号同量级，所以<strong>在单条 rollout 内部，"逐步单调"不可判定</strong>（按 §5.4 的 monotonish 口径只有 4/48 条 rollout 达标，严格单调 1/48，含基线步则 0/48；相邻 µ-step 对仅 50–66% 上升）。但把同臂的 8 条 rollout 在<strong>同一 µ_step 位置</strong>上取均值，噪声被压掉：以 s0 为例，末步均值 3.09e-4（µ8_s0）/ 5.07e-4（µ16_s0）对第 1 步均值 2.73e-5 / 3.88e-5，净增 11.3 与 13.1 倍（全 6 run 的可算比值落在 11.3–86.8，见 §5.4）。<strong>两个层次结论不同不是矛盾，而是聚合层次不同</strong>——§5.4 说"净增长成立"用的是后者（跨 rollout 均值），说"逐步单调不成立"用的是前者（单条 rollout 内部）。凡引用 C2 都必须注明用的是哪个层次，否则同一份数据可以读出相反结论。</li>
 <li><strong>clip 两种份额不可互换。</strong> 本实验测 logprob 空间质量份额，论文报参数空间范数份额。二者在非均匀 A 下不相等。</li>
 </ol>
 <h3 id="sec-74">7.4 结论效度</h3>
@@ -1585,7 +1585,7 @@ footer.foot{border-top:1px solid var(--line);margin-top:56px;padding-top:18px;
 <li>预注册主结论（C3）<strong>未检验</strong>，不是"未通过"。</li>
 <li>同预算 pass 排序已<strong>升格</strong>为第二条主结论（2026-10-27），且已走完修订流程：<code>claims.yaml</code> 加 <code>kind: promotion</code> 的 revision 行，<code>main_claims</code> 里标 <code>tier: post_hoc_promoted</code>。</li>
 <li><strong>多重比较的口径因此变了，必须写在结论旁边而不是脚注：</strong> 主结论由 1 条变 2 条，第二条是事后升格。若对 2 条主结论做 Bonferroni，单条 α 应为 0.025（t 分位从 4.303 提到 6.205），而 C10 报的 <strong>+9.31 pp [+5.77, +12.85] 是按 0.95 算的，未做此校正</strong>。按 α=0.025 重算，区间会变宽、下界下移，但以逐 seed 配对差 6/6 同号且均值 +5.75 pp 的量级看，下界大概率仍为正——<strong>这个"大概率"是外推，不是计算结果</strong>，本项目没有做这一步。写进简历时不要省略。</li>
-<li>C1–C7 共 7 条科学判据，报告了 7 个对照，其中 3 条通过、1 条相反、1 条部分、1 条未复现、1 条未检验。未做多重比较校正，但由于每条都是独立预注册、且方向明确，不做校正更利于读者判断；这一选择本身应被视为报告的一个选择而非事实。</li>
+<li>C1–C7 共 7 条科学判据，报告了 7 个对照，其中 3 条通过、1 条相反、<strong>1 条部分成立（仅限跨-rollout 聚合层次；单条 rollout 内部只有 4/48 条 monotonish、1/48 条严格单调，两个层次的分界见 §5.4 与 §7.3 第 3 条）</strong>、1 条未复现、1 条未检验。未做多重比较校正，但由于每条都是独立预注册、且方向明确，不做校正更利于读者判断；这一选择本身应被视为报告的一个选择而非事实。</li>
 </ul>
 <hr />
 <h2 id="sec-8">8. 结论</h2>
@@ -2045,8 +2045,8 @@ $PY tools/build_report_html.py                             # 由本文件重新�
 <p>第 4、5 条是本次"判据不可触发"的两个结构原因，且都属于<strong>预注册阶段没有钉死、执行阶段才定下</strong>的口径。这是本项目最该被批评的地方：预注册保证了"不改阈值"，但没保证"报得出数"——一个无法触发的操作化和事后改阈值一样没法检验假设。</p>
 <p>第 10、11 条是 2026-10-27 的决定带来的，性质与前九条不同：前九条是"执行没能完全照预注册做"，后两条是"主动偏离了预注册文件自己写的自我约束（主结论只允许一条）"。偏离本身可以是有理由的——C10 的 CI 不含 0、6/6 逐 seed 同向——但<strong>理由不构成免责</strong>：只要升格，就必须同时承受"两条主结论却只做了单条校正"这个代价。把它写在附录而不是脚注里，是这个代价的最低偿付方式。</p>
 <footer class="foot">
-  <div>事实源：<code>REPORT.md</code> · sha256:86730417818a · 由 <code>tools/build_report_html.py</code> 生成</div>
-  <div class="build">commit 7835ace (dirty) · built 2026-10-27 22:45 · 图内嵌：fig2_drift_vs_rollout.png 57 KB · fig1_kl_vs_step.png 84 KB · fig4_clip_vs_step.png 60 KB · fig3_pass_vs_rollout.png 80 KB</div>
+  <div>事实源：<code>REPORT.md</code> · sha256:87f763a96944 · 由 <code>tools/build_report_html.py</code> 生成</div>
+  <div class="build">commit d5f2616 (dirty) · built 2026-10-27 22:56 · 图内嵌：fig2_drift_vs_rollout.png 57 KB · fig1_kl_vs_step.png 84 KB · fig4_clip_vs_step.png 60 KB · fig3_pass_vs_rollout.png 80 KB</div>
 </footer>
 </main>
 </div>

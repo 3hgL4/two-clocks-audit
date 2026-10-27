@@ -103,6 +103,26 @@ revisions:
       C9 的否定结论（σ 的 µ 依赖既非切分也非陈旧，未解释）作为并列局限写进
       主报告 §8.4 与归因报告 §6——只升正面结论、把否定结论压在附录里，等于
       用升格换叙事，这里不做。
+  - date: "2026-10-27"
+    kind: annotation
+    id: "C2, C4, C5, C6, C7, P1"
+    why: >-
+      修 evidence 路径与补字段，**不改判据文本、不改阈值、不改任何 status**。
+      起因：C2/C4/C5/C6/C7 的 evidence 写的是 runs/mu{1,8,16}/metrics.jsonl，缺 seed
+      后缀（真实目录是 mu{1,8,16}_s{0,1,2}），这五条在任何非 pending 状态下都无法通过
+      trace.py 的 evidence 存在性检查；P1 则整个漏写了 evidence 字段，填 verified 会
+      直接报 no evidence path。两者都是登记时的笔误，不是口径变化。
+      C7 单独说明——它不能简单加 seed 后缀：主副本工作区 runs/mu1_s* 已被 19-rollout
+      续跑覆盖（M 状态未提交），末值 ¥9.030/8.903/8.944 全部超过判据的 ¥6 上限；
+      8-rollout 原版在 git HEAD 与归档 01_original_8rollout（¥3.675/3.650/3.665）。
+      指过去会让人读出「判据不通过」这种反向结论，故改指
+      notes/2026-10-26_pull/cloud_tmp/campaign.log——入库的原始主控日志，含逐 rollout
+      累计成本 ¥0.45→¥3.67，单次上限可直接核；九次合计 ¥32.4019 由
+      analysis/out/report_stats.json 再生成（该文件不入库，见 .gitignore 的设计）。
+      field 字段保留，标注判据依赖的量；trace.py 对非 .jsonl 文件不校验 field，
+      这一点在本次核查中被确认为工具的实际行为，不是预期设计。
+      另注：C4 的 field drift_d 取 rollout 0 的首值 d0，19 行版与 8 行版逐位相同
+      （0.072323 / 0.068214 / 0.066128），故 C4 指 runs/mu1_s0 不改变判据口径。
 
 claims:
   - id: C1
@@ -114,7 +134,7 @@ claims:
   - id: C2
     text: "逐 token 的 KL(policy || rollout policy) 在每个 rollout 内部随 mu_step 单调上升（离线量的直接测量）。"
     status: pending
-    evidence: runs/mu16/metrics.jsonl
+    evidence: runs/mu16_s0/metrics.jsonl
     field: kl_per_rollout_policy
     note: "若在 mu=16 仍不上升，说明该配置下策略走不动，需先报病态再做结论。"
 
@@ -128,26 +148,26 @@ claims:
   - id: C4
     text: "drift clock d = kappa*||g_bar||/sigma 随 mu 增大而下降（同一 Br 下 b=Br/mu 变小，梯度噪声相对变大）。"
     status: pending
-    evidence: runs/mu1/metrics.jsonl
+    evidence: runs/mu1_s0/metrics.jsonl
     field: drift_d
     note: "kappa 为量纲约定，所有比较只用比值，故 kappa 取值不影响结论。"
 
   - id: C5
     text: "响应长度随 mu 不存在系统性漂移（论文全文 0 处报告响应长度，本条为本次新增的可观测项）。"
     status: pending
-    evidence: runs/mu8/metrics.jsonl
+    evidence: runs/mu8_s0/metrics.jsonl
     field: resp_len_mean
 
   - id: C6
     text: "被 clip 的 token 比例随 mu 上升，且被 clip 的梯度范数份额高于其 token 份额（复现论文'0.5% token 但 50-70% 梯度范数'的现象）。"
     status: pending
-    evidence: runs/mu16/metrics.jsonl
+    evidence: runs/mu16_s0/metrics.jsonl
     field: clip_frac_any
 
   - id: C7
     text: "单次运行成本不超过 ¥6（4090-24G @ ¥1.50/h，实测墙钟计），九次运行不超过 ¥55。"
     status: pending
-    evidence: runs/mu1/metrics.jsonl
+    evidence: notes/2026-10-26_pull/cloud_tmp/campaign.log
     field: cost_cny_cum
 
   # ---- added 2026-10-26, after the nine runs were inspected (see revisions) --
@@ -297,4 +317,6 @@ claims:
   - id: P1
     text: "Qwen3-1.7B-Base 在 mixed 题池上的实际通过率是否落在 10%-90% 可用区间，未知；若整体通过率为 0，则 L 档失败窗口无法测量，需先用 tools/calibrate_pool.py 校准并收窄题池。"
     status: pending
+    evidence: runs/mu1_s0/metrics.jsonl
+    field: pass_rate
     note: "这是上云前无法知道的事，必须第一批跑完才知道。"
