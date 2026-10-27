@@ -60,6 +60,15 @@ revisions:
       R4-A 的统计口径必须在跑前锁定，否则同一份数据有插值与网格两种读法、
       结果差 1.7 倍（插值 5.34/6.75 vs 网格 2.75-3.25/3.67-4.33）。
       选网格，因为插值对 C8 的线性假设是循环论证。
+  - date: "2026-10-26"
+    kind: annotation
+    id: C11
+    why: >-
+      C11 的判据文本给了阈值但没写 pass 口径，而归档数据支持三种读法，端点与
+      后半程相差 1.6 倍（+0.97pp vs +0.60pp），足以改变「离阈值还有多远」的叙述。
+      事后补齐口径为「后半程 r4-r7 均值」，与 REPORT 主表一致；三种读法全部落在
+      不可识别区间，故口径选择不改变判定档位，只改变幅度表述。登记为 annotation
+      而非改写判据——阈值 3.0pp 与措辞一个字未动。
 
 claims:
   - id: C1
@@ -167,10 +176,21 @@ claims:
       归因 (c) dual clip 消融：mu=16 下把 clip_delta 从 10.0 改为 null（其余不动），3 seeds。
       判据：|pass(mu16, no-clip) - pass(mu16, clip=10)| < 3.0pp（n=3 的 MDE）-> 不可识别；
       差值 <= -3.0pp -> dual clip 是 mu=16 的必要条件；差值 >= +3.0pp -> dual clip 有害。
-    status: pending
+    status: verified
     evidence: analysis/out/noclip_mu16.json
     note: >-
       只改一个开关（grpo.py:83-86 的 coef_1 上界），是三项归因里唯一单变量的实验。
+      结果（3/3 seed 跑完，analysis/out/noclip_mu16.json）：统计上三种 pass 口径全部
+      落在「不可识别」——后半程 +0.60pp（SD 0.34, t=3.02, CI95 [-0.25,+1.45]）、
+      端点 +0.97pp、全 8 rollout +0.48pp，幅度约是 3.0pp 阈值的 1/5，三个 seed 同号。
+      但本条的主结论不是「不可识别」，而是「开关惰性」：noclip 三 seed 的 ratio_p95
+      最大 1.0906，dual clip 上界是 10.0，余量 9.2 倍，该界在本配置下从不触发
+      （对照有 clip 的 mu16 臂 ratio_p95 max 1.0931/1.0915/1.0888，几乎相同）。
+      两者强度不同：不可识别只说「这里测不出差异」，惰性说的是「开关从未进入工作
+      区间」，所以不要外推成「dual clip 在别处也无害」——长轨迹/多 off-policy 步下
+      ratio 上界真会撞 10 的场景，本条不提供任何信息。
+      另注意 noclip 臂的 clip_frac_high 仍非零（max 0.0018-0.0022），那是
+      eps_high=0.28 那段在 clip，不是上界 10，别读成「没关干净」。
 
   - id: C12
     text: >-
