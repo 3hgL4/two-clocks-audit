@@ -618,16 +618,17 @@ $PY tools/verify_archive.py                                # 归档 608 文件�
 $PY tools/build_report_html.py                             # 由本文件重新生成 REPORT.html（需 markdown）
 ```
 
-**`<8-rollout-runs>` 是本项目最容易复现错的一处。** 它要的是 `mu{1,8,16}_s{0,1,2}` 各 **8 行** metrics 的版本，两种取法都行：
+**`<8-rollout-runs>` 是本项目最容易复现错的一处。** 它要的是 `mu{1,8,16}_s{0,1,2}` 各 **8 行** metrics 的版本。三种取法：
 
-- 归档副本 `20_实验数据/01_original_8rollout/runs`（推荐，与 `ATTRIBUTION.md` 的三组并列）；
-- 或从 git 还原：`git show HEAD:runs/mu1_s0/metrics.jsonl`（HEAD 版本仍是 8 行）。
+- **干净 clone 的 `runs/`（推荐，第三方唯一可行的取法）**：`git clone` 下来直接就是 8 行版，`--runs runs` 即可；
+- 归档副本 `20_实验数据/01_original_8rollout/runs`（只在作者本机，与 `ATTRIBUTION.md` 的三组并列）；
+- 或从 git 还原单个文件：`git show HEAD:runs/mu1_s0/metrics.jsonl`。
 
-**不要直接对工作区 `runs/` 跑 `make_table.py`。** 其中 `mu1_s*` 已被 19-rollout 的续跑覆盖，会算出 µ1 后半程 pass **0.3291 / 0.3234 / 0.3200**（均值 0.3242）而非本报告的 **0.2623**，而脚本**不会报错**——它按行数判断"后半程"，两代数据都能算，只是算的不是同一件事。同理，用工作区 `runs/` 跑 `prompt_overlap.py` 会把 8 个 npz 与 19 个 npz 混在一起，结果不可比。
+**不要直接对本机工作区的 `runs/` 跑 `make_table.py`。** 作者工作区里的 `mu1_s*` 已被 19-rollout 的续跑覆盖（未提交），会算出 µ1 后半程 pass **0.3291 / 0.3234 / 0.3200**（均值 0.3242）而非本报告的 **0.2623**，而脚本**不会报错**——它按行数判断"后半程"，两代数据都能算，只是算的不是同一件事。同理，用工作区 `runs/` 跑 `prompt_overlap.py` 会把 8 个 npz 与 19 个 npz 混在一起，结果不可比。
 
 `residual_claims.py` 是唯一**自己拦得住这个坑**的脚本：它读 `mu1_s0` 的 rollout 数，发现不是 8 就直接退出并提示改指归档，要跑 19 行续跑版必须显式 `--allow-19`。这条防线是 2026-10-27 回填 C2–C7 时加的——同一份代码在两代数据上都不报错，是这类项目里最容易悄悄错的地方。
 
-数据：8-rollout 版 `runs/mu{1,8,16}_s{0,1,2}/`（27 GB，含 72 个 LoRA adapter 与 9 个 state.pt，**git 忽略**）。`runs/` 与 `analysis/out/` 都不进 git，因此本报告把引用的每个数字都写进了正文表格；图中的曲线可在本地用上述命令重画。
+数据：8-rollout 版在 `runs/mu{1,8,16}_s{0,1,2}/`。**其中 metrics/samples/summary/run_meta/config.resolved 五类文件进 git**（9 个 run 约 1.7 MB），陌生人不需要 GPU 就能复算本报告的每个数字；`state.pt`（837 MB/run）、`adapters/`、`rollouts/*.npz` 共约 27 GB 只在本机，`.gitignore` 排除——那三样只影响"能不能继续训"，不影响"结论对不对"。`analysis/out/` 同样不进 git（再生品不作事实源，故各条 evidence 一律指脚本而非它的输出）。
 归档与环境：`notes/2026-10-26_pull/`、`notes/2026-10-25_cloud48g/ENV.md`。
 归因侧（C8–C12）的复现命令见 `ATTRIBUTION.md` §7。
 

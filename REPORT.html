@@ -1756,14 +1756,15 @@ $PY analysis/plot_report.py   --runs &lt;8-rollout-runs&gt; --out figures   # PN
 $PY tools/verify_archive.py                                # 归档 608 文件哈希校验
 $PY tools/build_report_html.py                             # 由本文件重新生成 REPORT.html（需 markdown）
 </code></pre>
-<p><strong><code>&lt;8-rollout-runs&gt;</code> 是本项目最容易复现错的一处。</strong> 它要的是 <code>mu{1,8,16}_s{0,1,2}</code> 各 <strong>8 行</strong> metrics 的版本，两种取法都行：</p>
+<p><strong><code>&lt;8-rollout-runs&gt;</code> 是本项目最容易复现错的一处。</strong> 它要的是 <code>mu{1,8,16}_s{0,1,2}</code> 各 <strong>8 行</strong> metrics 的版本。三种取法：</p>
 <ul>
-<li>归档副本 <code>20_实验数据/01_original_8rollout/runs</code>（推荐，与 <code>ATTRIBUTION.md</code> 的三组并列）；</li>
-<li>或从 git 还原：<code>git show HEAD:runs/mu1_s0/metrics.jsonl</code>（HEAD 版本仍是 8 行）。</li>
+<li><strong>干净 clone 的 <code>runs/</code>（推荐，第三方唯一可行的取法）</strong>：<code>git clone</code> 下来直接就是 8 行版，<code>--runs runs</code> 即可；</li>
+<li>归档副本 <code>20_实验数据/01_original_8rollout/runs</code>（只在作者本机，与 <code>ATTRIBUTION.md</code> 的三组并列）；</li>
+<li>或从 git 还原单个文件：<code>git show HEAD:runs/mu1_s0/metrics.jsonl</code>。</li>
 </ul>
-<p><strong>不要直接对工作区 <code>runs/</code> 跑 <code>make_table.py</code>。</strong> 其中 <code>mu1_s*</code> 已被 19-rollout 的续跑覆盖，会算出 µ1 后半程 pass <strong>0.3291 / 0.3234 / 0.3200</strong>（均值 0.3242）而非本报告的 <strong>0.2623</strong>，而脚本<strong>不会报错</strong>——它按行数判断"后半程"，两代数据都能算，只是算的不是同一件事。同理，用工作区 <code>runs/</code> 跑 <code>prompt_overlap.py</code> 会把 8 个 npz 与 19 个 npz 混在一起，结果不可比。</p>
+<p><strong>不要直接对本机工作区的 <code>runs/</code> 跑 <code>make_table.py</code>。</strong> 作者工作区里的 <code>mu1_s*</code> 已被 19-rollout 的续跑覆盖（未提交），会算出 µ1 后半程 pass <strong>0.3291 / 0.3234 / 0.3200</strong>（均值 0.3242）而非本报告的 <strong>0.2623</strong>，而脚本<strong>不会报错</strong>——它按行数判断"后半程"，两代数据都能算，只是算的不是同一件事。同理，用工作区 <code>runs/</code> 跑 <code>prompt_overlap.py</code> 会把 8 个 npz 与 19 个 npz 混在一起，结果不可比。</p>
 <p><code>residual_claims.py</code> 是唯一<strong>自己拦得住这个坑</strong>的脚本：它读 <code>mu1_s0</code> 的 rollout 数，发现不是 8 就直接退出并提示改指归档，要跑 19 行续跑版必须显式 <code>--allow-19</code>。这条防线是 2026-10-27 回填 C2–C7 时加的——同一份代码在两代数据上都不报错，是这类项目里最容易悄悄错的地方。</p>
-<p>数据：8-rollout 版 <code>runs/mu{1,8,16}_s{0,1,2}/</code>（27 GB，含 72 个 LoRA adapter 与 9 个 state.pt，<strong>git 忽略</strong>）。<code>runs/</code> 与 <code>analysis/out/</code> 都不进 git，因此本报告把引用的每个数字都写进了正文表格；图中的曲线可在本地用上述命令重画。
+<p>数据：8-rollout 版在 <code>runs/mu{1,8,16}_s{0,1,2}/</code>。<strong>其中 metrics/samples/summary/run_meta/config.resolved 五类文件进 git</strong>（9 个 run 约 1.7 MB），陌生人不需要 GPU 就能复算本报告的每个数字；<code>state.pt</code>（837 MB/run）、<code>adapters/</code>、<code>rollouts/*.npz</code> 共约 27 GB 只在本机，<code>.gitignore</code> 排除——那三样只影响"能不能继续训"，不影响"结论对不对"。<code>analysis/out/</code> 同样不进 git（再生品不作事实源，故各条 evidence 一律指脚本而非它的输出）。
 归档与环境：<code>notes/2026-10-26_pull/</code>、<code>notes/2026-10-25_cloud48g/ENV.md</code>。
 归因侧（C8–C12）的复现命令见 <code>ATTRIBUTION.md</code> §7。</p>
 <hr />
@@ -2092,8 +2093,8 @@ $PY tools/build_report_html.py                             # 由本文件重新�
 <p>第 4、5 条是本次"判据不可触发"的两个结构原因，且都属于<strong>预注册阶段没有钉死、执行阶段才定下</strong>的口径。这是本项目最该被批评的地方：预注册保证了"不改阈值"，但没保证"报得出数"——一个无法触发的操作化和事后改阈值一样没法检验假设。</p>
 <p>第 10、11 条是 2026-10-27 的决定带来的，性质与前九条不同：前九条是"执行没能完全照预注册做"，后两条是"主动偏离了预注册文件自己写的自我约束（主结论只允许一条）"。偏离本身可以是有理由的——C10 的 CI 不含 0、6/6 逐 seed 同向——但<strong>理由不构成免责</strong>：只要升格，就必须同时承受"两条主结论却只做了单条校正"这个代价。把它写在附录而不是脚注里，是这个代价的最低偿付方式。</p>
 <footer class="foot">
-  <div>事实源：<code>REPORT.md</code> · sha256:97ce646bb65e · 由 <code>tools/build_report_html.py</code> 生成</div>
-  <div class="build">commit e330642 (dirty) · built 2026-10-27 23:24 · 图内嵌：fig2_drift_vs_rollout.png 57 KB · fig1_kl_vs_step.png 84 KB · fig4_clip_vs_step.png 60 KB · fig3_pass_vs_rollout.png 80 KB</div>
+  <div>事实源：<code>REPORT.md</code> · sha256:ba147e25b40b · 由 <code>tools/build_report_html.py</code> 生成</div>
+  <div class="build">commit 2cf8a8e (dirty) · built 2026-10-27 23:35 · 图内嵌：fig2_drift_vs_rollout.png 57 KB · fig1_kl_vs_step.png 84 KB · fig4_clip_vs_step.png 60 KB · fig3_pass_vs_rollout.png 80 KB</div>
 </footer>
 </main>
 </div>

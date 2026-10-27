@@ -256,40 +256,44 @@
 
 ```bash
 PY=<python-with-numpy>     # analysis/ 需要 numpy；系统 3.13 无 numpy
-cd <repo>
-Z=<archive>/20_实验数据     # 归档副本。主副本里没有 20_实验数据/，路径必须指过去
+cd <repo>                  # git clone 即可：21 个 run 的指标全在仓库里，无需作者本机文件
 
 # C8 斜率比代理（零训练，只用主审计 9 run 的 metrics）
-$PY analysis/slope_ratio.py  --runs $Z/01_original_8rollout/runs --json analysis/out/slope_ratio.json
+$PY analysis/slope_ratio.py --runs runs --json analysis/out/slope_ratio.json
 
 # C9 离线 σ 分解。注意：需 base 权重 + 3 个 adapter + 一块 GPU，三者都不入库，
-# 主副本连 runs/mu1_s0/adapters/ 都不存在 —— 本条不可由第三方重算，命令仅留档
-$PY tools/offline_sigma.py   --run $Z/01_original_8rollout/runs/mu1_s0 \
-                             --adapters 000 003 007 --json analysis/out/offline_sigma.json
+# 本条不可由第三方重算，命令仅留档
+$PY tools/offline_sigma.py --run <weights-and-adapters>/mu1_s0 \
+                           --adapters 000 003 007 --json analysis/out/offline_sigma.json
 
-# C10 b×µ 2×2（两新格在 02_bxmu，标准两格在 01_original_8rollout）
-$PY analysis/bmu_2x2.py --runs $Z/01_original_8rollout/runs \
-                        --ab   $Z/02_bxmu/runs \
-                        --json analysis/out/bmu_2x2.json --md analysis/out/bmu_2x2.md
+# C10 b×µ 2×2（标准两格在 runs/，两新格在 runs_ab2x2/）
+$PY analysis/bmu_2x2.py --runs runs --ab runs_ab2x2 \
+                        --json analysis/out/bmu_2x2.json
 
-# C11 dual-clip（脚本 ROOT 相对自身，故需一个把 mu16 与 noclip 放在同一 runs/ 的视图）
-$PY analysis/noclip_ablation.py --json analysis/out/noclip_mu16.json
+# C11 dual-clip（两臂刻意分目录：noclip 的 µ/b 与 mu16 同键）
+$PY analysis/noclip_ablation.py --clip-runs runs --noclip-runs runs_noclip \
+                                --json analysis/out/noclip_mu16.json
 
-# C12 长视界网格
-$PY analysis/r4a_grid.py --runs $Z/04_r4a/runs \
-                         --base $Z/01_original_8rollout/runs \
-                         --json analysis/out/r4a_grid.json --md analysis/out/r4a_grid.md
+# C12 长视界网格（runs_r4a 的 mu1_s* 是 19 行，runs/ 的是 8 行 —— 同名不同数据）
+$PY analysis/r4a_grid.py --runs runs_r4a --base runs \
+                         --json analysis/out/r4a_grid.json
 
 # 组粒度（§6 第 7 条的数字）
-$PY analysis/group_grain.py --runs $Z/01_original_8rollout/runs --json analysis/out/group_grain.json
+$PY analysis/group_grain.py --runs runs --json analysis/out/group_grain.json
 
 # 证据链
 $PY analysis/trace.py --strict      # 16 条，verified 9 / falsified 3 / unidentifiable 1 / default 3 / pending 0
 ```
 
-**数据路径。** `$Z` 是归档副本 `../two-clocks-audit-zhengli/20_实验数据`，**21 个 run 的 `metrics.jsonl` 全部入库**，所以 C8/C10/C11/C12 的输入是可复算的。`<8-rollout-runs>` 指 `mu{1,8,16}_s{0,1,2}` 各 8 行 metrics 的版本，即 `$Z/01_original_8rollout/runs`（或 `git show HEAD:runs/mu1_s0/metrics.jsonl`）。**工作区的 `runs/mu1_s*` 已是 19-rollout 版**，直接用它跑 `bmu_2x2.py` 会把标准两格之一算成 19 行口径，`make_table.py` 同理；`r4a_grid.py` 的 `--runs` 更是必须指 `$Z/04_r4a`，因为 19 行数据只在归档里。细节见 `REPORT.md` §9。
+**数据路径。** 21 个 run 的 `metrics.jsonl` **全部在仓库里**，按实验分四个目录：`runs/`（主审计 9 run，各 8 rollout）、`runs_ab2x2/`（C10 的两个新预算格）、`runs_noclip/`（C11 的消融臂）、`runs_r4a/`（C12 的 19 行 µ=1）。所以 **C8/C10/C11/C12 克隆后即可复算，不需要作者本机上的任何文件**——2026-10-27 之前不是这样（数据只在本地归档副本，仓库里的"可被第三方独立复算"对第三方其实不成立），同日补齐。
 
-**复算的分界线。** 2026-10-27 在归档数据上逐条复跑，C8/C10/C11/C12 的输出与正文数值逐位一致（C10 `HEADLINE=mu_is_primary`；C11 `+0.60pp`、`ratio_p95 max 1.0906`、`headroom 9.2x`；C12 `hit 3/3`、网格比 `3.58 / 3.89`）。**C9 是唯一例外**：它的输入是权重而非指标文件（base 3.2 GiB + 3 个 adapter 各 266 MiB + GPU），三样都不入库，故只能说"有脚本、有命令、有落盘数值，无第二份可重算"。`analysis/out/` 整体不入库（`.gitignore` 的设计：再生品不作为事实源），因此 `claims.yaml` 里四条 verified 的 `evidence` 指向再生脚本而非它的输出，各自的 `note` 写了确切命令与应得的数。
+三处陷阱，都会**静默算错**而不是报错：
+
+1. 作者工作区的 `runs/mu1_s*` 是 19 行未提交覆盖版（干净 clone 下来是 8 行），由 `residual_claims.py` 的 rollout 数守卫拦；
+2. `runs_r4a/mu1_s*` 与 `runs/mu1_s*` **同名不同数据**（19 vs 8），由 `make_table.py` 的 duplicate 检测拦；
+3. `runs_noclip/noclip_mu16_s*` 的 µ=16 / b=256 与 `mu16_s0` **同键**，混进同一目录会被折叠进 µ16 臂——而两臂的差只有 0.x pp，从结果上无人能察觉。由 `bmu_2x2.py` / `r4a_grid.py` 新加的目录名白名单拦（遇到 `mu\d+_s\d+`、`ab2x2_*` 之外的名字直接 `SystemExit`）。细节见 `REPORT.md` §9。
+
+**复算的分界线。** 2026-10-27 用上表这些**仓库内路径**逐条复跑，C8/C10/C11/C12 的输出与正文数值逐位一致（C10 `HEADLINE=mu_is_primary`、四格 `0.4593/0.5168/0.4383/0.5671`；C11 `+0.60pp`、`ratio_p95 max 1.0906`、`headroom 9.2x`；C12 `hit 3/3`、网格比 `3.58 / 3.89`）。**C9 是唯一例外**：它的输入是权重而非指标文件（base 3.2 GiB + 3 个 adapter 各 266 MiB + GPU），三样都不入库，故只能说"有脚本、有命令、有落盘数值，无第二份可重算"。`analysis/out/` 整体不入库（`.gitignore` 的设计：再生品不作为事实源），因此 `claims.yaml` 里四条 verified 的 `evidence` 指向再生脚本而非它的输出，各自的 `note` 写了确切命令与应得的数。
 
 ---
 

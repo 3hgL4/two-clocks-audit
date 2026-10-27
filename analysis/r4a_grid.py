@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 
 TAU = 0.30  # fixed by C12, not a knob
 
@@ -65,6 +66,17 @@ def load(dirs):
             mp = os.path.join(d, name, "metrics.jsonl")
             if not os.path.isfile(mp):
                 continue
+            # Grouping downstream is by the mu recorded inside the file, so a
+            # directory holding anything but mu*_s* would be folded into an arm.
+            # noclip_mu16_s0 (mu=16) is one directory away from being counted as
+            # the mu16 grid arm, which would quietly change the grid ratio.
+            if not re.match(r"^mu\d+_s\d+$", name):
+                raise SystemExit(
+                    "unexpected run dir %r under %s\n"
+                    "  this script expects only mu<k>_s<n> dirs; anything else is "
+                    "folded into an arm by its internal mu and would change the "
+                    "grid ratio.\n  point --runs / --base at the raw campaign dirs."
+                    % (name, d))
             series = read_series(mp)
             out[name] = {
                 "mu": int(series[0]["mu"]),

@@ -11,7 +11,7 @@
 | 原文做了什么 | 本项目做什么 |
 |---|---|
 | Eq.(3) 定义 drift clock `d = κ‖ḡ‖/σ` | 逐 micro-batch 实测 `‖ḡ‖` 与 `σ`，得到 `d` 的轨迹 |
-| Eq.(5) 给出 `N_τ = N_min(1 + Br/B*)`，预测 µ↑ → `N_τ` 变大（6.1×） | 在同一 `Br`、同一 token 预算下，实测 µ ∈ {1, 8, 16} 的 `N_τ` 比值 |
+| Eq.(5) 给出 `N_τ = N_min(1 + Br/B*)`，因 `B* ∝ µ`，预测 µ↑ → `N_τ` **变小**（即 µ=1 需要 µ=16 的 6.1 倍样本） | 在同一 `Br`、同一 token 预算下，实测 µ ∈ {1, 8, 16} 的 `N_τ` 比值 |
 | **假设 A2 原文**：*"For progress we treat the mini-batches within a rollout as fresh and ignore policy staleness, whose effect on importance ratios and clipping we model separately below."* | 直接测量 A2 忽略的那一项：`KL(π_θ ‖ π_rollout)` 在 µ 个更新步内的累积 |
 | 全文 **0 处**报告响应长度 | 记录 `resp_len_mean` 随 µ 的漂移 |
 | 报告 clip 占 0.5% token 却占 50–70% 梯度范数 | 记录 `clip_frac_*` 与 `‖g_clip‖/‖g‖` 随 µ 的变化 |
@@ -36,15 +36,25 @@ src/
   train.py       主循环：rollout → µ 次更新 → 逐步落盘 → 存 state
   gen_counting.py, verify.py   从 S1 原样复用（counting 任务与验证器）
 tools/           make_pool.py（造池+冻结）/ check_schema.py（数据闸门）/ calibrate_pool.py
+                 offline_sigma.py（C9 的离线 σ 3×3 分解，需 base 权重 + adapter + GPU）
 analysis/        make_table.py（含自助 CI）/ make_figures.py（无 matplotlib 也出 CSV）/ trace.py（claim→证据）
                  slope_ratio.py（C8 的 N_τ 比：斜率比 + 窗口区间 + 统计误差 + µ8/µ16 自检）
+                 bmu_2x2.py（C10 的 b×µ 双因子：主效应 + 配对 CI + 预算匹配口径）
+                 noclip_ablation.py（C11 的 dual-clip 消融：三种 pass 口径 + ratio_p95 余量）
+                 r4a_grid.py（C12 的 19-rollout 网格判定：首次命中 vs 下界支）
+                 residual_claims.py（C2–C7 + P1 一次复算，自带 8/19 rollout 守卫）
                  group_grain.py（72 个已归档 group 的组级分析：全对/全错/ICC/zvR vs zvC）
                  data_review.py / prompt_overlap.py（现有九 run 的复核与题池复用实测）
 tests/           37 个测试：损失正确性（标量参考实现 + 有限差分）、配对性、记账、配置闸门、
                  归档校验、per-prompt 归档与组级统计（含手算 ANOVA 的 ICC 对照）
-runs/            每次运行一个子目录（git 忽略）
-REPORT.md        实验报告（事实源，含逐判据结果与有效性威胁）
-REPORT.html      同一份报告的单文件版（图内嵌，离线可读，由 tools/build_report_html.py 生成）
+runs/            每次运行一个子目录。9 个正式 run 的 metrics/samples/summary/run_meta/config
+                 入库（约 1.3 MB）；state.pt、adapters/、rollouts/*.npz 只在本机（git 忽略）
+runs_ab2x2/      C10 的两个新预算格（mu8@b256、mu16@b512），指标入库
+runs_r4a/        C12 的 19-rollout 续跑（µ=1），指标入库；与 runs/mu1_* 的 8-rollout 版**不是同一份数据**
+REPORT.md        预注册审计报告（事实源，C1–C7 + P1，含逐判据结果与有效性威胁）
+REPORT.html      同上，单文件版（图内嵌，离线可读，由 tools/build_report_html.py 生成）
+ATTRIBUTION.md   事后归因报告（C8–C12，与 REPORT 的分工见其 §0）
+ATTRIBUTION.html 同上，单文件版
 ```
 
 ---
@@ -71,18 +81,40 @@ python analysis/slope_ratio.py --json analysis/out/slope_ratio.json   # C8 的 N
 
 ## 3.5 复算报告里的数字（不需要 GPU、不需要重训）
 
-9 个正式 run 的 `metrics.jsonl` / `samples.jsonl` / `summary.json` / `run_meta.json` / `config.resolved.yaml` 已在仓库里（合计约 1.3 MB）。克隆下来直接跑：
+**每条判据的输入都在仓库里**（21 个 run 的 metrics/samples/summary/run_meta/config，合计约 4 MB）：
+
+| 目录 | 内容 | 支撑哪条 |
+|---|---|---|
+| `runs/mu{1,8,16}_s{0,1,2}/` | 主审计 9 run，各 8 rollout | C1–C8、P1 |
+| `runs_ab2x2/` | b×µ 的两个新预算格（mu8@b256、mu16@b512） | C10 |
+| `runs_noclip/` | dual-clip 消融（`clip_delta=null`） | C11 |
+| `runs_r4a/` | µ=1 的 19-rollout 续跑 | C12 |
+
+克隆下来直接跑：
 
 ```bash
 git clone https://github.com/3hgL4/two-clocks-audit && cd two-clocks-audit
-python analysis/slope_ratio.py          # C8 的 N_τ 比，末行打印 6.136
+
+python analysis/residual_claims.py --runs runs              # C2–C7 + P1，一条命令全出
+python analysis/slope_ratio.py                              # C8，末行打印 6.136
+python analysis/bmu_2x2.py    --runs runs --ab runs_ab2x2    # C10，HEADLINE mu_is_primary
+python analysis/noclip_ablation.py                           # C11，HEADLINE clip_is_inert
+python analysis/r4a_grid.py   --runs runs_r4a --base runs     # C12，hit 3/3
 python analysis/make_table.py --runs runs --out analysis/out
-python analysis/report_stats.py --runs runs --out analysis/out/report_stats.json
+python analysis/trace.py --strict                            # 16 条 claim 的证据链
 ```
 
-**这组命令的意义**：README 与 `REPORT.md` 里每个数字都能被读者自己复算，不必相信作者。仓库里没有的是 `state.pt`（837 MB/run）、`adapters/`、`rollouts/*.npz`——那三样只影响"能不能继续训"，不影响"结论对不对"。
+**C9 是唯一不能复算的一条**：它要 base 权重 3.2 GiB + 3 个 adapter（各 266 MiB）+ 一块 GPU，三者都不入库。仓库给的是脚本、命令与落盘数值，不是可重跑的结果。
+
+**两个目录纪律**（都不是洁癖，是踩过的坑）：
+
+- `runs_r4a/mu1_s*` 与 `runs/mu1_s*` **同名却不是同一份数据**（19 vs 8 rollout）。放进同一个目录会触发 `make_table.py` 自带的 duplicate 检测。
+- `runs_noclip/noclip_mu16_s*` 的 µ=16、b=256，与 `mu16_s0` **同键**。若塞进 `runs/`，凡按 metrics.jsonl 内部 µ/b 分组的脚本都会把它折叠进 µ16 臂——而两臂的差只有 0.x pp（C11 测的就是"不可区分"），**从结果上没有人能看出来**。`bmu_2x2.py` 与 `r4a_grid.py` 因此各带一道目录名白名单守卫，遇到意料之外的目录直接报错退出。
+
+仓库里没有的是 `state.pt`（837 MB/run）、`adapters/`、`rollouts/*.npz`——那三样只影响"能不能继续训"，不影响"结论对不对"。
 
 > 实测（2026-10-26，干净克隆 + 无 GPU）：`slope_ratio.py` 直接输出 `measured 6.136 in [3.594, 9.17]`，与 `REPORT.md` §6 一致。
+> 实测（2026-10-27，全部走仓库内路径）：C10 四格 `0.4593 / 0.5168 / 0.4383 / 0.5671`、C11 `+0.60pp` 与 `ratio_p95 1.0906`、C12 `hit 3/3` 与 grid 比 `3.58 / 3.89`，与 `ATTRIBUTION.md` 逐位一致。
 
 ---
 
@@ -118,17 +150,20 @@ python src/train.py --config configs/mu8.yaml --seed 0 --resume
 
 ---
 
-## 6. 预算
+## 6. 预算：计划 vs 实际
 
-| 项 | 数 |
-|---|---|
-| 单 run | 32,768 responses（8 rollout × 4096），约 1.6–4 h |
-| 单价 | ¥1.56/h（4090-24G；48G 是 ¥2.08/h） |
-| 单 run 成本 | ¥2.5–6.2 |
-| 计划 9 run（3 个 µ × 3 seeds） | **¥23–56** |
-| 首场 session 时间盒 | 2 小时 / ¥3，强制在 T+40min 用实测 s/step 重算总预算 |
+| 项 | 计划（开跑前） | 实际 |
+|---|---|---|
+| 单 run | 32,768 responses（8 rollout × 4096），约 1.6–4 h | 同规格，墙钟约 1.7–1.8 h |
+| 单价 | ¥1.56/h（4090-24G） | **¥2.08/h（4090-48G，49,140 MiB）** |
+| 单 run 成本 | ¥2.5–6.2 | **¥3.5316–3.6749** |
+| 主审计 9 run（3 µ × 3 seeds） | ¥23–56 | **¥32.4019** |
+| 全项目（21 次启动 / 774,144 responses） | — | **¥86.68** = **¥0.112 / 1k responses** |
+| 首场 session 时间盒 | 2 小时 / ¥3，T+40min 用实测 s/step 重算 | 按此执行 |
 
-价格与硬件见 `configs/base.yaml` 的 `accounting`；每个 run 的 `summary.json` 里记着实测墙钟、FLOPs 与 ¥，账不是估的，是记的。
+价格与硬件见 `configs/base.yaml` 的 `accounting`；每个 run 的 `summary.json` 里记着实测墙钟、FLOPs 与 ¥，**账不是估的，是记的**。
+
+> 预注册 C7 原文写的是"4090-24G @ ¥1.50/h"，与实际租用条件不符（且 ¥1.50 也不是 24G 的真实价 ¥1.56）。2026-10-27 已按作者授权修正为 48G @ ¥2.08/h，**阈值 ¥6/run、¥55/九次未动**。修订方向对结论不利（更贵的卡在 ¥6 上限下允许的墙钟更短），偏差对照保留在 `REPORT.md` 附录 C 第 1–2 条。
 
 ---
 

@@ -225,6 +225,26 @@ revisions:
       与 text 里写哪个单价无关；campaign.log 是入库的原始主控日志，可直接核。
       REPORT 附录 C 第 1–2 条保留了「预注册 24G/¥1.50 vs 实际 48G/¥2.08」这一历史对照，
       不因本次修订而删除——那段记的是执行前的偏差，是事实。
+  - date: "2026-10-27"
+    kind: addition
+    id: "C10, C11, C12"
+    why: >-
+      把三个归因实验的 metrics 补进仓库（runs_ab2x2/ 6 格、runs_noclip/ 3 格、
+      runs_r4a/ 3 格，共 60 个文件 2.5 MB，只含 metrics/samples/summary/run_meta/
+      config.resolved 五类，与 runs/mu*/ 的入库规则一致）。**不改任何判据文本、
+      不改阈值、不改任何 status**。
+      起因：C10/C11/C12 的 note 一直写「可被第三方独立复算」，但那个「归档副本
+      20_实验数据/」只存在于作者本机，GitHub 上只有 9 个原始 run。也就是说这条
+      承诺对**唯一能读到它的人**（clone 仓库的第三方）不成立——这是本节里最不该
+      留的一类不实陈述，比算错一个数更难被发现，因为仓库内自检永远是绿的。
+      顺带发现并修掉一个真实错误：把 noclip_mu16_s* 放进 runs/ 后，bmu_2x2 的
+      mu16_b256 格被读成 noclip_mu16_s0、r4a_grid 的 mu16 网格臂也被读成 noclip——
+      因为两者都是 mu=16/b=256，键相同，而脚本按 metrics.jsonl 内部的 mu/b 建键、
+      不看目录名。数字碰巧只差 0.x pp（C11 本身就测出两臂不可区分），所以**不会有人
+      从结果上发现**。故两脚本各加一道目录名白名单守卫（mu\d+_s\d+ / ab2x2_*），
+      遇其他名字直接 SystemExit 并说明原因；noclip 两臂改为分目录
+      （--clip-runs runs / --noclip-runs runs_noclip）。
+      修完用仓库内路径复跑，三条数字与 note 逐位一致（见各条 note）。
 
 claims:
   - id: C1
@@ -463,12 +483,12 @@ claims:
       mu8@b=256 是 0.5x（复用 -> 1.0x）。这是二阶混淆，写作时必须声明：
       第 4 格偏乐观、第 3 格偏保守，两者对「b 是主因」的方向相反。
       evidence 指向脚本而非它的输出：analysis/out/ 不入库（.gitignore）。
-      这条**可被第三方独立复算**——输入 metrics.jsonl 全部入库，在归档副本
-      20_实验数据/{01_original_8rollout,02_bxmu}/runs/ 下（21 个 run 的 metrics
-      都在 git 里）。再生命令：
-      python analysis/bmu_2x2.py --runs <01>/runs --ab <02>/runs
-        --json analysis/out/bmu_2x2.json --md analysis/out/bmu_2x2.md
-      2026-10-27 复跑校验：HEADLINE = mu_is_primary，四格数字与上文逐位一致。
+      这条**可被第三方独立复算**，且输入就在本仓库：4096 那两格在 runs/，
+      两个新预算格在 runs_ab2x2/。克隆后直接跑：
+      python analysis/bmu_2x2.py --runs runs --ab runs_ab2x2 \
+        --json analysis/out/bmu_2x2.json
+      2026-10-27 用这条路径复跑校验：HEADLINE = mu_is_primary，四格
+      0.4593 / 0.5168 / 0.4383 / 0.5671，交互 +2.93pp [-3.67,+9.53]，与上文逐位一致。
 
   - id: C11
     text: >-
@@ -491,11 +511,16 @@ claims:
       另注意 noclip 臂的 clip_frac_high 仍非零（max 0.0018-0.0022），那是
       eps_high=0.28 那段在 clip，不是上界 10，别读成「没关干净」。
       evidence 指向脚本而非它的输出：analysis/out/ 不入库（.gitignore）。
-      这条**可被第三方独立复算**——输入 metrics.jsonl 已入库（归档副本
-      01_original_8rollout 与 03_noclip）。脚本的 ROOT 相对自身，必须先把
-      mu16_s{0,1,2} 与 noclip_mu16_s{0,1,2} 放进同一个 runs/ 再跑：
-      python analysis/noclip_ablation.py --json analysis/out/noclip_mu16.json
-      2026-10-27 复跑校验：+0.60pp / SD 0.34 / CI95 [-0.25,+1.45]、
+      这条**可被第三方独立复算**，且输入就在本仓库：runs/ 的 mu16_s* 与
+      runs_noclip/ 的 noclip_mu16_s*。克隆后直接跑：
+      python analysis/noclip_ablation.py --clip-runs runs --noclip-runs runs_noclip \
+        --json analysis/out/noclip_mu16.json
+      两臂**分目录存放是刻意的**：noclip_mu16_s* 的 mu=16、b=256，与 mu16_s0 同键，
+      若放进同一个 runs/，凡按 metrics.jsonl 内部 mu 分组的脚本（bmu_2x2、r4a_grid）
+      都会把它折叠进 mu16 臂。2026-10-27 实测到过这个错误（C10 的 mu16_b256 格被读成
+      noclip_mu16_s0、C12 的 mu16 网格臂被读成 noclip），故两个脚本已加目录名白名单守卫：
+      遇到 mu\d+_s\d+ / ab2x2_* 之外的名字直接 SystemExit，不静默算。
+      2026-10-27 用上述路径复跑校验：+0.60pp / SD 0.34 / CI95 [-0.25,+1.45]、
       ratio_p95 max 1.0906、headroom 9.2x、HEADLINE clip_is_inert，与上文一致。
 
   - id: C12
@@ -528,14 +553,17 @@ claims:
       而网格口径得 2.75-3.25 / 3.67-4.33（差 -40%/-35%），两种口径差 1.7 倍，
       故口径必须在跑前锁定。
       evidence 指向脚本而非它的输出：analysis/out/ 不入库（.gitignore）。
-      这条**可被第三方独立复算**——输入 metrics.jsonl 已入库（归档副本
-      04_r4a 的 19 行 mu1 + 01_original_8rollout 的 8 行 mu8/mu16）。再生命令：
-      python analysis/r4a_grid.py --runs <04_r4a>/runs --base <01>/runs
-        --json analysis/out/r4a_grid.json --md analysis/out/r4a_grid.md
-      2026-10-27 复跑校验：hit 3/3（per seed 4.33 / 3.67 / 2.75）、grid 比
-      3.58 / 3.89，与上文一致。
-      ⚠ 数据位置陷阱：主副本 git HEAD 的 runs/mu1_s* 是 8 行版，工作区是 19 行
-      未提交覆盖版，**两处都不能直接当 --runs 用**；必须指归档 04_r4a。
+      这条**可被第三方独立复算**，且输入就在本仓库：runs_r4a/ 的 19 行 mu1 +
+      runs/ 的 8 行 mu8/mu16。克隆后直接跑：
+      python analysis/r4a_grid.py --runs runs_r4a --base runs \
+        --json analysis/out/r4a_grid.json
+      runs_r4a/mu1_s* 与 runs/mu1_s* **同名但不是同一份数据**（19 vs 8 rollout），
+      这正是它必须放独立目录的原因：两者同臂同 seed，放进同一个 runs/ 会触发
+      make_table.py 的 duplicate 检测（该脚本自带这道守卫）。
+      2026-10-27 用上述路径复跑校验：hit 3/3（per seed 4.33 / 3.67 / 2.75）、
+      grid 比 3.58 / 3.89，与上文一致。
+      ⚠ 主副本工作区 runs/mu1_s* 是 19 行未提交覆盖版，别拿它当 --base 的 mu1；
+      本命令的 base 只用 mu8/mu16，故不受影响。
 
   - id: D1
     text: "训练器为自写循环而非 TRL GRPOTrainer：TRL 1.16 的 num_iterations 能表达 mu，但不暴露 per-mu 的 KL、clip 梯度份额与 micro-batch 梯度散度 sigma。正确性用独立标量实现 + 有限差分自证（tests/test_grpo.py）。"

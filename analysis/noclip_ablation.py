@@ -25,6 +25,13 @@ Two things this script refuses to do quietly:
     python analysis/noclip_ablation.py
     python analysis/noclip_ablation.py --json analysis/out/noclip_mu16.json
 
+The two arms deliberately live in different directories (`--clip-runs runs`,
+`--noclip-runs runs_noclip`). They must not share one: anything that groups runs
+by the mu recorded inside metrics.jsonl (bmu_2x2, r4a_grid) would fold
+noclip_mu16_s* into the mu16 arm, since it is mu=16 / b=256 -- the same key as
+mu16_s0. Both of those scripts now refuse unknown directory names for that
+reason, and this one keeps the arms apart by construction.
+
 stdlib only.
 """
 
@@ -84,8 +91,8 @@ def stdev(xs: list[float]) -> float:
     return math.sqrt(sum((x - m) ** 2 for x in xs) / (len(xs) - 1))
 
 
-def arm(tag: str) -> dict:
-    path = os.path.join(ROOT, "runs", tag, "metrics.jsonl")
+def arm(tag: str, base: str = "runs") -> dict:
+    path = os.path.join(ROOT, base, tag, "metrics.jsonl")
     rows = read_rows(path)
     s = pass_series(rows)
     n = len(s)
@@ -134,10 +141,14 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--seeds", nargs="+", type=int, default=[0, 1, 2])
     ap.add_argument("--json", default=None)
+    ap.add_argument("--clip-runs", default="runs",
+                    help="dir holding the mu16_s* (clip_delta=10) runs")
+    ap.add_argument("--noclip-runs", default="runs_noclip",
+                    help="dir holding the noclip_mu16_s* (clip_delta=null) runs")
     args = ap.parse_args()
 
-    clip = [arm("mu16_s%d" % s) for s in args.seeds]
-    noclip = [arm("noclip_mu16_s%d" % s) for s in args.seeds]
+    clip = [arm("mu16_s%d" % s, args.clip_runs) for s in args.seeds]
+    noclip = [arm("noclip_mu16_s%d" % s, args.noclip_runs) for s in args.seeds]
 
     for a in clip + noclip:
         if a["n_rollouts"] != 8:

@@ -1,0 +1,112 @@
+{
+  "totals": {
+    "n_rollouts": 128,
+    "responses": 65536,
+    "prompt_tokens": 4748192,
+    "completion_tokens": 18812064,
+    "trained_tokens": 18812114,
+    "flops_generation": 6.735867501379584e+16,
+    "flops_scoring": 8.436010142990336e+16,
+    "flops_update": 2.0207656213297152e+17,
+    "flops_total": 3.537953385766707e+17,
+    "wall_hours_measured": 3.501309,
+    "gpu_hours_billed": 3.501309,
+    "cost_cny": 7.2827,
+    "price_cny_per_hour": 2.08,
+    "gpu_type": "4090-48G",
+    "n_params": 1790305280,
+    "resumed_from_totals": false
+  },
+  "pool": {
+    "n_items": 2000,
+    "depth_hist": {
+      "1": 318,
+      "2": 345,
+      "3": 346,
+      "4": 460,
+      "5": 259,
+      "6": 179,
+      "7": 93
+    },
+    "answer_mean": 8387.803,
+    "answer_min": -3129138,
+    "answer_max": 5055800,
+    "n_distinct_prompts": 2000
+  },
+  "resolved": {
+    "run": {
+      "tag": "ab2x2_mu16_b512_s1",
+      "seed": 1,
+      "out_dir": "runs",
+      "note": ""
+    },
+    "data": {
+      "pool": "data/prompts_mixed2000.jsonl",
+      "sha256": "d781f955ad9773cc0107fd171b2371ea3bec262a2021b6e8e481da81f64a798b",
+      "prompt_pad_token": null
+    },
+    "model": {
+      "name": "/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base",
+      "stub": false,
+      "dtype": "bfloat16",
+      "attn_implementation": "sdpa",
+      "gradient_checkpointing": true,
+      "logit_chunk": 64,
+      "lora": {
+        "r": 64,
+        "alpha": 16,
+        "dropout": 0.0
+      }
+    },
+    "train": {
+      "num_rollouts": 8,
+      "num_generations": 8,
+      "responses_per_rollout": 8192,
+      "mu": 16,
+      "micro_batch_responses": 4,
+      "micro_group_responses": 8,
+      "max_completion_length": 512,
+      "temperature": 1.0,
+      "top_p": 1.0,
+      "lr": 5e-05,
+      "weight_decay": 0.0,
+      "warmup_ratio": 0.1,
+      "grad_clip": 1.0,
+      "eps_low": 0.2,
+      "eps_high": 0.28,
+      "clip_delta": 10.0,
+      "loss_norm": "token_mean"
+    },
+    "rollout": {
+      "backend": "vllm",
+      "vllm": {
+        "gpu_memory_utilization": 0.45,
+        "max_num_seqs": 256,
+        "enable_lora": true,
+        "adapter_dir": "runs/_adapter",
+        "offload_policy": false,
+        "enforce_eager": true,
+        "max_model_len": 1024,
+        "seed_per_request": true,
+        "enable_prefix_caching": false,
+        "enable_chunked_prefill": false,
+        "max_num_batched_tokens": 2048
+      }
+    },
+    "accounting": {
+      "price_cny_per_hour": 2.08,
+      "gpu_type": "4090-48G"
+    },
+    "logging": {
+      "flush_every": 1,
+      "save_state_every_rollouts": 1,
+      "log_rollout_samples": 8,
+      "save_rollout_ids": true,
+      "rollout_id_dir": "rollouts",
+      "save_adapter_every_rollout": true
+    },
+    "drift": {
+      "kappa": 1.0
+    }
+  }
+}

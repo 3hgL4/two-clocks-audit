@@ -38,6 +38,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 from collections import defaultdict
 
 # t(0.975, df=2) -- n=3 per cell, same convention the rest of the audit uses
@@ -70,6 +71,14 @@ def read_endpoint(path):
     }
 
 
+# Only the four cells of the 2x2 may be read. Anything else that happens to carry
+# a metrics.jsonl -- an ablation arm, a probe, an R4-A continuation -- will collide
+# on the (mu, b) key and silently overwrite a real cell, because the key is built
+# from the mu/b recorded inside metrics.jsonl, not from the directory name.
+# noclip_mu16_s0 is exactly such a case: mu=16, b=256, same key as mu16_s0.
+_RUN_NAME = re.compile(r"^(?:ab2x2_)?mu\d+(?:_b\d+)?_s\d+$")
+
+
 def load_cells(dirs):
     cells = defaultdict(dict)  # (mu, b) -> seed -> record
     for d in dirs:
@@ -77,6 +86,16 @@ def load_cells(dirs):
             mp = os.path.join(d, name, "metrics.jsonl")
             if not os.path.isfile(mp):
                 continue
+            if not _RUN_NAME.match(name):
+                raise SystemExit(
+                    "unexpected run dir %r under %s\n"
+                    "  this script reads only the four 2x2 cells "
+                    "(mu{8,16}_s* and ab2x2_*).\n"
+                    "  ablation arms, probes and R4-A continuations share the same "
+                    "(mu, b) key\n  and would silently overwrite a real cell -- "
+                    "noclip_mu16_s0 is mu=16/b=256, the same key as mu16_s0.\n"
+                    "  point --runs / --ab at directories holding only the four cells."
+                    % (name, d))
             rec = read_endpoint(mp)
             cells[(rec["mu"], rec["b"])][rec["seed"]] = rec
     return cells
