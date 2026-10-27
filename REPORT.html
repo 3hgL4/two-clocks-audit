@@ -1095,7 +1095,7 @@ footer.foot{border-top:1px solid var(--line);margin-top:56px;padding-top:18px;
 </table></div>
 <blockquote>
 <p>两套口径都要报，否则会误导：<strong>逐 run</strong> 的极值合起来是 [0.926, 1.116]（<code>report_stats.json</code> 的 <code>d_path_min/max</code>，µ1 的 seed 0 单 run 到过 0.926）；<strong>按臂平均</strong>后只剩 ±3.6%。臂均值更平，是因为 seed 平均把单 run 的抖动抵掉了，不是两种算法矛盾。趋势的正负号也不一致（µ1 微升、µ8/µ16 微降），但都在 ±5% 内，<strong>没有一条臂在 8 个 rollout 内接近 1.5 倍</strong>。</p>
-<p>第三种口径（不按 rollout 平均、逐 µ_step 归一，<code>d0</code> 取 <code>(r0, µ_step=0)</code>）给出的包络最宽：[0.830, 1.131]。它把每个 rollout 内部的 step 抖动也算了进去，因此比按 rollout 平均宽一倍——但上界 1.131 距 1.5 仍差 25%。<strong>三种口径都不触发阈值，所以口径选择不影响 C3 的档位（<code>unidentifiable</code>）</strong>，只影响"离阈值还有多远"的表述。三种口径的数值由 <code>analysis/residual_claims.py</code> 的 C3 节一次全部输出。</p>
+<p>第三种口径（不按 rollout 平均、逐 µ_step 归一，<code>d0</code> 取 <code>(r0, µ_step=0)</code>）给出的包络最宽：[0.830, 1.131]。它把每个 rollout 内部的 step 抖动也算了进去，因此比按 rollout 平均宽一倍——但上界 1.131 要涨到 1.5 还需再涨 33%，<strong>三种口径都不触发阈值，所以口径选择不影响 C3 的档位（<code>unidentifiable</code>）</strong>，只影响"离阈值还有多远"的表述。三种口径的数值由 <code>analysis/residual_claims.py</code> 的 C3 节一次全部输出。</p>
 </blockquote>
 <p><strong>d 在 8 个 rollout 内是一个平稳量，不是增长量。</strong> 臂间差异几乎全部由第 0 个 rollout 决定（§5.3）。因此：</p>
 <ul>
@@ -2090,8 +2090,8 @@ $PY tools/build_report_html.py                             # 由本文件重新�
 <p>第 4、5 条是本次"判据不可触发"的两个结构原因，且都属于<strong>预注册阶段没有钉死、执行阶段才定下</strong>的口径。这是本项目最该被批评的地方：预注册保证了"不改阈值"，但没保证"报得出数"——一个无法触发的操作化和事后改阈值一样没法检验假设。</p>
 <p>第 10、11 条是 2026-10-27 的决定带来的，性质与前九条不同：前九条是"执行没能完全照预注册做"，后两条是"主动偏离了预注册文件自己写的自我约束（主结论只允许一条）"。偏离本身可以是有理由的——C10 的 CI 不含 0、6/6 逐 seed 同向——但<strong>理由不构成免责</strong>：只要升格，就必须同时承受"两条主结论却只做了单条校正"这个代价。把它写在附录而不是脚注里，是这个代价的最低偿付方式。</p>
 <footer class="foot">
-  <div>事实源：<code>REPORT.md</code> · sha256:055f2fca2342 · 由 <code>tools/build_report_html.py</code> 生成</div>
-  <div class="build">commit 409dca8 (dirty) · built 2026-10-27 23:12 · 图内嵌：fig2_drift_vs_rollout.png 57 KB · fig1_kl_vs_step.png 84 KB · fig4_clip_vs_step.png 60 KB · fig3_pass_vs_rollout.png 80 KB</div>
+  <div>事实源：<code>REPORT.md</code> · sha256:3f8cbeca0526 · 由 <code>tools/build_report_html.py</code> 生成</div>
+  <div class="build">commit 9fa86ab (dirty) · built 2026-10-27 23:14 · 图内嵌：fig2_drift_vs_rollout.png 57 KB · fig1_kl_vs_step.png 84 KB · fig4_clip_vs_step.png 60 KB · fig3_pass_vs_rollout.png 80 KB</div>
 </footer>
 </main>
 </div>
