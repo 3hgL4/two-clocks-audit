@@ -737,88 +737,115 @@ footer.foot{border-top:1px solid var(--line);margin-top:56px;padding-top:18px;
 <h2 id="sec-7">7. 复现</h2>
 <pre><code class="language-bash">PY=&lt;python-with-numpy&gt;     # analysis/ 需要 numpy；系统 3.13 无 numpy
 cd &lt;repo&gt;
+Z=&lt;archive&gt;/20_实验数据     # 归档副本。主副本里没有 20_实验数据/，路径必须指过去
 
 # C8 斜率比代理（零训练，只用主审计 9 run 的 metrics）
-$PY analysis/slope_ratio.py  --runs &lt;8-rollout-runs&gt; --json analysis/out/slope_ratio.json
+$PY analysis/slope_ratio.py  --runs $Z/01_original_8rollout/runs --json analysis/out/slope_ratio.json
 
-# C9 离线 σ 分解（零训练，需 base 权重 + 3 个 adapter，默认 --adapters 000 003 007）
-$PY tools/offline_sigma.py   --json analysis/out/offline_sigma.json
+# C9 离线 σ 分解。注意：需 base 权重 + 3 个 adapter + 一块 GPU，三者都不入库，
+# 主副本连 runs/mu1_s0/adapters/ 都不存在 —— 本条不可由第三方重算，命令仅留档
+$PY tools/offline_sigma.py   --run $Z/01_original_8rollout/runs/mu1_s0 \
+                             --adapters 000 003 007 --json analysis/out/offline_sigma.json
 
 # C10 b×µ 2×2（两新格在 02_bxmu，标准两格在 01_original_8rollout）
-$PY analysis/bmu_2x2.py --runs &lt;8-rollout-runs&gt; \
-                        --ab   20_实验数据/02_bxmu/runs \
+$PY analysis/bmu_2x2.py --runs $Z/01_original_8rollout/runs \
+                        --ab   $Z/02_bxmu/runs \
                         --json analysis/out/bmu_2x2.json --md analysis/out/bmu_2x2.md
 
 # C11 dual-clip（脚本 ROOT 相对自身，故需一个把 mu16 与 noclip 放在同一 runs/ 的视图）
 $PY analysis/noclip_ablation.py --json analysis/out/noclip_mu16.json
 
 # C12 长视界网格
-$PY analysis/r4a_grid.py --runs 20_实验数据/04_r4a/runs \
-                         --base 20_实验数据/01_original_8rollout/runs \
+$PY analysis/r4a_grid.py --runs $Z/04_r4a/runs \
+                         --base $Z/01_original_8rollout/runs \
                          --json analysis/out/r4a_grid.json --md analysis/out/r4a_grid.md
 
 # 组粒度（§6 第 7 条的数字）
-$PY analysis/group_grain.py --runs &lt;8-rollout-runs&gt; --json analysis/out/group_grain.json
+$PY analysis/group_grain.py --runs $Z/01_original_8rollout/runs --json analysis/out/group_grain.json
 
 # 证据链
 $PY analysis/trace.py --strict      # 16 条，verified 5 / default 3 / pending 8
 </code></pre>
-<p><strong>数据路径。</strong> <code>&lt;8-rollout-runs&gt;</code> 指 <code>mu{1,8,16}_s{0,1,2}</code> 各 8 行 metrics 的版本：归档副本 <code>20_实验数据/01_original_8rollout/runs</code>，或 <code>git show HEAD:runs/mu1_s0/metrics.jsonl</code>。<strong>工作区的 <code>runs/mu1_s*</code> 已是 19-rollout 版</strong>，直接用它跑 <code>bmu_2x2.py</code> 会把标准两格之一算成 19 行口径，<code>make_table.py</code> 同理。细节见 <code>REPORT.md</code> §9。</p>
+<p><strong>数据路径。</strong> <code>$Z</code> 是归档副本 <code>../two-clocks-audit-zhengli/20_实验数据</code>，<strong>21 个 run 的 <code>metrics.jsonl</code> 全部入库</strong>，所以 C8/C10/C11/C12 的输入是可复算的。<code>&lt;8-rollout-runs&gt;</code> 指 <code>mu{1,8,16}_s{0,1,2}</code> 各 8 行 metrics 的版本，即 <code>$Z/01_original_8rollout/runs</code>（或 <code>git show HEAD:runs/mu1_s0/metrics.jsonl</code>）。<strong>工作区的 <code>runs/mu1_s*</code> 已是 19-rollout 版</strong>，直接用它跑 <code>bmu_2x2.py</code> 会把标准两格之一算成 19 行口径，<code>make_table.py</code> 同理；<code>r4a_grid.py</code> 的 <code>--runs</code> 更是必须指 <code>$Z/04_r4a</code>，因为 19 行数据只在归档里。细节见 <code>REPORT.md</code> §9。</p>
+<p><strong>复算的分界线。</strong> 2026-10-27 在归档数据上逐条复跑，C8/C10/C11/C12 的输出与正文数值逐位一致（C10 <code>HEADLINE=mu_is_primary</code>；C11 <code>+0.60pp</code>、<code>ratio_p95 max 1.0906</code>、<code>headroom 9.2x</code>；C12 <code>hit 3/3</code>、网格比 <code>3.58 / 3.89</code>）。<strong>C9 是唯一例外</strong>：它的输入是权重而非指标文件（base 3.2 GiB + 3 个 adapter 各 266 MiB + GPU），三样都不入库，故只能说"有脚本、有命令、有落盘数值，无第二份可重算"。<code>analysis/out/</code> 整体不入库（<code>.gitignore</code> 的设计：再生品不作为事实源），因此 <code>claims.yaml</code> 里四条 verified 的 <code>evidence</code> 指向再生脚本而非它的输出，各自的 <code>note</code> 写了确切命令与应得的数。</p>
 <hr />
 <h2 id="sec-_2">附录：数值出处一览</h2>
+<p>表中"产出"的文件全部不入库（<code>analysis/out/</code> 被 <code>.gitignore</code> 排除，再生品不作为事实源），所以多给一列"再生脚本"——它是入库的，也是 <code>claims.yaml</code> 里 <code>evidence</code> 实际指的东西。跑法见 §7。</p>
 <div class="tw"><table>
 <thead>
 <tr>
 <th>陈述</th>
-<th>出处</th>
+<th>产出 → 字段</th>
+<th>再生脚本</th>
+<th>可第三方复算</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>µ1/µ8 = 4.98、µ1/µ16 = 6.14、µ8/µ16 = 1.23</td>
-<td><code>analysis/out/slope_ratio.json</code> → <code>slope_ratio.*.mean</code></td>
+<td><code>slope_ratio.json</code> → <code>slope_ratio.*.mean</code></td>
+<td><code>analysis/slope_ratio.py</code></td>
+<td>是</td>
 </tr>
 <tr>
 <td>窗口区间 [3.59, 9.17]</td>
 <td>同上 → <code>window_sensitivity</code>（r4-r7 与 r0-r4）</td>
+<td>同上</td>
+<td>是</td>
 </tr>
 <tr>
 <td>四格 pass、主效应、配对差</td>
-<td><code>analysis/out/bmu_2x2.json</code> → <code>cells</code> / <code>verdict</code></td>
+<td><code>bmu_2x2.json</code> → <code>cells</code> / <code>verdict</code></td>
+<td><code>analysis/bmu_2x2.py</code></td>
+<td>是</td>
 </tr>
 <tr>
 <td>3×3 σ 表、H1/H2</td>
-<td><code>analysis/out/offline_sigma.json</code> → <code>table</code> / <code>verdict</code></td>
+<td><code>offline_sigma.json</code> → <code>table</code> / <code>verdict</code></td>
+<td><code>tools/offline_sigma.py</code></td>
+<td><strong>否</strong>（需权重 + GPU）</td>
 </tr>
 <tr>
 <td>三种 pass 口径的差值</td>
-<td><code>analysis/out/noclip_mu16.json</code> → <code>comparisons</code></td>
+<td><code>noclip_mu16.json</code> → <code>comparisons</code></td>
+<td><code>analysis/noclip_ablation.py</code></td>
+<td>是</td>
 </tr>
 <tr>
 <td><code>ratio_p95</code> 1.0906 / 1.0931 / 余量 9.17×</td>
 <td>同上 → <code>mechanism</code></td>
+<td>同上</td>
+<td>是</td>
 </tr>
 <tr>
 <td>C12 首达 r12 / r10 / r10</td>
-<td><code>analysis/out/r4a_grid.json</code> → <code>mu1_hits</code></td>
+<td><code>r4a_grid.json</code> → <code>mu1_hits</code></td>
+<td><code>analysis/r4a_grid.py</code></td>
+<td>是</td>
 </tr>
 <tr>
 <td>网格比 3.58 / 3.89</td>
 <td>同上 → <code>grid_ratios</code>（3 seed 均值）</td>
+<td>同上</td>
+<td>是</td>
 </tr>
 <tr>
 <td>全错组 37.5%、ICC 0.198/0.296/0.258</td>
-<td><code>analysis/out/group_grain.json</code> → <code>by_arm</code></td>
+<td><code>group_grain.json</code> → <code>by_arm</code></td>
+<td><code>analysis/group_grain.py</code></td>
+<td>是</td>
 </tr>
 <tr>
 <td>18 序列 / 774,144 responses / ¥86.68</td>
-<td>各 run 末行 <code>responses_cum</code> / <code>cost_cny_cum</code>，µ1 只计 19-rollout 版一次</td>
+<td>各 run 末行 <code>responses_cum</code> / <code>cost_cny_cum</code>（µ1 只计 19-rollout 版一次）</td>
+<td>无脚本，直接读 <code>metrics.jsonl</code></td>
+<td>是（metrics 已入库）</td>
 </tr>
 </tbody>
 </table></div>
 <footer class="foot">
-  <div>事实源：<code>ATTRIBUTION.md</code> · sha256:9957dc0f6289 · 由 <code>tools/build_report_html.py</code> 生成</div>
-  <div class="build">commit 7835ace (dirty) · built 2026-10-27 22:44 · 图内嵌：</div>
+  <div>事实源：<code>ATTRIBUTION.md</code> · sha256:f163e77ac086 · 由 <code>tools/build_report_html.py</code> 生成</div>
+  <div class="build">commit e0d206e (dirty) · built 2026-10-27 23:02 · 图内嵌：</div>
 </footer>
 </main>
 </div>

@@ -257,48 +257,55 @@
 ```bash
 PY=<python-with-numpy>     # analysis/ 需要 numpy；系统 3.13 无 numpy
 cd <repo>
+Z=<archive>/20_实验数据     # 归档副本。主副本里没有 20_实验数据/，路径必须指过去
 
 # C8 斜率比代理（零训练，只用主审计 9 run 的 metrics）
-$PY analysis/slope_ratio.py  --runs <8-rollout-runs> --json analysis/out/slope_ratio.json
+$PY analysis/slope_ratio.py  --runs $Z/01_original_8rollout/runs --json analysis/out/slope_ratio.json
 
-# C9 离线 σ 分解（零训练，需 base 权重 + 3 个 adapter，默认 --adapters 000 003 007）
-$PY tools/offline_sigma.py   --json analysis/out/offline_sigma.json
+# C9 离线 σ 分解。注意：需 base 权重 + 3 个 adapter + 一块 GPU，三者都不入库，
+# 主副本连 runs/mu1_s0/adapters/ 都不存在 —— 本条不可由第三方重算，命令仅留档
+$PY tools/offline_sigma.py   --run $Z/01_original_8rollout/runs/mu1_s0 \
+                             --adapters 000 003 007 --json analysis/out/offline_sigma.json
 
 # C10 b×µ 2×2（两新格在 02_bxmu，标准两格在 01_original_8rollout）
-$PY analysis/bmu_2x2.py --runs <8-rollout-runs> \
-                        --ab   20_实验数据/02_bxmu/runs \
+$PY analysis/bmu_2x2.py --runs $Z/01_original_8rollout/runs \
+                        --ab   $Z/02_bxmu/runs \
                         --json analysis/out/bmu_2x2.json --md analysis/out/bmu_2x2.md
 
 # C11 dual-clip（脚本 ROOT 相对自身，故需一个把 mu16 与 noclip 放在同一 runs/ 的视图）
 $PY analysis/noclip_ablation.py --json analysis/out/noclip_mu16.json
 
 # C12 长视界网格
-$PY analysis/r4a_grid.py --runs 20_实验数据/04_r4a/runs \
-                         --base 20_实验数据/01_original_8rollout/runs \
+$PY analysis/r4a_grid.py --runs $Z/04_r4a/runs \
+                         --base $Z/01_original_8rollout/runs \
                          --json analysis/out/r4a_grid.json --md analysis/out/r4a_grid.md
 
 # 组粒度（§6 第 7 条的数字）
-$PY analysis/group_grain.py --runs <8-rollout-runs> --json analysis/out/group_grain.json
+$PY analysis/group_grain.py --runs $Z/01_original_8rollout/runs --json analysis/out/group_grain.json
 
 # 证据链
 $PY analysis/trace.py --strict      # 16 条，verified 5 / default 3 / pending 8
 ```
 
-**数据路径。** `<8-rollout-runs>` 指 `mu{1,8,16}_s{0,1,2}` 各 8 行 metrics 的版本：归档副本 `20_实验数据/01_original_8rollout/runs`，或 `git show HEAD:runs/mu1_s0/metrics.jsonl`。**工作区的 `runs/mu1_s*` 已是 19-rollout 版**，直接用它跑 `bmu_2x2.py` 会把标准两格之一算成 19 行口径，`make_table.py` 同理。细节见 `REPORT.md` §9。
+**数据路径。** `$Z` 是归档副本 `../two-clocks-audit-zhengli/20_实验数据`，**21 个 run 的 `metrics.jsonl` 全部入库**，所以 C8/C10/C11/C12 的输入是可复算的。`<8-rollout-runs>` 指 `mu{1,8,16}_s{0,1,2}` 各 8 行 metrics 的版本，即 `$Z/01_original_8rollout/runs`（或 `git show HEAD:runs/mu1_s0/metrics.jsonl`）。**工作区的 `runs/mu1_s*` 已是 19-rollout 版**，直接用它跑 `bmu_2x2.py` 会把标准两格之一算成 19 行口径，`make_table.py` 同理；`r4a_grid.py` 的 `--runs` 更是必须指 `$Z/04_r4a`，因为 19 行数据只在归档里。细节见 `REPORT.md` §9。
+
+**复算的分界线。** 2026-10-27 在归档数据上逐条复跑，C8/C10/C11/C12 的输出与正文数值逐位一致（C10 `HEADLINE=mu_is_primary`；C11 `+0.60pp`、`ratio_p95 max 1.0906`、`headroom 9.2x`；C12 `hit 3/3`、网格比 `3.58 / 3.89`）。**C9 是唯一例外**：它的输入是权重而非指标文件（base 3.2 GiB + 3 个 adapter 各 266 MiB + GPU），三样都不入库，故只能说"有脚本、有命令、有落盘数值，无第二份可重算"。`analysis/out/` 整体不入库（`.gitignore` 的设计：再生品不作为事实源），因此 `claims.yaml` 里四条 verified 的 `evidence` 指向再生脚本而非它的输出，各自的 `note` 写了确切命令与应得的数。
 
 ---
 
 ## 附录：数值出处一览
 
-| 陈述 | 出处 |
-|---|---|
-| µ1/µ8 = 4.98、µ1/µ16 = 6.14、µ8/µ16 = 1.23 | `analysis/out/slope_ratio.json` → `slope_ratio.*.mean` |
-| 窗口区间 [3.59, 9.17] | 同上 → `window_sensitivity`（r4-r7 与 r0-r4） |
-| 四格 pass、主效应、配对差 | `analysis/out/bmu_2x2.json` → `cells` / `verdict` |
-| 3×3 σ 表、H1/H2 | `analysis/out/offline_sigma.json` → `table` / `verdict` |
-| 三种 pass 口径的差值 | `analysis/out/noclip_mu16.json` → `comparisons` |
-| `ratio_p95` 1.0906 / 1.0931 / 余量 9.17× | 同上 → `mechanism` |
-| C12 首达 r12 / r10 / r10 | `analysis/out/r4a_grid.json` → `mu1_hits` |
-| 网格比 3.58 / 3.89 | 同上 → `grid_ratios`（3 seed 均值） |
-| 全错组 37.5%、ICC 0.198/0.296/0.258 | `analysis/out/group_grain.json` → `by_arm` |
-| 18 序列 / 774,144 responses / ¥86.68 | 各 run 末行 `responses_cum` / `cost_cny_cum`，µ1 只计 19-rollout 版一次 |
+表中"产出"的文件全部不入库（`analysis/out/` 被 `.gitignore` 排除，再生品不作为事实源），所以多给一列"再生脚本"——它是入库的，也是 `claims.yaml` 里 `evidence` 实际指的东西。跑法见 §7。
+
+| 陈述 | 产出 → 字段 | 再生脚本 | 可第三方复算 |
+|---|---|---|---|
+| µ1/µ8 = 4.98、µ1/µ16 = 6.14、µ8/µ16 = 1.23 | `slope_ratio.json` → `slope_ratio.*.mean` | `analysis/slope_ratio.py` | 是 |
+| 窗口区间 [3.59, 9.17] | 同上 → `window_sensitivity`（r4-r7 与 r0-r4） | 同上 | 是 |
+| 四格 pass、主效应、配对差 | `bmu_2x2.json` → `cells` / `verdict` | `analysis/bmu_2x2.py` | 是 |
+| 3×3 σ 表、H1/H2 | `offline_sigma.json` → `table` / `verdict` | `tools/offline_sigma.py` | **否**（需权重 + GPU） |
+| 三种 pass 口径的差值 | `noclip_mu16.json` → `comparisons` | `analysis/noclip_ablation.py` | 是 |
+| `ratio_p95` 1.0906 / 1.0931 / 余量 9.17× | 同上 → `mechanism` | 同上 | 是 |
+| C12 首达 r12 / r10 / r10 | `r4a_grid.json` → `mu1_hits` | `analysis/r4a_grid.py` | 是 |
+| 网格比 3.58 / 3.89 | 同上 → `grid_ratios`（3 seed 均值） | 同上 | 是 |
+| 全错组 37.5%、ICC 0.198/0.296/0.258 | `group_grain.json` → `by_arm` | `analysis/group_grain.py` | 是 |
+| 18 序列 / 774,144 responses / ¥86.68 | 各 run 末行 `responses_cum` / `cost_cny_cum`（µ1 只计 19-rollout 版一次） | 无脚本，直接读 `metrics.jsonl` | 是（metrics 已入库） |

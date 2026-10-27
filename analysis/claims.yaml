@@ -123,6 +123,32 @@ revisions:
       这一点在本次核查中被确认为工具的实际行为，不是预期设计。
       另注：C4 的 field drift_d 取 rollout 0 的首值 d0，19 行版与 8 行版逐位相同
       （0.072323 / 0.068214 / 0.066128），故 C4 指 runs/mu1_s0 不改变判据口径。
+  - date: "2026-10-27"
+    kind: annotation
+    id: "C9, C10, C11, C12"
+    why: >-
+      把四条 evidence 从 analysis/out/*.json 改指再生它们的脚本，**不改判据文本、
+      不改阈值、不改任何 status**。起因：analysis/out/ 被 .gitignore 整个排除
+      （0 文件入库），四条 verified 的证据因此全部悬空——别人 clone 后 trace.py
+      会报 4 × evidence missing，而本地跑永远是绿的，这个断点不会自己暴露。
+      改法与 C8 一致（C8 的 evidence 一直指 analysis/slope_ratio.py，不是它的输出）：
+      C9 -> tools/offline_sigma.py，C10 -> analysis/bmu_2x2.py，
+      C11 -> analysis/noclip_ablation.py，C12 -> analysis/r4a_grid.py。
+      四条脚本均已入库，trace.py 对 .py 只查存在性（trace.py:70）。
+      但「脚本在」不等于「数能重算」，四条的可复算程度不同，已在各条 note 里分别写明：
+      C10/C11/C12 的输入 metrics.jsonl 全部入库（归档副本 20_实验数据/ 下 21 个 run
+      的 metrics 都在 git 里），给出确切命令并要求复核者对上 note 里抄录的值；
+      C9 例外——它要 base 权重 3.2 GiB + 3 个 adapter 各 266 MiB + 一块 GPU，
+      三者都不入库，且主副本 runs/mu1_s0/adapters/ 目录本身不存在，
+      故 C9 记录为「有脚本、有命令、有落盘数值，但无第二份可重算」，不是可复现。
+      2026-10-27 逐条复跑校验：C10 HEADLINE=mu_is_primary 四格逐位一致；
+      C11 +0.60pp / ratio_p95 max 1.0906 / headroom 9.2x / clip_is_inert；
+      C12 hit 3/3（4.33/3.67/2.75）grid 比 3.58 / 3.89。C9 需卡，未复跑，
+      只核对落盘 json 与 note 文字一致。
+      同时暴露一个未修的同类问题：C3 的 evidence 是 analysis/out/table.json，
+      同样不入库，且 .json 分支只校验 JSON 合法性、不检查 field（trace.py:64-69），
+      故它的 field n_d20 从未被真正核过（实测 9/9 为 None）。C3 的档位仍在待拍板，
+      本轮不动。
 
 claims:
   - id: C1
@@ -200,7 +226,7 @@ claims:
       切分本身不产生 sigma 差异；H1 不成立 -> 切分影响 sigma，原判据的前提成立；
       H2 不成立 -> sigma 的 mu 依赖既非切分也非策略陈旧，必须列为未解释的混淆项。
     status: verified
-    evidence: analysis/out/offline_sigma.json
+    evidence: tools/offline_sigma.py
     note: >-
       判定结果（analysis/out/offline_sigma.json 的 verdict 字段）：
       H1_split_free = true，四个 adapter 下三种切分的 sigma 组内相对极差 0.26-0.27%
@@ -219,6 +245,15 @@ claims:
       零成本佐证：r0 三臂 sigma=0.0663/0.0695/0.0700（极差 5%），r7 为
       0.0663/0.0830/0.0958（极差 44%），且 mu1 与 mu8 的 r0 rollout_data_sha 完全相同
       （82bbd063...）——mu 依赖在起点不存在，只在训练后出现。
+      evidence 指向脚本而非它的输出：analysis/out/ 不入库（.gitignore），落盘结果
+      已在上文逐值抄录。但本条与 C10/C11/C12 不同——它**不能由第三方独立复算**：
+      脚本需要 (1) base 权重 _models/Qwen3-1.7B-Base（3.2 GiB）、(2) 三个 adapter
+      r000/r003/r007（各 266 MiB）、(3) 一块 GPU，三者都不入库；且主副本
+      runs/mu1_s0/adapters/ 目录本身不存在（权重只在归档副本 20_实验数据/ 下）。
+      复算命令记录在此：python tools/offline_sigma.py --run runs/mu1_s0
+      --adapters 000 003 007 --json analysis/out/offline_sigma.json 。
+      这一条的正确读法是「有脚本、有命令、有落盘数值，但没有第二份可重算」，
+      不是「可复现」。四项归因里只有它属于这一档，因为它测的是权重而不是指标文件。
 
   - id: C10
     text: >-
@@ -228,7 +263,7 @@ claims:
       两者的配对 CI 不相交 -> 每步样本数 b（而非更新次数 mu）是性能主因；
       若交互项为正（b 增大在 mu=16 下收益更大）-> mu16 的劣势可由 b 补偿。
     status: verified
-    evidence: analysis/out/bmu_2x2.json
+    evidence: analysis/bmu_2x2.py
     note: >-
       判定结果（analysis/out/bmu_2x2.json，响应 = r7 端点 pass，3 seed）：
       四格 0.4593（mu8b512）/ 0.5168（mu16b256）/ 0.4383（mu8b256）/ 0.5671（mu16b512）。
@@ -247,6 +282,13 @@ claims:
       因此 mu16@b=512 的数据量是标准格的 2x（题池复用 2.25x -> 4.1x），
       mu8@b=256 是 0.5x（复用 -> 1.0x）。这是二阶混淆，写作时必须声明：
       第 4 格偏乐观、第 3 格偏保守，两者对「b 是主因」的方向相反。
+      evidence 指向脚本而非它的输出：analysis/out/ 不入库（.gitignore）。
+      这条**可被第三方独立复算**——输入 metrics.jsonl 全部入库，在归档副本
+      20_实验数据/{01_original_8rollout,02_bxmu}/runs/ 下（21 个 run 的 metrics
+      都在 git 里）。再生命令：
+      python analysis/bmu_2x2.py --runs <01>/runs --ab <02>/runs
+        --json analysis/out/bmu_2x2.json --md analysis/out/bmu_2x2.md
+      2026-10-27 复跑校验：HEADLINE = mu_is_primary，四格数字与上文逐位一致。
 
   - id: C11
     text: >-
@@ -254,7 +296,7 @@ claims:
       判据：|pass(mu16, no-clip) - pass(mu16, clip=10)| < 3.0pp（n=3 的 MDE）-> 不可识别；
       差值 <= -3.0pp -> dual clip 是 mu=16 的必要条件；差值 >= +3.0pp -> dual clip 有害。
     status: verified
-    evidence: analysis/out/noclip_mu16.json
+    evidence: analysis/noclip_ablation.py
     note: >-
       只改一个开关（grpo.py:83-86 的 coef_1 上界），是三项归因里唯一单变量的实验。
       结果（3/3 seed 跑完，analysis/out/noclip_mu16.json）：统计上三种 pass 口径全部
@@ -268,6 +310,13 @@ claims:
       ratio 上界真会撞 10 的场景，本条不提供任何信息。
       另注意 noclip 臂的 clip_frac_high 仍非零（max 0.0018-0.0022），那是
       eps_high=0.28 那段在 clip，不是上界 10，别读成「没关干净」。
+      evidence 指向脚本而非它的输出：analysis/out/ 不入库（.gitignore）。
+      这条**可被第三方独立复算**——输入 metrics.jsonl 已入库（归档副本
+      01_original_8rollout 与 03_noclip）。脚本的 ROOT 相对自身，必须先把
+      mu16_s{0,1,2} 与 noclip_mu16_s{0,1,2} 放进同一个 runs/ 再跑：
+      python analysis/noclip_ablation.py --json analysis/out/noclip_mu16.json
+      2026-10-27 复跑校验：+0.60pp / SD 0.34 / CI95 [-0.25,+1.45]、
+      ratio_p95 max 1.0906、headroom 9.2x、HEADLINE clip_is_inert，与上文一致。
 
   - id: C12
     text: >-
@@ -278,7 +327,7 @@ claims:
       3/3 未命中 -> 得无假设下界 N_0.30(mu1) > 19*4096 = 77,824 responses，
       并可算 mu1/mu8 >= 4.75、mu1/mu16 >= 6.33 的下界。
     status: verified
-    evidence: analysis/out/r4a_grid.json
+    evidence: analysis/r4a_grid.py
     note: >-
       判定结果（analysis/out/r4a_grid.json）：**3/3 命中**，走"报首次命中"支，
       不需下界支。首达 rollout 索引 s0=r12（pass 0.312988，53,248 responses，
@@ -298,6 +347,15 @@ claims:
       按 R4A 收益分析会得 mu1/mu8=5.34、mu1/mu16=6.75（与 C8 差 +7%/+10%），
       而网格口径得 2.75-3.25 / 3.67-4.33（差 -40%/-35%），两种口径差 1.7 倍，
       故口径必须在跑前锁定。
+      evidence 指向脚本而非它的输出：analysis/out/ 不入库（.gitignore）。
+      这条**可被第三方独立复算**——输入 metrics.jsonl 已入库（归档副本
+      04_r4a 的 19 行 mu1 + 01_original_8rollout 的 8 行 mu8/mu16）。再生命令：
+      python analysis/r4a_grid.py --runs <04_r4a>/runs --base <01>/runs
+        --json analysis/out/r4a_grid.json --md analysis/out/r4a_grid.md
+      2026-10-27 复跑校验：hit 3/3（per seed 4.33 / 3.67 / 2.75）、grid 比
+      3.58 / 3.89，与上文一致。
+      ⚠ 数据位置陷阱：主副本 git HEAD 的 runs/mu1_s* 是 8 行版，工作区是 19 行
+      未提交覆盖版，**两处都不能直接当 --runs 用**；必须指归档 04_r4a。
 
   - id: D1
     text: "训练器为自写循环而非 TRL GRPOTrainer：TRL 1.16 的 num_iterations 能表达 mu，但不暴露 per-mu 的 KL、clip 梯度份额与 micro-batch 梯度散度 sigma。正确性用独立标量实现 + 有限差分自证（tests/test_grpo.py）。"
