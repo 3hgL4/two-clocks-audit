@@ -3,9 +3,16 @@
 # 这个文件在跑任何 GPU 之前写定。每条 claim 给出 id / 一句话 / 证据路径 / 证据字段 /
 # 状态。跑完之后只允许改 status 和 values，不允许改措辞或阈值——否则就是事后选指标。
 #
-# status 只有三种：verified（已核实，evidence 必须存在且字段存在）
-#                 default （默认执行的可逆工程决定）
-#                 pending （待拍板 / 待数据，禁止在 REPORT 里当作事实陈述）
+# status 描述「判据与实测的关系」，不描述「论文对不对」：
+#   verified        已核实：判据成立，evidence 必须存在且字段存在且非空
+#   falsified       已核实：判据不成立（方向相反或未达阈值），evidence 要求同上
+#   unidentifiable  已核实：判据不可触发（阈值两端均删失，判定量根本不存在），evidence 要求同上
+#   default         默认执行的可逆工程决定
+#   pending         待拍板 / 待数据，禁止在 REPORT 里当作事实陈述
+#
+# 为什么 falsified / unidentifiable 不并进 verified：2026-10-27 回填时，七条预注册
+# 判据里有三条落在「判据不成立」（C2 单调、C4 方向、C6 后半）、一条落在「不可触发」
+# （C3）。若都记 verified，读者会把 verified 读成「预测成立」——这正是本文件要防的事。
 #
 # 校验：python analysis/trace.py --strict
 
@@ -147,8 +154,42 @@ revisions:
       只核对落盘 json 与 note 文字一致。
       同时暴露一个未修的同类问题：C3 的 evidence 是 analysis/out/table.json，
       同样不入库，且 .json 分支只校验 JSON 合法性、不检查 field（trace.py:64-69），
-      故它的 field n_d20 从未被真正核过（实测 9/9 为 None）。C3 的档位仍在待拍板，
-      本轮不动。
+      故它的 field n_d20 从未被真正核过（实测 9/9 为 None）。C3 的档位当时仍待拍板，
+      该轮未动，同日第二轮处理见下一条 revision。
+  - date: "2026-10-27"
+    kind: status
+    id: "C2, C3, C4, C5, C6, C7, C8, P1"
+    why: >-
+      预注册侧 8 条判据全部按实测回填 status，**判据文本与阈值一个字未动**。
+      起因：此前 16 条里 pending 占 8 条，而 REPORT 已经把其中 7 条的对照结果写进正文
+      （通过 / 相反 / 部分 / 未复现 / 未检验），于是出现「报告当结论用、claims.yaml 说
+      待拍板」的自相矛盾，trace.py --strict 每次都提示「pending 不得写成事实」。
+      回填结果（只数预注册侧这 8 条）：verified 5（C1 原有 + 回填的 C5/C7/C8/P1）、
+      falsified 3（C2 单调判据不成立、C4 方向相反、C6 后半方向相反）、
+      unidentifiable 1（C3 阈值两端全删失）。全文件 16 条此时为
+      verified 9 / falsified 3 / unidentifiable 1 / default 3 / pending 0。
+      为此 status 词表从三档扩到五档（新增 falsified / unidentifiable），
+      trace.py 的 ALLOWED、docstring 与 summary 顺序同步改，三者要求同一种 evidence 校验。
+      理由：把「判据被证伪」塞进 verified 会让读者把 verified 读成「预测成立」，
+      而本次七条里恰好有三条落在那个位置——这是本文件最不该犯的误读。
+      同日另修 trace.py 的一处校验漏洞：`.json` 分支原先只做 json.loads() 就返回 ok，
+      不检查 field，这正是 C3 的 n_d20 能长期停在 9/9 None 的原因。现在改为递归查找
+      field，且「字段存在但全为 null」直接判 FAIL，C3 因此不能再指一个从未算过的量。
+      八条的数值都固化到一个新的入库脚本 analysis/residual_claims.py（stdlib，
+      一条命令复算 C2–C7 + P1），各 note 里写明命令与应得值。
+      其中 8 行/19 行陷阱由脚本自身拦截：它检查 mu1 的 rollout 数，非要 8 不可，
+      要跑 19 行续跑版必须显式 --allow-19。
+  - date: "2026-10-27"
+    kind: annotation
+    id: C5
+    why: >-
+      C5 的判据文本缺数值门槛（只写「不存在系统性漂移」），而实测 −4.32% 既不算大
+      也不算零，没有门槛就无法判定档位。故在 note 里补 5%（借用 C9 H1 的「组内相对极差
+      < 5%」约定），并明确标注这是**看到数值之后补的**，因此本条的判定强度弱于阈值
+      在跑前锁定的 C7。不动 text——补阈值属补全未定义项，不是改写已有阈值，
+      但它确实降低了本条的可信度，所以既留 revision 也写进 REPORT 附录 C 第 13 条。
+      补 5% 而非 10% 的原因：5% 距实测 4.32% 只有 16% 余量，是对结论不利的收紧方向，
+      选它不是为了让结论好看。
 
 claims:
   - id: C1
@@ -159,42 +200,134 @@ claims:
 
   - id: C2
     text: "逐 token 的 KL(policy || rollout policy) 在每个 rollout 内部随 mu_step 单调上升（离线量的直接测量）。"
-    status: pending
+    status: falsified
     evidence: runs/mu16_s0/metrics.jsonl
     field: kl_per_rollout_policy
-    note: "若在 mu=16 仍不上升，说明该配置下策略走不动，需先报病态再做结论。"
+    note: >-
+      判定（analysis/residual_claims.py 的 C2 节，输入为归档 8-rollout 版）：
+      判据是「每个 rollout 内部单调」这一合取命题，实测**不成立**。
+      严格单调（排除基线步 mu_step=0）1/48 条 rollout 达标（mu8 1/24、mu16 0/24）；
+      含基线步则 0/48（基线步 KL 恒为 0，见 C1）；相邻 mu_step 对上升 299/528 = 56.6%
+      （mu8 109/168、mu16 190/360）；
+      负 KL 行 124/528（mu8 11–17/56 每 run、mu16 24–29/120 每 run，|最小| 3.8e-4）。
+      负值是关键解释：精确 KL >= 0，负号说明 kl_per_rollout_policy 是**采样估计**，
+      在 1e-5 量级上噪声大于信号，因此「逐步单调」在这一量级上不可观测——不是策略
+      不走，是仪器分辨率不够。µ=1 臂结构性不可测（每 rollout 仅 1 步且即基线步）。
+      **同一份数据在另一个聚合层次成立**：把同臂 8 条 rollout 在同一 mu_step 位置取均值，
+      末步 KL 比第 1 步高 11.3–86.8 倍（6 run 中 4 run 可算，另 2 run 首步均值为负→比值无定义）；
+      末步绝对值 3.21e-4（mu8）/ 4.49e-4（mu16），µ16 仅为 µ8 的 1.40 倍，对 µ 次线性。
+      两个层次不可互换：本条 status 只对判据文本（逐 rollout 单调）作答，
+      「净增长」是 REPORT §5.4 第二条读法，不是本条的成立依据。
+      再生命令：python analysis/residual_claims.py --runs <archive>/01_original_8rollout/runs
+      ；主副本 runs/mu1_* 是 19 行续跑版，脚本会拒绝运行（--allow-19 可强开）。
 
   - id: C3
     text: "主结论：在 Br=4096、G=8、32k responses 的同一预算下，论文 Eq.(5) 预测 N_tau(mu=16)/N_tau(mu=1) = 6.1x；本实验给出实测比值及其自助置信区间。该预测因论文假设 A2 显式忽略陈旧性而无惩罚项，实测比值若显著低于 6.1x，即为 A2 代价的定量估计。"
-    status: pending
-    evidence: analysis/out/table.json
-    field: n_d20
-    note: "只允许报告'实测 vs 预测'，不允许写成'论文错了'。"
+    status: unidentifiable
+    evidence: analysis/residual_claims.py
+    field: drift_d
+    note: >-
+      判定（analysis/residual_claims.py 的 C3 节）：**判据不可触发**，不是被证伪。
+      N_tau 的操作化是「d/d0 首次达到 tau 的 rollout 序号」，实测 1.5 与 2.0 两个阈值
+      **一次也没触发**（crossings = {1.5: 0, 2.0: 0}，9/9 run 全删失），分子分母双双右删失，
+      比值因此**不存在**，6.1x 的对照无法进行——没有数可以拿来比。
+      两种归一化口径都报，因为包络不同：
+        A（report_stats 口径，d0 = rollout 0 内均值，逐 rollout 归一）[0.9260, 1.1160]；
+        B（逐 step 口径，d0 = (r0, mu_step=0)，逐行归一）[0.8298, 1.1309]。
+      B 更宽是因为把每 rollout 内部的 step 抖动也纳入，A 是报告 §5 表 279 行用的口径。
+      两种口径下距 1.5 仍差 34%（A 上界）到 25%（B 上界），故口径选择不改变档位。
+      根因不是视界不够，是**代理失效**：同期 pass 从 0.222 涨到 0.484（模型确实在学），
+      而 d 平坦——progress 在动，代理不动（REPORT §7.3 第 1 条）。
+      因此本条只能说「这个判据在本配置下测不了」，不能说「A2 的代价是 X」，
+      也不能说「论文错了」——方向笔误见 revisions 2026-10-26 的 annotation。
+      evidence 指脚本：原 evidence 是 analysis/out/table.json（不入库，且 2026-10-27 之前
+      trace.py 的 .json 分支只校验可解析性、不校验 field，故 field n_d20 从未被真查过，
+      实测 9/9 为 None）。该隐患已于同日修复：trace.py 现在递归查找 field 并拒绝
+      「字段存在但全为 null」的 .json，C3 因此不能再指一个未计算过的量。
+      再生命令：python analysis/residual_claims.py --runs <archive>/01_original_8rollout/runs
+      （输入 metrics.jsonl 全部入库 → 本条**可被第三方独立复算**）。
 
   - id: C4
     text: "drift clock d = kappa*||g_bar||/sigma 随 mu 增大而下降（同一 Br 下 b=Br/mu 变小，梯度噪声相对变大）。"
-    status: pending
+    status: falsified
     evidence: runs/mu1_s0/metrics.jsonl
     field: drift_d
-    note: "kappa 为量纲约定，所有比较只用比值，故 kappa 取值不影响结论。"
+    note: >-
+      判定（analysis/residual_claims.py 的 C4 节）：预注册预测**下降**，实测 **3/3 seed
+      同向上升**，符号相反 → 判据不成立。d0（rollout 0 内均值）0.0689 → 0.1331 → 0.1812
+      （µ1/µ8/µ16），µ16 是 µ1 的 2.63 倍。逐 seed 配对比值：µ8/µ1 = 1.85 / 1.94 / 2.01，
+      µ16/µ1 = 2.52 / 2.65 / 2.73，无一例外。
+      kappa 是量纲约定，所有比较只用比值，故其取值不影响结论。
+      机制猜测（噪声主导）被证伪，但这不等于「论文错了」：实测方向与同预算 pass 排序
+      （µ 大者好）同向，而论文 Eq.(6) 的 B* ∝ µ 也预测 µ 大更省样本；两者方向是否一致
+      取决于 d→N_tau 的映射，本实验未独立测 progress，故不作断言（REPORT §7.3）。
+      归因边界：主表三臂里 µ 与 b 完全共线，d0 的臂间差异**不能**归给陈旧性——
+      性能侧由 C10 部分解耦，d0 侧未解耦（REPORT §7.1）。
+      evidence 指 runs/mu1_s0/metrics.jsonl：主副本该文件是 19-rollout 未提交覆盖版，
+      但本条的 d0 = rollout 0 内均值，19 行版前 8 个 rollout 与 8 行版逐位相同，
+      故指它不改变判据口径。三臂比值的再生命令见 residual_claims.py。
 
   - id: C5
     text: "响应长度随 mu 不存在系统性漂移（论文全文 0 处报告响应长度，本条为本次新增的可观测项）。"
-    status: pending
+    status: verified
     evidence: runs/mu8_s0/metrics.jsonl
     field: resp_len_mean
+    note: >-
+      判定（analysis/residual_claims.py 的 C5 节）：三臂全程均值 298.30 / 288.27 / 285.41
+      token（µ1/µ8/µ16），相对 µ1 为 −3.36%（µ8）与 −4.32%（µ16），三臂极差 4.44%。
+      **阈值是事后补的**：判据原文只写「不存在系统性漂移」，没给数值门槛，因此
+      本条的判定依赖 revision 2026-10-27 追认的 5%（借用 C9 H1 的组内相对极差约定），
+      判定强度弱于阈值在跑前锁定的条目（C7）。补 5% 而非更松的 10%，理由是它比
+      实测的 4.32% 只留 16% 余量，属于对结论不利的收紧方向。
+      双向判定：|−4.32%| < 5% → 成立。若只按「禁止上涨」单向读（REPORT §5.5 的读法），
+      结论同样是成立，因为实测两条臂都是下降——两种读法在本数据上给出同一档位。
+      **但「通过」不等于「无差异」**：臂内 µ8/µ16 在训练后期分别下降 15.3 / 18.1 token
+      （−5.2% / −6.2%），µ1 基本平（+1.3）。这是一个**未预注册的方向**，
+      REPORT §5.5 只作观察不作解释，本条也不据此改判。
+      口径：mu_step>0 的行取均值（µ=1 臂无此类行，回退到全部行）。
 
   - id: C6
     text: "被 clip 的 token 比例随 mu 上升，且被 clip 的梯度范数份额高于其 token 份额（复现论文'0.5% token 但 50-70% 梯度范数'的现象）。"
-    status: pending
+    status: falsified
     evidence: runs/mu16_s0/metrics.jsonl
     field: clip_frac_any
+    note: >-
+      判定（analysis/residual_claims.py 的 C6 节）：本条是合取命题，**前半成立、后半不成立**，
+      按判据文本整条记 falsified。
+      前半：clip token 份额随 µ 上升，0 → 0.270% → 0.333%（µ1/µ8/µ16，逐 run 均值），
+      3/3 seed 同向，成立。
+      后半：被 clip token 的梯度质量份额 / token 份额 = 0.90×（µ8）/ 0.92×（µ16），
+      **小于 1**，即没有超额权重；6/6 run 同向（µ8 0.89–0.90×、µ16 0.91–0.92×）。
+      µ1 臂两列均为 0（ratio 恒为 1 → 从不触发 clip），是结构性零，不是测量结果。
+      口径必须声明（否则会被读成反驳论文）：这里测的是 logprob 空间的 |ratio·A| 质量份额，
+      **不是参数空间的梯度范数份额**（后者需逐 token 反传，代价是再一遍 backward）。
+      两者不可等同，故本条**不能**用来否定论文的 50–70%——只能说「在 logprob 空间的质量
+      口径下，被 clip 的 token 没有超额权重」。clip 绝对水平也低两个数量级
+      （0.33% vs 论文域），与任务简单、LoRA 更新幅度小一致。
+      计数口径：本条用**全部行**（含基线步 mu_step=0），与 REPORT §5.6 一致；
+      若改用 mu_step>0，µ8/µ16 的份额会各升 1/7 与 1/15（0.00308 / 0.00355），
+      份额比不变的 0.90× / 0.92× ——两种口径不改变判定。
 
   - id: C7
     text: "单次运行成本不超过 ¥6（4090-24G @ ¥1.50/h，实测墙钟计），九次运行不超过 ¥55。"
-    status: pending
+    status: verified
     evidence: notes/2026-10-26_pull/cloud_tmp/campaign.log
     field: cost_cny_cum
+    note: >-
+      判定（analysis/residual_claims.py 的 C7 节，8-rollout 原版）：单次最大 ¥3.6749
+      （九次 3.5316–3.6749），合计 ¥32.4019。单 run 距 ¥6 余量 39%，九次距 ¥55 余量 41%，
+      两条上限均满足。
+      **判据是在比预注册更贵的卡上通过的**：原文写 4090-24G @ ¥1.50/h，实际租的是
+      4090-48G（49,140 MiB）@ ¥2.08/h（+39%），且 ¥1.50 这个数本身也不准（24G 真实价 ¥1.56）。
+      抬价方向收紧判据，收紧后仍通过；若按 ¥1.50/h 记账同样墙钟只需 ¥23.4。
+      阈值（¥6 / ¥55）一个字未动。两处笔误见 REPORT 附录 C 第 1–2 条。
+      另有容器墙钟口径 ¥47.3（22.73 h × ¥2.08，关机时约 ¥50），差额 ¥14.9 来自吞吐探针、
+      模型加载、队列空档与末轮空转；两口径都通过。
+      指 campaign.log 而非 runs/mu1_s*/metrics.jsonl 的原因：主副本工作区的 mu1 已被
+      19-rollout 续跑覆盖（末值 ¥9.030/8.903/8.944，全部超过 ¥6），指过去会让复核者
+      从正确数据里读出「判据不通过」。campaign.log 是入库的原始主控日志，含逐 rollout
+      累计成本 ¥0.45→¥3.67，单次上限可直接核。trace.py 对非 .jsonl 文件只做存在性检查，
+      这是工具的实际行为，故本条的可核性靠 note 里的数 + residual_claims.py 复算。
 
   # ---- added 2026-10-26, after the nine runs were inspected (see revisions) --
   - id: C8
@@ -205,9 +338,17 @@ claims:
       以及三档统计不确定度（iid 二项 / 设计效应 3 / 残差自助）。方法自检用 mu8-vs-mu16
       这一对：两者都能在窗口内穿越，故可用「直接读穿越点」这一不依赖线性假设的估计
       与斜率比对照。与论文 Eq.(5) 的 6.1x 只作同向同量级对照，不作复现声明。
-    status: pending
+    status: verified
     evidence: analysis/slope_ratio.py
     note: >-
+      判定：判据要求的全部项目均已测量并给出，故记 verified——**这一档说的是
+      「证据已核」，不是「6.1× 被复现」**。点估计 N_tau(µ1)/N_tau(µ8) = 4.978、
+      N_tau(µ1)/N_tau(µ16) = 6.136；逐种子离散与五窗口区间同时给出（窗口系统误差
+      −41%/+49%）；三档统计不确定度（iid 二项 / 设计效应 3 / 残差自助）三选一都不足，
+      故三档并报。方法自检：µ8-vs-µ16 的直接穿越法与斜率比一致（+8%），
+      这是本条唯一不依赖线性假设的交叉验证，且它通过。
+      与论文 6.1× 只作同向同量级对照，**不作复现声明**——两种口径（插值 vs 网格）
+      差 1.7 倍，见 C12。本条仍带 post-hoc 标签（2026-10-26 登记，看过九个 run 之后）。
       (1) 线性假设是唯一实质假设，只有续跑（R4）能直接检验它；(2) 窗口系统误差
       (-41%/+49%) 比统计误差大一个量级，两者必须同时报，只报一套会得出偏的结论；
       (3) 事后登记，禁止在 REPORT 里写成预注册预测；(4) tau 的无关性是这条判据相对
@@ -374,7 +515,14 @@ claims:
 
   - id: P1
     text: "Qwen3-1.7B-Base 在 mixed 题池上的实际通过率是否落在 10%-90% 可用区间，未知；若整体通过率为 0，则 L 档失败窗口无法测量，需先用 tools/calibrate_pool.py 校准并收窄题池。"
-    status: pending
+    status: verified
     evidence: runs/mu1_s0/metrics.jsonl
     field: pass_rate
-    note: "这是上云前无法知道的事，必须第一批跑完才知道。"
+    note: >-
+      判定（analysis/residual_claims.py 的 P1 节）：基线通过率（rollout 0 / mu_step 0，
+      未训练）落在 [0.2180, 0.2251]，9 个 run 全部落在 10%–90% 区间内 → **可用**，
+      不需重做题池校准，本题池也不在天花板或地板。
+      注意这 9 个值是 3 个不同的数而非 9 个独立观测：同一 seed 的 mu1/mu8/mu16 共享
+      题池与初始策略，基线 pass 必然相同（µ1 的 0.2180/0.2219/0.2251 在三条臂里重复出现），
+      有效样本数 = 3。这一条只回答「区间可用与否」，不提供任何关于 µ 的推断。
+      这条是上云前无法知道的事，靠第一批 run 落地才知道，故登记时只能是 pending。

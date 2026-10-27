@@ -284,7 +284,7 @@ $PY analysis/r4a_grid.py --runs $Z/04_r4a/runs \
 $PY analysis/group_grain.py --runs $Z/01_original_8rollout/runs --json analysis/out/group_grain.json
 
 # 证据链
-$PY analysis/trace.py --strict      # 16 条，verified 5 / default 3 / pending 8
+$PY analysis/trace.py --strict      # 16 条，verified 9 / falsified 3 / unidentifiable 1 / default 3 / pending 0
 ```
 
 **数据路径。** `$Z` 是归档副本 `../two-clocks-audit-zhengli/20_实验数据`，**21 个 run 的 `metrics.jsonl` 全部入库**，所以 C8/C10/C11/C12 的输入是可复算的。`<8-rollout-runs>` 指 `mu{1,8,16}_s{0,1,2}` 各 8 行 metrics 的版本，即 `$Z/01_original_8rollout/runs`（或 `git show HEAD:runs/mu1_s0/metrics.jsonl`）。**工作区的 `runs/mu1_s*` 已是 19-rollout 版**，直接用它跑 `bmu_2x2.py` 会把标准两格之一算成 19 行口径，`make_table.py` 同理；`r4a_grid.py` 的 `--runs` 更是必须指 `$Z/04_r4a`，因为 19 行数据只在归档里。细节见 `REPORT.md` §9。
