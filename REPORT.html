@@ -1676,7 +1676,7 @@ footer.foot{border-top:1px solid var(--line);margin-top:56px;padding-top:18px;
    - <strong>升格不改变登记时点</strong>：引用时仍须写"事后登记"。</li>
 <li>交付格式：<code>.md</code> 为事实源，另出 <code>REPORT.html</code>（单文件、图内嵌、可离线阅读/打印）；不出 PDF。归因与延展实验另出 <code>ATTRIBUTION.md</code>。</li>
 <li>归档责任：<code>runs/*</code> 被 .gitignore 忽略，19 GB adapter + 7.2 GB state <strong>只有本地一份</strong>（另有一份整理副本），仓库里没有第二份，需自行另做备份。</li>
-<li><strong><code>claims.yaml</code> 的 8 条 status 按实测回填（2026-10-27，第二轮）。</strong> 判据文本与阈值一字未动，只改 <code>status</code> 与 <code>note</code>，带 revision 行。三处方法上的连带决定，都记进附录 C：
+<li><strong><code>claims.yaml</code> 的 8 条 status 按实测回填（2026-10-27，第二轮）。</strong> 判据文本与阈值一字未动，只改 <code>status</code> 与 <code>note</code>，带 revision 行（<code>text</code> 字段在同日更晚的第三轮另改了两处笔误，见下方第 8 条——本条描述的只是第二轮）。三处方法上的连带决定，都记进附录 C：
    - <strong>status 词表扩到五档</strong>（+<code>falsified</code> / <code>unidentifiable</code>）。不做这一步，C2/C4/C6 的"判据不成立"和 C3 的"判据不可触发"只能记成 <code>verified</code>，而读者会把 <code>verified</code> 读成"预测成立"；
    - <strong><code>trace.py</code> 补一处校验漏洞</strong>：<code>.json</code> 分支此前只校验可解析性、不校验 field，C3 的 <code>n_d20</code> 因此在 9/9 全为 None 的情况下长期显示 <code>[ok]</code>。现在递归查 field，且"字段存在但全 null"直接判 FAIL；
    - <strong>C5 补阈值 5%</strong>：判据原文没给数值门槛，实测 −4.32% 无法判定。5% 借用 C9 H1 的约定，<strong>在看过数值之后补的</strong>，故本条判定强度弱于阈值跑前锁定的 C7。</li>
@@ -2092,8 +2092,8 @@ $PY tools/build_report_html.py                             # 由本文件重新�
 <p>第 4、5 条是本次"判据不可触发"的两个结构原因，且都属于<strong>预注册阶段没有钉死、执行阶段才定下</strong>的口径。这是本项目最该被批评的地方：预注册保证了"不改阈值"，但没保证"报得出数"——一个无法触发的操作化和事后改阈值一样没法检验假设。</p>
 <p>第 10、11 条是 2026-10-27 的决定带来的，性质与前九条不同：前九条是"执行没能完全照预注册做"，后两条是"主动偏离了预注册文件自己写的自我约束（主结论只允许一条）"。偏离本身可以是有理由的——C10 的 CI 不含 0、6/6 逐 seed 同向——但<strong>理由不构成免责</strong>：只要升格，就必须同时承受"两条主结论却只做了单条校正"这个代价。把它写在附录而不是脚注里，是这个代价的最低偿付方式。</p>
 <footer class="foot">
-  <div>事实源：<code>REPORT.md</code> · sha256:2faf8ac948f8 · 由 <code>tools/build_report_html.py</code> 生成</div>
-  <div class="build">commit 0b7e779 (dirty) · built 2026-10-27 23:19 · 图内嵌：fig2_drift_vs_rollout.png 57 KB · fig1_kl_vs_step.png 84 KB · fig4_clip_vs_step.png 60 KB · fig3_pass_vs_rollout.png 80 KB</div>
+  <div>事实源：<code>REPORT.md</code> · sha256:97ce646bb65e · 由 <code>tools/build_report_html.py</code> 生成</div>
+  <div class="build">commit e330642 (dirty) · built 2026-10-27 23:24 · 图内嵌：fig2_drift_vs_rollout.png 57 KB · fig1_kl_vs_step.png 84 KB · fig4_clip_vs_step.png 60 KB · fig3_pass_vs_rollout.png 80 KB</div>
 </footer>
 </main>
 </div>
