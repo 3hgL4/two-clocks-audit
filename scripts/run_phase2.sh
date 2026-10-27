@@ -45,24 +45,65 @@ PY
 }
 
 # One run. Skips if summary.json exists (a finished run is never re-billed).
+#
+# RUN_ONE_TRIES (default 1 = no retry) retries a failed run via --resume.
+#
+# Why a retry is safe here and NOT safe for R4-A: the retry reuses the same config
+# and therefore the same total_steps = num_rollouts * mu (train.py:430), so the lr
+# schedule is byte-identical. R4-A is the opposite case -- it passes
+# --num-rollouts 19 against a config that says 8, which re-plans total_steps and
+# jumps lr 13.6x; that is why C12 forbids reading a slope across it.
+#
+# What a retry costs: state.pt is written every rollout
+# (logging.save_state_every_rollouts: 1) and MetricsWriter.truncate_to_rollout
+# drops every row at or after the checkpointed rollout, so a retry replays at most
+# ONE rollout. The optimizer state of a half-finished rollout was never
+# checkpointed, so that rollout must be redone -- there is no way around it.
+#
+# The branch that matters: if the failure happened before the first checkpoint,
+# state.pt does not exist and --resume silently starts from rollout 0 while
+# metrics.jsonl is append-only -> duplicated (rollout, mu_step) keys. In that case
+# the partial files are moved aside instead of truncated, so the failed attempt
+# stays auditable.
 run_one() {
   local cfg="$1" tag="$2"; shift 2
   local dir="runs/$tag"
+  local tries="${RUN_ONE_TRIES:-1}"
   if [[ -f "$dir/summary.json" ]]; then
     echo "[skip] $tag already has summary.json"
     return 0
   fi
   local log="runs/_logs/${tag}.log"
-  printf '[start] %s  cfg=%s  %s\n' "$tag" "$cfg" "$*"
-  local t0=$SECONDS
-  "$PY" src/train.py --config "$cfg" --tag "$tag" --rollout vllm "$@" 2>&1 | tee "$log"
-  local rc=${PIPESTATUS[0]}
-  local dt=$(( SECONDS - t0 ))
-  if [[ $rc -ne 0 ]]; then
-    printf '[fail] %s exited %d after %d min; log %s\n' "$tag" "$rc" "$((dt/60))" "$log" >&2
-    return 1
-  fi
-  printf '[done] %s in %d min\n' "$tag" "$((dt/60))"
+  : > "$log"
+  local attempt=1 extra=()
+  while :; do
+    printf '[start] %s  attempt %d/%d  cfg=%s  %s\n' "$tag" "$attempt" "$tries" "$cfg" "$*"
+    local t0=$SECONDS
+    "$PY" src/train.py --config "$cfg" --tag "$tag" --rollout vllm "$@" "${extra[@]}" 2>&1 | tee -a "$log"
+    local rc=${PIPESTATUS[0]}
+    local dt=$(( SECONDS - t0 ))
+    if [[ $rc -eq 0 ]]; then
+      printf '[done] %s in %d min (attempt %d)\n' "$tag" "$((dt/60))" "$attempt"
+      return 0
+    fi
+    printf '[fail] %s exited %d after %d min on attempt %d/%d; log %s\n' \
+      "$tag" "$rc" "$((dt/60))" "$attempt" "$tries" "$log" >&2
+    if [[ $attempt -ge $tries ]]; then
+      return 1
+    fi
+    attempt=$(( attempt + 1 ))
+    if [[ -f "$dir/state.pt" ]]; then
+      printf '[retry] %s via --resume, continuing after the last checkpointed rollout\n' "$tag"
+      extra=(--resume)
+    else
+      printf '[retry] %s from scratch: no state.pt, moving partial files aside\n' "$tag"
+      local n=$(( attempt - 1 ))
+      for f in metrics.jsonl prompts.jsonl; do
+        [[ -s "$dir/$f" ]] && mv "$dir/$f" "$dir/${f}.attempt${n}"
+      done
+      extra=()
+    fi
+  done
 }
 
 # ---------------------------------------------------------------- pre-flight
@@ -105,9 +146,23 @@ EOF
 
 FREE_GB=$(df -Pk . | awk 'NR==2 {printf "%d", $4/1048576}')
 echo "  free ${FREE_GB} GiB"
-# Phase 2 needs: 1.97h-run x4 snapshots ~2.6 GiB each for (c)/(b) + 4.0h-run x3
-# ~5.2 GiB each for the big cell + R4-A 11 rollouts ~3.2 GiB per seed.
-[[ "$FREE_GB" -lt 20 ]] && fail "under 20 GiB free: adapter snapshots would start skipping (D-22)"
+# Disk floor, per stage. One finished run costs ~2.9 GiB (8 adapter snapshots at
+# 267 MiB each + state.pt at 799 MiB, measured 2026-10-26 on the 48G box), so the
+# floor has to be what THIS stage still has to write, not one number for all:
+#   c   3 seeds x 2.9 GiB         -> 12 GiB (already spent; kept for re-runs)
+#   b   6 runs  x 2.9 GiB         -> 20 GiB (3 cheap + 3 big, all new)
+#   r4a 3 seeds x ~1.4 GiB net    -> 8 GiB  (only adapters after r8 are new;
+#                                            state.pt is overwritten in place)
+# A flat 20 GiB floor was wrong in a way that only bites later: (b) spends 17.4 GiB
+# and leaves ~16 GiB, so R4-A would abort on a disk check 12 hours after (b) had
+# already been paid for -- while needing only ~4 GiB itself.
+case "$STAGE" in
+  r4a) NEED_GB=8  ;;
+  c)   NEED_GB=12 ;;
+  *)   NEED_GB=20 ;;
+esac
+echo "  disk floor for stage '$STAGE': ${NEED_GB} GiB"
+[[ "$FREE_GB" -lt "$NEED_GB" ]] && fail "under ${NEED_GB} GiB free (stage $STAGE): adapter snapshots would start skipping (D-22)"
 
 if [[ -f COMMIT ]]; then echo "  COMMIT=$(cat COMMIT)"; else fail "no COMMIT file"; fi
 
@@ -128,8 +183,13 @@ if [[ "$STAGE" == "all" || "$STAGE" == "b" ]]; then
   for s in 0 1 2; do
     run_one configs/ab2x2_mu8_b256.yaml "ab2x2_mu8_b256_s$s" --seed "$s" || fail "stage (b) mu8@b256 seed $s"
   done
+  # The expensive cell gets one retry (approved 2026-10-26). It is 4 h/run on a
+  # 90%-VRAM configuration, so a late-rollout failure would otherwise cost the
+  # whole arm; --resume makes the retry cost at most one rollout. The cheap cell
+  # is left at 1 attempt: at ~1 h a failure is cheap to read and re-run by hand,
+  # and retrying it silently would hide a real bug.
   for s in 0 1 2; do
-    run_one configs/ab2x2_mu16_b512.yaml "ab2x2_mu16_b512_s$s" --seed "$s" || fail "stage (b) mu16@b512 seed $s"
+    RUN_ONE_TRIES=2 run_one configs/ab2x2_mu16_b512.yaml "ab2x2_mu16_b512_s$s" --seed "$s" || fail "stage (b) mu16@b512 seed $s"
   done
 fi
 
