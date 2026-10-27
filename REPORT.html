@@ -165,7 +165,7 @@ footer.foot{border-top:1px solid var(--line);margin-top:56px;padding-top:18px;
 <p><strong>报告对象</strong>：arXiv:2610.18853（<em>Two Clocks</em>）中的假设 A2 —— <em>"we treat the mini-batches within a rollout as fresh and ignore policy staleness"</em>。</p>
 <p><strong>报告性质</strong>：审计（audit）。不复现原文数值，不提出方法改进，只测量 A2 显式忽略的那一项。</p>
 <p><strong>本报告的范围</strong>：只覆盖<strong>预注册判据</strong> C1–C7 与前置门 P1。看过主数据之后登记的 C8–C12（斜率比代理、离线 σ 分解、b×µ 2×2、dual-clip 消融、长视界续跑）全部在配套报告 <strong><code>ATTRIBUTION.md</code></strong>。本报告回答"论文的判据在这个配置下能不能测"，<code>ATTRIBUTION.md</code> 回答"那到底是什么在起作用"；两份的关系与合并边界见 §8.5。</p>
-<p><strong>状态</strong>：数据已全部落地并逐字节校验。2026-10-27 按实测回填了全部 16 条 status（只改 <code>status</code> 与 <code>note</code>，判据正文与阈值一字未动，revision 留痕）：verified 9 / falsified 3 / unidentifiable 1 / default 3 / pending 0。其中预注册侧的 C2/C4/C6 判定为「判据不成立」、C3 判定为「判据不可触发」，都不是把结果记成 <code>verified</code> 能表达的东西，故同日把 status 词表从三档扩到五档（§1.2 表下注、附录 C 第 12 条）。</p>
+<p><strong>状态</strong>：数据已全部落地并逐字节校验。2026-10-27 分三轮完成预注册侧回填：<strong>第一轮</strong>回填 C9/C10/C12 的 status；<strong>第二轮</strong>回填预注册侧 C2–C8 与 P1 的 status（两轮都只改 <code>status</code> 与 <code>note</code>，判据正文与阈值一字未动）；<strong>第三轮</strong>按作者授权改写两处<strong>事实性笔误</strong>的 <code>text</code>（C3 比值方向、C7 卡型/单价，阈值同样未动，见 §8.4 第 8 条）。全部 16 条现为 verified 9 / falsified 3 / unidentifiable 1 / default 3 / pending 0。其中 C2/C4/C6 判定为「判据不成立」、C3 判定为「判据不可触发」，都不是把结果记成 <code>verified</code> 能表达的东西，故同日把 status 词表从三档扩到五档（§1.2 表下注、附录 C 第 12 条）。</p>
 <p><strong>主结论有两条，性质不同</strong>：① 预注册主结论 <strong>C3 不可识别</strong>——判据在 8 个 rollout 的视界内从未触发，这是"测不出来"，不是"被证伪"；② 2026-10-27 拍板把 <strong>C10</strong>（µ 是主因、b 不显著）由探索性<strong>升格</strong>为第二条主结论。第二条带 post-hoc 标签，只能读成"同一批数据里的归因结论"，不能读成"被预注册预测过"。升格的同伴条件见 §8.4：C9 的否定结论必须并列写进局限，只升正面结论是不允许的。</p>
 <p><strong>交付物</strong>：本文件是事实源；<code>REPORT.html</code> 是同内容单文件版（图内嵌 base64，可离线阅读与打印）；<code>ATTRIBUTION.md</code> 是归因与延展实验的姊妹报告。</p>
 </blockquote>
@@ -222,7 +222,7 @@ footer.foot{border-top:1px solid var(--line);margin-top:56px;padding-top:18px;
 <hr />
 <h2 id="sec-0">0. 摘要</h2>
 <p><strong>做了什么。</strong> 在固定 <code>Br=4096</code>、<code>G=8</code>、每 run 32,768 responses 的同一预算下，只操纵"每批 rollout 被重复用于几次优化更新"这一个变量：µ ∈ {1, 8, 16}（对应每步批大小 b = 4096 / 512 / 256），三个随机种子。三臂共享同一初始权重、同一冻结题池、同一 prompt 序列。</p>
-<p><strong>主结论（预注册 C3）没有被检验，而不是被证伪。</strong> 预注册把 <code>N_τ</code> 操作化为"drift clock 达到初始值 2 倍的 rollout 序号"，据此对照论文 Eq.(5) 的 6.1× 预测（C3 文本把这个比值的方向写反了，见 §1.1 脚注；因两端均删失，方向不影响判定）。实测 <strong>9/9 run 的 d/d0 全程落在 [0.926, 1.116]</strong>（逐 rollout 归一；换成逐 µ_step 归一则是 [0.830, 1.131]，§5.2），阈值一次也没有触发，分子分母双双右删失，比值不存在。这不是"预测错了"，是"这个判据在本配置下不可触发"（§5.2、§7.3）。</p>
+<p><strong>主结论（预注册 C3）没有被检验，而不是被证伪。</strong> 预注册把 <code>N_τ</code> 操作化为"drift clock 达到初始值 2 倍的 rollout 序号"，据此对照论文 Eq.(5) 的 6.1× 预测（C3 文本原把这个比值的方向写反了，2026-10-27 已按授权修正，见 §1.1 脚注；因两端均删失，方向不影响判定）。实测 <strong>9/9 run 的 d/d0 全程落在 [0.926, 1.116]</strong>（逐 rollout 归一；换成逐 µ_step 归一则是 [0.830, 1.131]，§5.2），阈值一次也没有触发，分子分母双双右删失，比值不存在。这不是"预测错了"，是"这个判据在本配置下不可触发"（§5.2、§7.3）。</p>
 <p><strong>测到了什么。</strong> 四条有实质内容的观测：一条与预注册同向但只部分成立、一条与预注册相反、一条通过、一条在预注册之外、后来被归因实验接住并升格为主结论。</p>
 <div class="tw"><table>
 <thead>
@@ -264,7 +264,8 @@ footer.foot{border-top:1px solid var(--line);margin-top:56px;padding-top:18px;
 </code></pre>
 <p>固定 <code>Br</code> 时增大 µ 会增大 <code>B*</code>，于是 <code>N_τ</code> 下降——<strong>µ 越大，同样进展越省样本</strong>。按作者在 Remark 7 给出的 <code>B*(µ=8) ≈ 4k</code> 线性外推，µ 从 1 提到 16 应使所需样本相差约 <strong>6.1×</strong>（9.2 / 1.5），这是本次要对照的预测值。</p>
 <blockquote>
-<p><strong>预注册有一处方向笔误，本报告发现但不修改它</strong>：<code>claims.yaml</code> C3 把预测写成 <code>N_τ(µ=16)/N_τ(µ=1) = 6.1×</code>，而 6.1× 实际对应的是 <code>N_τ(µ=1)/N_τ(µ=16)</code>（9.2 / 1.5 = 6.13）。也就是说 C3 的比值方向与它引用的 6.1× 相反。这不影响本报告的判定——两端都右删失，任何方向的比值都不存在——但按预注册纪律，修订要加 revision 行并留痕，因此保持原样并记录在此（§8.4 待拍板）。</p>
+<p><strong>预注册文本已修正一处方向笔误（2026-10-27，作者授权后执行）</strong>：<code>claims.yaml</code> C3 原写成 <code>N_τ(µ=16)/N_τ(µ=1) = 6.1×</code>，而 6.1× 实际对应的是 <code>N_τ(µ=1)/N_τ(µ=16)</code>（9.2 / 1.5 = 6.13），与它自己引用的 6.1× 方向相反。现已改为 <code>N_τ(µ=1)/N_τ(µ=16) = 6.1×</code>，<strong>6.1× 这个阈值与其余措辞一个字未动</strong>，改动留有 <code>kind: correction</code> 的 revision 行。
+修正不改变本报告的判定——两端都右删失，任何方向的比值都不存在（<code>unidentifiable</code>）——但方向若不改，读者会从原文推出"µ=16 需要 6.1 倍样本"，与论文"µ 越大越省样本"的结论反向：<strong>错的方向比没有数更容易误导</strong>，所以这一处不是可留可不留的记录。</p>
 </blockquote>
 <p>这条预测成立的前提是 Eq.(5) 的推导采用了假设 A2：一个 rollout 内的 µ 个 mini-batch 被当作彼此独立的新数据，陈旧性代价被"另外建模"而不进入 progress 项。<strong>本项目的增量就是把这一项单独测出来</strong>：如果陈旧性有代价，那么 µ 增大在样本口径上的收益会被打折，实测比值应低于 6.1×。</p>
 <h3 id="sec-12">1.2 预注册判据</h3>
@@ -294,7 +295,7 @@ footer.foot{border-top:1px solid var(--line);margin-top:56px;padding-top:18px;
 </tr>
 <tr>
 <td>C3</td>
-<td><strong>主结论</strong>：实测 <code>N_τ(µ16)/N_τ(µ1)</code> 对照 6.1×</td>
+<td><strong>主结论</strong>：实测 <code>N_τ(µ1)/N_τ(µ16)</code> 对照 6.1×</td>
 <td>pending</td>
 <td><strong>unidentifiable</strong>（两端全删失，比值不存在）</td>
 </tr>
@@ -337,7 +338,7 @@ footer.foot{border-top:1px solid var(--line);margin-top:56px;padding-top:18px;
 <h3 id="sec-13">1.3 本报告与预注册的关系</h3>
 <p>四条纪律：</p>
 <ol>
-<li><strong>不改措辞、不改阈值。</strong> 判据正文与阈值一字未动；<code>analysis/trace.py --strict</code> 显示 16 条全部 <code>[ok]</code>（verified 9 / falsified 3 / unidentifiable 1 / default 3 / pending 0）。2026-10-27 的两轮回填只碰 <code>status</code> 与 <code>note</code>，且每次都带 revision 行留痕——第一轮回填 C9/C10/C12，第二轮回填预注册侧 C2–C8 与 P1。</li>
+<li><strong>不改阈值；措辞只在"事实性笔误"上改，且逐处留痕。</strong> 全部阈值（6.1×、¥6、¥55、1.5/2.0、5% 等）全程未动。<code>analysis/trace.py --strict</code> 显示 16 条全部 <code>[ok]</code>（verified 9 / falsified 3 / unidentifiable 1 / default 3 / pending 0）。2026-10-27 的第一、二轮回填只碰 <code>status</code> 与 <code>note</code>；<strong>第三轮按作者授权改了 C3/C7 两处 <code>text</code></strong>，但改的都是<strong>事实性笔误</strong>——C3 的比值方向写反（6.1× 实为 <code>N_τ(µ1)/N_τ(µ16)</code>）、C7 的卡型与单价与实际不符。两处都带 <code>kind: correction</code> 的 revision 行，并逐处说明改动对判定的影响（§8.4 第 8 条）。划界标准是：改的是"<strong>表述与事实是否一致</strong>"，不是"<strong>结论是否好看</strong>"——前者必须改，后者一次都不许。</li>
 <li><strong>预注册结果与事后结果分开陈述。</strong> 凡预注册未包含的量一律标注登记时点；C10 已升格为主结论，但升格不改变它的登记时点，正文提到它时仍写"事后"。</li>
 <li><strong>两份报告分工。</strong> 预注册判据（C1–C7、P1）在本文件，事后判据（C8–C12）在 <code>ATTRIBUTION.md</code>。混在一份文件里，前者挣来的"预注册"信用会被后者稀释。</li>
 <li><strong>不使用"显著"字样。</strong> 三个种子给不出可信区间，只报逐 seed 配对差与其离散范围。例外只有 C10：它用的是 n=3 的 t 区间（t(0.975,2)=4.303），报的是 CI 而非"显著"，且已在 <code>ATTRIBUTION.md</code> §3.2 声明该区间的自由度只有 2。</li>
@@ -1311,14 +1312,15 @@ footer.foot{border-top:1px solid var(--line);margin-top:56px;padding-top:18px;
 </tbody>
 </table></div>
 <p>差额 ¥14.9 = 吞吐/确定性探针 + 模型加载 + 队列空档 + 末轮后空转。<strong>两口径都通过。</strong></p>
-<p><strong>必须写明的一处预注册偏差</strong>：<code>claims.yaml</code> C7 的原文写的是"4090-<strong>24G</strong> @ <strong>¥1.50/h</strong>"，而实际租的是 <strong>48G @ ¥2.08/h</strong>。这条偏差有两个独立成分：</p>
+<p><strong>C7 的预注册文本曾与实际不符，已于 2026-10-27 修正</strong>：<code>claims.yaml</code> C7 原写的是"4090-<strong>24G</strong> @ <strong>¥1.50/h</strong>"，实际租的是 <strong>48G @ ¥2.08/h</strong>。两处偏差的性质不同：</p>
 <div class="tw"><table>
 <thead>
 <tr>
 <th>成分</th>
-<th>预注册</th>
+<th>预注册原文</th>
 <th>实际</th>
 <th>对判据的影响</th>
+<th>处理</th>
 </tr>
 </thead>
 <tbody>
@@ -1327,16 +1329,19 @@ footer.foot{border-top:1px solid var(--line);margin-top:56px;padding-top:18px;
 <td>4090-24G</td>
 <td>4090-48G（49,140 MiB）</td>
 <td>48G 单价更高，判据被<strong>收紧</strong></td>
+<td>原文改为 48G</td>
 </tr>
 <tr>
 <td>单价</td>
 <td>¥1.50/h</td>
 <td>¥2.08/h（+39%）</td>
 <td>同上；且 ¥1.50 本身也不准——24G 真实价是 <strong>¥1.56</strong></td>
+<td>原文改为 ¥2.08/h</td>
 </tr>
 </tbody>
 </table></div>
-<p>阈值（¥6/run、¥55/九次）没有改。因此"通过"是在<strong>比预注册更贵的卡上</strong>取得的：最贵单 run ¥3.675 距 ¥6 仍有 39% 余量，九次 ¥32.40 距 ¥55 有 41% 余量。若按预注册的 ¥1.50/h 记账，同样的墙钟只会是 ¥23.4。这一点不影响"成本达标"的判定方向（收紧后仍通过），但 C7 的文本如果要精确，需加 revision 行（§8.4）。</p>
+<p>阈值（¥6/run、¥55/九次）<strong>一个字未动</strong>——改的是记账参数，不是成本上限。修订方向对结论<strong>不利</strong>：更贵的卡与更高的单价，在 ¥6 的固定上限下对应更短的允许墙钟，也就是说"通过"是在比原文更严的条件下取得的（最贵单 run ¥3.675 距 ¥6 仍有 39% 余量，九次 ¥32.40 距 ¥55 有 41% 余量）；若按原文的 ¥1.50/h 记账，同样的墙钟只会是 ¥23.4，判据更松。所以这次改动不是把判据往好处修。</p>
+<p>判定的真实依据始终是 <code>campaign.log</code> 的 <code>cost_cny_cum</code>（按 ¥2.08 记的实际账），与 C7 文本里写哪个单价无关。上表作为<strong>执行前的偏差记录</strong>保留，不因修订而删除——它记的是当时的事实，删掉就等于把这段历史抹平。</p>
 <h3 id="sec-58-p1">5.8 P1：通过率落在可用区间</h3>
 <p>上云前无法知道 1.7B-Base 在这个题池上是否全对或全错。实测 rollout 0 的 pass_rate 三臂均值为 <strong>0.2217 / 0.2217 / 0.2216</strong>，末段为 0.262 / 0.435 / 0.484 —— 全程在 10–90% 内，既非地板也非天花板。<strong>失败时钟有信号可测</strong>，这一点比预期好。</p>
 <h3 id="sec-59">5.9 一个离群点的定性</h3>
@@ -1661,22 +1666,7 @@ footer.foot{border-top:1px solid var(--line);margin-top:56px;padding-top:18px;
 <p>一句话：<strong>这个项目第二次做对的地方是"发现问题就补实验"，第一次做错的地方是"补实验之前没算过这实验能不能给出可判定的答案"。</strong> ①和④是后者，②和③是前者。</p>
 <h3 id="sec-84-2026-10-27">8.4 决策记录（2026-10-27）</h3>
 <p><strong>仍待作者判读（AI 不代填）</strong></p>
-<div class="tw"><table>
-<thead>
-<tr>
-<th>#</th>
-<th>事项</th>
-<th>现状</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>2</td>
-<td>两处预注册文本偏差是否加 revision 行</td>
-<td>§1.1 的 C3 比值方向笔误；§5.7 的 C7 卡型/单价（<code>24G @ ¥1.50/h</code> → 实际 <code>48G @ ¥2.08/h</code>）。两条都已进附录 C 第 2–3 条，但未加 revision。这两处属<strong>改写预注册原文</strong>，与 status 回填不同，须作者明确授权后才能动</td>
-</tr>
-</tbody>
-</table></div>
+<p>无。此前列在本节的两项（预注册两处笔误是否加 revision、8 条 status 如何落笔）均已办结，逐条记在下方"已拍板"第 6、8 条。</p>
 <p><strong>已拍板（记录在此，供后续引用）</strong></p>
 <ol start="3">
 <li><strong>探索性结果升格。</strong> 同预算 pass 排序由探索性升为<strong>第二条主结论</strong>，依据是 C10 的归因结果（µ 主效应显著、b 不显著、二者可加）。已落地三件事：<code>claims.yaml</code> 的 <code>main_claims</code> 加 <code>tier: post_hoc_promoted</code>、加 <code>kind: promotion</code> 的 revision 行、本报告 §0 / §6 / §7.4 / §8.1 同步改写。
@@ -1691,6 +1681,10 @@ footer.foot{border-top:1px solid var(--line);margin-top:56px;padding-top:18px;
    - <strong><code>trace.py</code> 补一处校验漏洞</strong>：<code>.json</code> 分支此前只校验可解析性、不校验 field，C3 的 <code>n_d20</code> 因此在 9/9 全为 None 的情况下长期显示 <code>[ok]</code>。现在递归查 field，且"字段存在但全 null"直接判 FAIL；
    - <strong>C5 补阈值 5%</strong>：判据原文没给数值门槛，实测 −4.32% 无法判定。5% 借用 C9 H1 的约定，<strong>在看过数值之后补的</strong>，故本条判定强度弱于阈值跑前锁定的 C7。</li>
 <li><strong>八条判据的数值全部固化进入库脚本 <code>analysis/residual_claims.py</code>。</strong> 此前 C2/C4/C5/C6/P1 的数字只存在于本报告正文，产生它们的命令是一次性的、没提交，等于读者无法复算。现在一条命令复算 C2–C7 + P1，且脚本自带 8 行/19 行拦截（主副本 <code>runs/mu1_*</code> 是 19-rollout 续跑版，直接指会改口径）。</li>
+<li><strong>两处预注册原文按作者授权改写（2026-10-27，第三轮）。</strong> 这是本报告里唯一一次动 <code>text</code> 字段——前一轮的 status 回填只碰 <code>status</code> / <code>note</code>，判据正文一字未动。两处都带 <code>kind: correction</code> 的 revision 行，逐处说明改动、方向性与对判定的影响：
+   - <strong>C3 比值方向</strong>：<code>N_τ(µ16)/N_τ(µ1) = 6.1×</code> → <code>N_τ(µ1)/N_τ(µ16) = 6.1×</code>。6.1× 来自 9.2/1.5，原文把分子分母写在了一起、"1"和"16"对调了位置。<strong>只动顺序，阈值与其余措辞未动</strong>。判定不变（两端删失，任何方向的比值都不存在），但错的方向会让读者推出"µ=16 需要 6.1 倍样本"这一与论文相反的结论。
+   - <strong>C7 卡型与单价</strong>：<code>4090-24G @ ¥1.50/h</code> → <code>4090-48G @ ¥2.08/h</code>。这是把"当时的成本假设"改成"实际执行条件"，<strong>阈值 ¥6 / ¥55 未动</strong>。修订方向对结论不利（更贵的卡与单价，¥6 上限下允许的墙钟更短），故不是把判据往好处修；判定依据始终是 <code>campaign.log</code> 里按 ¥2.08 记的实际账。§5.7 的偏差对照表作为执行前的事实记录<strong>保留不删</strong>。
+   两处改写都不改变任何一条的 <code>status</code>——改的是描述是否与事实一致，不是结论方向。</li>
 </ol>
 <h3 id="sec-85">8.5 两份报告的分工（合并边界）</h3>
 <div class="tw"><table>
@@ -1714,8 +1708,8 @@ footer.foot{border-top:1px solid var(--line);margin-top:56px;padding-top:18px;
 </tr>
 <tr>
 <td><code>claims.yaml</code> 里的痕迹</td>
-<td>原位，措辞与阈值一字未动</td>
-<td>带 revisions 行，自我披露 post-hoc</td>
+<td>阈值原位未动；仅两处事实性笔误带 <code>kind: correction</code> 行（§8.4 第 8 条）</td>
+<td>带 revisions 行，自我披露 post-hoc 登记</td>
 </tr>
 <tr>
 <td>回答的问题</td>
@@ -1960,7 +1954,7 @@ $PY tools/build_report_html.py                             # 由本文件重新�
 </tbody>
 </table></div>
 <h2 id="sec-c">附录 C：预注册与执行的偏差清单</h2>
-<p>汇报"预注册"的报告必须同时汇报"实际做了什么不一样的事"，否则预注册就成了装饰。下表把本次所有能被查到的偏差列全，按类型分四类（<strong>偏差</strong>＝与预注册文本不符、<strong>笔误</strong>＝预注册自身写错、<strong>未规定</strong>＝预注册没写、执行时才定、<strong>事后</strong>＝2026-10-27 的明确决定）；<strong>没有任何一条修改过阈值，<code>analysis/trace.py --strict</code> 仍显示 16 条 <code>[ok]</code></strong>。</p>
+<p>汇报"预注册"的报告必须同时汇报"实际做了什么不一样的事"，否则预注册就成了装饰。下表把本次所有能被查到的偏差列全，按类型分四类（<strong>偏差</strong>＝与预注册文本不符、<strong>笔误</strong>＝预注册自身写错、<strong>未规定</strong>＝预注册没写、执行时才定、<strong>事后</strong>＝2026-10-27 的明确决定）；<strong>没有任何一条修改过阈值，<code>analysis/trace.py --strict</code> 仍显示 16 条 <code>[ok]</code></strong>。第 1–3 条另在 2026-10-27 按作者授权改写了 <code>text</code>（第 15 条记录了这件事本身）；<strong>"预注册原文"列写的是修订前的样子，作为历史保留，不随后续修订而更新</strong>。</p>
 <div class="tw"><table>
 <thead>
 <tr>
@@ -1975,27 +1969,27 @@ $PY tools/build_report_html.py                             # 由本文件重新�
 <tbody>
 <tr>
 <td>1</td>
-<td>偏差</td>
+<td>偏差（<strong>已修订</strong>）</td>
 <td>卡型</td>
 <td>C7：<code>4090-24G</code></td>
 <td>4090-48G（49,140 MiB）</td>
-<td>单价更高 → 成本判据被<strong>收紧</strong>，仍通过</td>
+<td>单价更高 → 成本判据被<strong>收紧</strong>，仍通过。2026-10-27 原文已改为 48G（§8.4 第 8 条）</td>
 </tr>
 <tr>
 <td>2</td>
-<td>偏差</td>
+<td>偏差（<strong>已修订</strong>）</td>
 <td>单价</td>
 <td>C7：<code>¥1.50/h</code></td>
 <td><code>¥2.08/h</code>（且 24G 真实价为 ¥1.56）</td>
-<td>同上。¥1.50 这个数本身也不准，属预注册笔误</td>
+<td>同上。¥1.50 这个数本身也不准，属预注册笔误；原文已改为 ¥2.08/h</td>
 </tr>
 <tr>
 <td>3</td>
-<td>笔误</td>
+<td>笔误（<strong>已修订</strong>）</td>
 <td>C3 的比值方向</td>
 <td><code>N_τ(µ16)/N_τ(µ1) = 6.1×</code></td>
 <td>6.1× 实为 <code>N_τ(µ1)/N_τ(µ16)</code> = 9.2/1.5</td>
-<td><strong>无</strong>：两端都右删失，任何方向的比值都不存在（§1.1）</td>
+<td>无：两端都右删失，任何方向的比值都不存在（§1.1）。2026-10-27 原文已改为正确方向</td>
 </tr>
 <tr>
 <td>4</td>
@@ -2085,13 +2079,21 @@ $PY tools/build_report_html.py                             # 由本文件重新�
 <td>递归查 field，且"字段存在但全 null"判 FAIL</td>
 <td><strong>有</strong>：修之前 C3 的 <code>n_d20</code> 在 9/9 为 None 的情况下长期显示 <code>[ok]</code>——这是"本地永远是绿的、换台机器才暴露"的那类漏洞</td>
 </tr>
+<tr>
+<td>15</td>
+<td>事后</td>
+<td>预注册 <code>text</code> 的修订</td>
+<td><code>claims.yaml</code> 开头写：跑完只允许改 <code>status</code> 与 <code>values</code>，<strong>不允许改措辞</strong></td>
+<td>按作者授权改写 C3 的比值方向、C7 的卡型与单价（第 1–3 条）</td>
+<td><strong>有</strong>：这是全部 16 条里唯一一次动判据正文，等于破了文件自己定的规矩，因此必须逐处留 <code>kind: correction</code> 的 revision 行并说明方向性。划界标准写在 §1.3 第 1 条：改的是"表述与事实是否一致"（笔误必须改），不是"结论是否好看"（一次都不许）；全部阈值与方向性主张未动。<strong>副作用</strong>：只读修订后文本的读者会以为预注册一开始就写对了——所以第 1–3 条的"预注册原文"列保留修订前的内容，§5.7 的偏差对照表也不删</td>
+</tr>
 </tbody>
 </table></div>
 <p>第 4、5 条是本次"判据不可触发"的两个结构原因，且都属于<strong>预注册阶段没有钉死、执行阶段才定下</strong>的口径。这是本项目最该被批评的地方：预注册保证了"不改阈值"，但没保证"报得出数"——一个无法触发的操作化和事后改阈值一样没法检验假设。</p>
 <p>第 10、11 条是 2026-10-27 的决定带来的，性质与前九条不同：前九条是"执行没能完全照预注册做"，后两条是"主动偏离了预注册文件自己写的自我约束（主结论只允许一条）"。偏离本身可以是有理由的——C10 的 CI 不含 0、6/6 逐 seed 同向——但<strong>理由不构成免责</strong>：只要升格，就必须同时承受"两条主结论却只做了单条校正"这个代价。把它写在附录而不是脚注里，是这个代价的最低偿付方式。</p>
 <footer class="foot">
-  <div>事实源：<code>REPORT.md</code> · sha256:3f8cbeca0526 · 由 <code>tools/build_report_html.py</code> 生成</div>
-  <div class="build">commit 9fa86ab (dirty) · built 2026-10-27 23:14 · 图内嵌：fig2_drift_vs_rollout.png 57 KB · fig1_kl_vs_step.png 84 KB · fig4_clip_vs_step.png 60 KB · fig3_pass_vs_rollout.png 80 KB</div>
+  <div>事实源：<code>REPORT.md</code> · sha256:2faf8ac948f8 · 由 <code>tools/build_report_html.py</code> 生成</div>
+  <div class="build">commit 0b7e779 (dirty) · built 2026-10-27 23:19 · 图内嵌：fig2_drift_vs_rollout.png 57 KB · fig1_kl_vs_step.png 84 KB · fig4_clip_vs_step.png 60 KB · fig3_pass_vs_rollout.png 80 KB</div>
 </footer>
 </main>
 </div>
