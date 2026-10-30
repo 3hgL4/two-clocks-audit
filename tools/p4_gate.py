@@ -24,14 +24,32 @@ P4 probes; if src/train.py's wall bookkeeping ever changes, the per-row sum
 caliber below MUST be re-checked in sync, otherwise this gate will silently
 double-count or drop time):
 
-1. wall_ms_rollout and wall_ms_old_logp are booked only on the mu_step==0
-   row of each cycle (one sampling pass + one old-logp pass per cycle);
-   every other row carries 0 in these two fields.
+1. wall_ms_rollout is booked only on the mu_step==0 row of each cycle (one
+   sampling pass per cycle); every other row carries 0.
 2. wall_ms_update is booked on every row with the same per-step value
-   (p4_mu32: 15155.293 ms x 32 rows; p4_mu64: 7579.954 ms x 64 rows).
-3. The per-row sum in cycle_walls() therefore equals the true cycle wall
-   time only through this mixed convention: a once-per-cycle booking plus
-   a per-row-constant booking. It is NOT a plain "sum of per-row timings".
+   (p4_mu32: 15155.293 ms x 32 rows = 484.97 s; p4_mu64: 7579.954 ms x 64
+   rows), so it sums to the whole update block.
+3. **wall_ms_old_logp is a SUBSET of wall_ms_update, not a sibling.**
+   train.py books update = old_logp + grad (log line:
+   "oldlogp 121.5s grad 363.5s update 485.0s"), so 121.5 + 363.5 = 485.0.
+   Therefore the true cycle wall is
+
+       wall_ms_rollout + wall_ms_update      (two components)
+
+   and adding wall_ms_old_logp on top double-counts ~121 s per cycle (~14%).
+
+   Cross-checks used to settle this on 2026-10-30 (all three agree):
+   - the meter's own billed GPU-hours: p4_mu32 cycle 0 = 0.235 GPU-h =
+     846 s = 361.5 + 485.0 (not 968 s);
+   - consecutive-cycle `ts` deltas in metrics.jsonl: mu16_s0 mean 776.5 s,
+     matching the two-component sum (771.3 s), not the three-component
+     sum (891.7 s);
+   - the `done:` log line arithmetic quoted above.
+
+   History: commit 11ff431 ("include wall_ms_old_logp") was based on an
+   external-audit misreading and INTRODUCED the double count; it is reverted
+   here, and the 840-939 s calibration it produced is void (see v2 Revision
+   A-4). The original 727-813 s / mean 771.3 s calibration was correct.
 """
 from __future__ import annotations
 
@@ -46,7 +64,10 @@ from pathlib import Path
 
 BAND_LOW_S = 667.5   # 890 * 0.75
 BAND_HIGH_S = 1112.5  # 890 * 1.25
-BAND_SOURCE = "历史 mu16 三 seed 三分量校准 840.4–939.2 s（runs/mu16_s0/s1/s2）"
+BAND_SOURCE = ("历史 mu16 三 seed 两分量校准（rollout+update）：727–813 s，均值 771.3 s"
+               "（runs/mu16_s0/s1/s2）；old_logp 为 update 子集，不可叠加。"
+               "冻结带中心 890 s 比实测节拍高约 15%，已登记为校准注记（v2 Revision A-4），"
+               "带值未改；实际判别上界因此约为 +44% 而非 ±25%。")
 
 
 def sha256_file(path: Path) -> str:
@@ -58,11 +79,11 @@ def sha256_file(path: Path) -> str:
 
 
 def cycle_walls(run_dir: Path) -> list[float]:
-    """Per-cycle wall seconds: sum of booked rollout+update ms per rollout.
+    """Per-cycle wall seconds = booked rollout + update ms per cycle.
 
-    See module docstring: this sum is valid only under the mixed booking
-    convention documented there (rollout/old_logp once per cycle on the
-    mu_step==0 row, update as a per-row constant).
+    old_logp is deliberately NOT added: it is a subset of wall_ms_update
+    (update = old_logp + grad), see the module docstring. Adding it inflates
+    every cycle by ~121 s (~14%).
     """
     rows = []
     with open(run_dir / "metrics.jsonl", encoding="utf-8") as f:
@@ -74,7 +95,6 @@ def cycle_walls(run_dir: Path) -> list[float]:
     for r in rows:
         ri = int(r["rollout_idx"])
         ms = (float(r.get("wall_ms_rollout") or 0.0)
-              + float(r.get("wall_ms_old_logp") or 0.0)
               + float(r.get("wall_ms_update") or 0.0))
         cycles[ri] = cycles.get(ri, 0.0) + ms
     return [cycles[k] / 1000.0 for k in sorted(cycles)]
