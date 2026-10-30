@@ -1,0 +1,39 @@
+# CPU dry-run for the SAC-mu code path: same stub model / fake backend as
+# dryrun.yaml, but with the controller enabled. Exercises: burn-in cycles,
+# fast-loop trigger + update skip, rung walk, mu_executed bookkeeping, sac
+# state in the checkpoint. Zero GPU, well under a minute.
+#
+#   python src/train.py --config configs/sac_dryrun.yaml --device cpu
+#
+# Br=64 (=2^6) keeps every ladder rung {4,8,16,32} integral AND valid (b at
+# mu=32 is 2 = exactly 2 sigma groups of 1); b at the start rung is 4, so
+# micro=1 / group=1 keeps the group machinery valid.
+extends: base.yaml
+run:
+  tag: sac_dryrun
+  seed: 7
+model:
+  name: stub
+  stub: true
+  dtype: float32
+  attn_implementation: eager
+  gradient_checkpointing: false
+train:
+  num_rollouts: 4
+  num_generations: 2
+  responses_per_rollout: 64
+  mu: 16
+  micro_batch_responses: 1
+  micro_group_responses: 1
+  max_completion_length: 64
+  lr: 1.0e-3
+  warmup_ratio: 0.0
+  sac:
+    enabled: true
+    U: 1.0738
+    burn_in_cycles: 1
+    slow_loop: true
+rollout:
+  backend: fake
+logging:
+  log_rollout_samples: 2

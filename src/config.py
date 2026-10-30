@@ -51,6 +51,17 @@ DEFAULTS: dict[str, Any] = {
         "eps_high": 0.28,
         "clip_delta": 10.0,            # dual-clip upper bound (None disables)
         "loss_norm": "token_mean",     # token_mean | rollout_token
+        # SAC-mu controller (v2 doc). enabled=False keeps every fixed arm
+        # bit-identical to the archived campaign.
+        "sac": {
+            "enabled": False,
+            "U": 1.0738,               # frozen: 12/24 hits on the 24 mu16_b256 cycles
+            "burn_in_cycles": 2,       # cycles 0..1 fixed mu=16, checks disabled
+            "slow_loop": True,         # False = fast loop only (ablation S)
+        },
+        # Explicit per-rollout mu list (ablation R). Fixed schedule: no trigger
+        # checks, no slow loop. Mutually exclusive with sac.enabled.
+        "mu_schedule": None,
     },
     "rollout": {
         "backend": "fake",             # fake | hf | vllm
@@ -176,6 +187,57 @@ class Config:
             errs.append("loss_norm must be 'token_mean' or 'rollout_token'")
         if int(self["train.num_rollouts"]) < 1:
             errs.append("num_rollouts must be >= 1")
+
+        sac = self.get("train.sac") or {}
+        sched = self.get("train.mu_schedule")
+        if sac.get("enabled") and sched is not None:
+            errs.append("train.sac.enabled and train.mu_schedule are mutually exclusive")
+        if sac.get("enabled"):
+            from sac import LADDER, START_RUNG
+
+            try:
+                sac_U = float(sac.get("U"))
+                # P0 card section 3.4: the measured full range on the 2x2 cells
+                # is [1.0000, 1.0931]; a U outside [1.05, 1.08] has no trigger
+                # headroom (v1's 1.10 fired 0/96 cycles). Frozen at 1.0738.
+                if not (1.05 <= sac_U <= 1.08):
+                    errs.append(
+                        f"sac.U must be in [1.05, 1.08] (P0 measured range), got {sac_U}"
+                    )
+            except (TypeError, ValueError):
+                errs.append("sac.U must be a number")
+            for rung in LADDER:
+                if Br % rung:
+                    continue
+                b_r = Br // rung
+                if b_r % mb or b_r % grp or b_r // grp < 2:
+                    errs.append(
+                        f"sac ladder rung mu={rung} invalid: b={b_r} must be divisible "
+                        f"by micro ({mb}) and group ({grp}) with >=2 groups"
+                    )
+            if Br % START_RUNG:
+                errs.append(f"sac requires Br divisible by {START_RUNG} (start rung)")
+        if sched is not None:
+            if not isinstance(sched, list) or len(sched) != int(self["train.num_rollouts"]):
+                errs.append(
+                    f"mu_schedule must be a list of length num_rollouts "
+                    f"({int(self['train.num_rollouts'])})"
+                )
+            else:
+                for i, v in enumerate(sched):
+                    v = int(v)
+                    if v < 1:
+                        errs.append(f"mu_schedule[{i}] must be >= 1")
+                        continue
+                    b_r = Br // v if Br % v == 0 else None
+                    if b_r is None:
+                        errs.append(f"mu_schedule[{i}]={v}: Br ({Br}) not divisible")
+                    elif b_r % mb or b_r % grp or b_r // grp < 2:
+                        errs.append(
+                            f"mu_schedule[{i}]={v} invalid: b={b_r} must be divisible "
+                            f"by micro ({mb}) and group ({grp}) with >=2 groups"
+                        )
+
         if errs:
             raise ValueError("invalid config:\n  - " + "\n  - ".join(errs))
 

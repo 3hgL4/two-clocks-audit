@@ -118,6 +118,14 @@ def grpo_loss(
             "loss": float(loss.detach().item()),
             "ratio_mean": float(vals.mean().item()) if vals.numel() else 1.0,
             "ratio_p95": float(p95.item()),
+            # SAC-mu tail diagnostics (v2 doc section 4): a p95 bounds nothing
+            # about the remaining 5% tail, so the tail is recorded directly.
+            # Same tensor, zero extra forward.
+            "ratio_max": float(vals.max().item()) if vals.numel() else 1.0,
+            "ratio_p99": (float(torch.quantile(vals, 0.99).item())
+                          if vals.numel() > 1 else 1.0),
+            "ratio_over_high_frac": (float((vals > 1.0 + eps_high).float().mean().item())
+                                     if vals.numel() else 0.0),
             "kl_per_rollout_policy": float(kl.item()),
             "clip_frac_low": float((is_low.sum() / n).item()),
             "clip_frac_high": float((is_high.sum() / n).item()),

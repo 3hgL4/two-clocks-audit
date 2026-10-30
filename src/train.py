@@ -47,6 +47,7 @@ import grpo  # noqa: E402
 import metrics as metrics_mod  # noqa: E402
 import prompt_log  # noqa: E402
 import rollout as rollout_mod  # noqa: E402
+import sac as sac_mod  # noqa: E402
 import verify  # noqa: E402
 from model import Policy  # noqa: E402
 
@@ -427,7 +428,40 @@ def main(argv: list[str] | None = None) -> int:
     params = _trainable(policy)
     opt = torch.optim.AdamW(params, lr=float(cfg["train.lr"]),
                             weight_decay=float(cfg["train.weight_decay"]))
-    total_steps = int(cfg["train.num_rollouts"]) * int(cfg["train.mu"])
+
+    # -- SAC-mu controller / fixed mu schedule setup (v2 doc, frozen) ---------
+    # nominal_mu is the LR-schedule horizon anchor: fixed arms keep the archived
+    # convention (num_rollouts * mu); the SAC arm books num_rollouts * mu_cap;
+    # a schedule arm books its own total step count.
+    sac_cfg = dict(cfg.get("train.sac") or {})
+    schedule = cfg.get("train.mu_schedule")
+    if sac_cfg.get("enabled", False) and schedule is not None:
+        raise ValueError("train.sac.enabled and train.mu_schedule are mutually exclusive")
+    controller: sac_mod.SacController | None = None
+    if sac_cfg.get("enabled", False):
+        sac_params = sac_mod.SacParams(
+            U=float(sac_cfg["U"]),
+            burn_in_cycles=int(sac_cfg.get("burn_in_cycles", 2)),
+            slow_loop=bool(sac_cfg.get("slow_loop", True)),
+        )
+        controller = sac_mod.SacController(sac_params, br=Br)
+        nominal_mu = max(sac_mod.LADDER)
+        schedule = None
+    elif schedule is not None:
+        schedule = [int(v) for v in schedule]
+        nominal_mu = None  # unused; lr_offsets carries the per-rollout base
+        lr_offsets = []
+        _acc = 0
+        for _v in schedule:
+            lr_offsets.append(_acc)
+            _acc += _v
+    else:
+        nominal_mu = int(cfg["train.mu"])
+    if schedule is not None:
+        total_steps = sum(schedule)
+    else:
+        total_steps = int(cfg["train.num_rollouts"]) * int(nominal_mu)
+
     meter = accounting.CostMeter(
         n_params=n_params,
         price_cny_per_hour=float(cfg["accounting.price_cny_per_hour"]),
@@ -457,6 +491,16 @@ def main(argv: list[str] | None = None) -> int:
         dropped = writer.truncate_to_rollout(start_rollout)
         dropped_p = prompt_log.truncate_to_rollout(prompts_path, start_rollout)
         meter.base = state.get("totals", {}) or {}
+        if controller is not None:
+            if state.get("sac") is None:
+                raise ValueError(
+                    "resuming a SAC-mu run from a checkpoint without controller "
+                    "state -- the rung position cannot be reconstructed, refusing "
+                    "to continue on a guessed state"
+                )
+            controller.load_state_dict(state["sac"])
+            print(f"[resume] SAC-mu controller: cycle={controller.cycle_idx} "
+                  f"mu_max={controller.mu_max}")
         print(f"[resume] from rollout {start_rollout}; kept {dropped} metric rows; "
               f"carried {meter.base.get('responses', 0)} responses / "
               f"¥{meter.base.get('cost_cny', 0):.2f}")
@@ -479,12 +523,32 @@ def main(argv: list[str] | None = None) -> int:
     kappa = float(cfg["drift.kappa"])
     max_len = int(cfg["train.max_completion_length"])
 
-    print(f"[info] arm mu={mu} b={Br//mu} Br={Br} micro={micro} "
-          f"M={Br//mu//micro} rollouts={cfg['train.num_rollouts']} total_steps={total_steps}")
+    if controller is not None:
+        print(f"[info] arm SAC-mu U={sac_cfg['U']} burn_in={sac_cfg.get('burn_in_cycles', 2)} "
+              f"ladder={sac_mod.LADDER} rollouts={cfg['train.num_rollouts']} total_steps={total_steps}")
+    elif schedule is not None:
+        print(f"[info] arm schedule={schedule} rollouts={cfg['train.num_rollouts']} "
+              f"total_steps={total_steps}")
+    else:
+        print(f"[info] arm mu={mu} b={Br//mu} Br={Br} micro={micro} "
+              f"M={Br//mu//micro} rollouts={cfg['train.num_rollouts']} total_steps={total_steps}")
 
     try:
         for r_idx in range(start_rollout, int(cfg["train.num_rollouts"])):
             items = data_mod.prompt_batch(pool, seed, r_idx, cfg.prompts_per_rollout)
+
+            # -- this cycle's planned mu (v2 doc): SAC controller rung, fixed
+            # schedule entry, or the arm's constant. lr_base anchors the LR
+            # schedule index so every arm keeps a pre-registered horizon.
+            if schedule is not None:
+                mu_cur = schedule[r_idx]
+                lr_base = lr_offsets[r_idx]
+            elif controller is not None:
+                mu_cur = controller.cycle_mu()
+                lr_base = r_idx * int(nominal_mu)
+            else:
+                mu_cur = mu
+                lr_base = r_idx * int(nominal_mu)
 
             # -- rollout -----------------------------------------------------
             if backend.name == "vllm" and bool(cfg.get("rollout.vllm.offload_policy", False)):
@@ -534,7 +598,7 @@ def main(argv: list[str] | None = None) -> int:
 
             # -- old policy log-probs (once per rollout) ---------------------
             part_rng = np.random.default_rng((seed * 1_000_003) ^ (r_idx * 9_176 + 1))
-            parts = plan_partition(Br, mu, micro, part_rng)
+            parts = plan_partition(Br, mu_cur, micro, part_rng)
             old_lp: dict[tuple[int, int], torch.Tensor] = {}
             try:
                 with torch.no_grad():
@@ -573,6 +637,8 @@ def main(argv: list[str] | None = None) -> int:
                 n_tok_step = 0
                 loss_w = kl_w = cl_low_w = cl_high_w = cl_any_w = ratio_w = p95_w = 0.0
                 mass_w = 0.0
+                p99_w = over_high_w = 0.0
+                ratio_max_step = 0.0
                 n_groups = len(step_parts) // chunks_per_group
                 n_chunks = len(step_parts)
                 mi = -1
@@ -620,6 +686,9 @@ def main(argv: list[str] | None = None) -> int:
                         mass_w += stats["clip_grad_mass_share"] * n_tok
                         ratio_w += stats["ratio_mean"] * n_tok
                         p95_w += stats["ratio_p95"] * n_tok
+                        p99_w += stats["ratio_p99"] * n_tok
+                        over_high_w += stats["ratio_over_high_frac"] * n_tok
+                        ratio_max_step = max(ratio_max_step, stats["ratio_max"])
                         n_tok_step += n_tok
                         del lp, loss, mask
 
@@ -629,27 +698,43 @@ def main(argv: list[str] | None = None) -> int:
                     _add_into(buf, grp_buf, 1.0 / n_groups)
                     del grp_buf
 
-                _write_back(buf, policy)
-                # sum of grad norms is not the norm of the sum; recompute ||g_bar||
-                g_bar_norm = _grad_norm(_trainable(policy))
-                gs = grpo.GradStats()
-                for norm_i in g_of_group:
-                    gs.add(norm_i)
-                sigma = gs.sigma(g_bar_norm)
-                lr_now = _lr_at(si + r_idx * mu, total_steps, float(cfg["train.lr"]),
-                                float(cfg["train.warmup_ratio"]))
-                for g in opt.param_groups:
-                    g["lr"] = lr_now
-                raw = float(torch.nn.utils.clip_grad_norm_(params, float(cfg["train.grad_clip"])))
-                clipped = min(raw, float(cfg["train.grad_clip"]))
-                opt.step()
-                opt.zero_grad(set_to_none=True)
-                trained_tokens += n_tok_step
-
+                # -- SAC-mu fast loop (v2 doc): row si's ratio_p95 is measured on
+                # step si's forward pass, i.e. it is the ratio of the policy
+                # after si updates vs the rollout policy. A value >= U here means
+                # "skip update si and break": the cycle executes si updates. The
+                # trigger row is still recorded (its forward-pass stats are
+                # valid); only the backward-writeback/optimizer step is skipped.
                 denom = max(1, n_tok_step)
+                step_p95 = p95_w / denom
+                triggered = (controller is not None) and controller.check(step_p95)
+                if not triggered:
+                    _write_back(buf, policy)
+                    # sum of grad norms is not the norm of the sum; recompute ||g_bar||
+                    g_bar_norm = _grad_norm(_trainable(policy))
+                    gs = grpo.GradStats()
+                    for norm_i in g_of_group:
+                        gs.add(norm_i)
+                    sigma = gs.sigma(g_bar_norm)
+                    raw = float(torch.nn.utils.clip_grad_norm_(params, float(cfg["train.grad_clip"])))
+                    clipped = min(raw, float(cfg["train.grad_clip"]))
+                    opt.step()
+                    opt.zero_grad(set_to_none=True)
+                    trained_tokens += n_tok_step
+                else:
+                    # no update applied: parameter-space stats are undefined
+                    g_bar_norm = None
+                    sigma = None
+                    raw = clipped = None
+
+                lr_now = _lr_at(lr_base + si, total_steps, float(cfg["train.lr"]),
+                                float(cfg["train.warmup_ratio"]))
+                if not triggered:
+                    for g in opt.param_groups:
+                        g["lr"] = lr_now
+
                 meter.add_rollout(
-                    rollout_idx=r_idx, mu=mu, n_responses=Br // mu,
-                    prompt_tokens=prompt_tokens // mu, completion_tokens=completion_tokens // mu,
+                    rollout_idx=r_idx, mu=mu_cur, n_responses=Br // mu_cur,
+                    prompt_tokens=prompt_tokens // mu_cur, completion_tokens=completion_tokens // mu_cur,
                     trained_tokens=n_tok_step,
                     wall_ms_rollout=rb.wall_ms if si == 0 else 0.0,
                     wall_ms_update=0.0,
@@ -658,13 +743,15 @@ def main(argv: list[str] | None = None) -> int:
                 rec = {
                     "ts": metrics_mod.now_ts(),
                     "run_id": tag,
-                    "arm": f"mu{mu}",
+                    "arm": f"mu{mu_cur}",
                     "seed": seed,
                     "rollout_idx": r_idx,
-                    "mu": mu,
+                    "mu": mu_cur,
+                    "mu_plan": mu_cur,
+                    "sac_trigger": bool(triggered),
                     "mu_step": si,
-                    "global_step": r_idx * mu + si,
-                    "b_responses": Br // mu,
+                    "global_step": lr_base + si,
+                    "b_responses": Br // mu_cur,
                     "br_responses": Br,
                     "prompts_per_rollout": cfg.prompts_per_rollout,
                     "n_generations": G,
@@ -687,6 +774,10 @@ def main(argv: list[str] | None = None) -> int:
                     "lr": lr_now,
                     "ratio_mean": ratio_w / denom,
                     "ratio_p95": p95_w / denom,
+                    # SAC-mu tail diagnostics (v2 doc section 4)
+                    "ratio_p99": p99_w / denom,
+                    "ratio_over_high_frac": over_high_w / denom,
+                    "ratio_max": ratio_max_step,
                     "kl_per_rollout_policy": kl_w / denom,
                     "clip_frac_low": cl_low_w / denom,
                     "clip_frac_high": cl_high_w / denom,
@@ -706,20 +797,30 @@ def main(argv: list[str] | None = None) -> int:
                     "cost_cny_cum": tot["cost_cny"],
                 }
                 pending.append(rec)
+                gn_s = "  None" if rec["grad_norm_raw"] is None else f"{rec['grad_norm_raw']:.3f}"
                 print(
                     f"[r{r_idx} mu{si:02d}] pass={rec['pass_rate']:.3f} "
                     f"r={rec['reward_mean']:+.3f} len={rec['resp_len_mean']:.0f} "
                     f"kl={rec['kl_per_rollout_policy']:+.2e} "
+                    f"p95={rec['ratio_p95']:.4f} "
                     f"clip={rec['clip_frac_any']:.4f} "
-                    f"gn={rec['grad_norm_raw']:.3f} sig={rec['grad_noise_sigma']:.4g} "
+                    f"gn={gn_s} sig={rec['grad_noise_sigma']:.4g} "
                     f"d={rec['drift_d'] if rec['drift_d'] is None else round(rec['drift_d'], 4)} "
                     f"zvC={100 * grp_stats['zero_var_correct_frac']:.2f}%"
+                    + ("  [SAC TRIGGER: update skipped]" if triggered else "")
                 )
 
             # -- per-rollout bookkeeping ------------------------------------
+            # executed updates: mu_cur on a clean cycle; si (rows-1) when the
+            # fast loop fired on row si -- that row's update was skipped.
+            executed = mu_cur if not pending[-1]["sac_trigger"] else len(pending) - 1
+            if controller is not None:
+                controller.end_cycle(triggered=bool(pending[-1]["sac_trigger"]),
+                                     executed=executed)
             upd_ms = (time.perf_counter() - upd_t0) * 1000.0
-            for m in meter.rollouts[-mu:]:
-                m.wall_ms_update += upd_ms / mu
+            n_rows = len(pending)
+            for m in meter.rollouts[-n_rows:]:
+                m.wall_ms_update += upd_ms / n_rows
             tot = meter.totals()
             # Flush this rollout's rows with the wall time they actually cost.
             # Row k of the rollout has, at its own point in time, absorbed
@@ -730,6 +831,7 @@ def main(argv: list[str] | None = None) -> int:
             share_ms = upd_ms / max(1, len(pending))
             for k, rec in enumerate(pending):
                 rec["wall_ms_update"] = round(share_ms, 3)
+                rec["mu_executed"] = executed
                 rec["cost_cny_cum"] = round(
                     float(rec["cost_cny_cum"]) + (k + 1) * share_ms / 3_600_000.0 * price, 4
                 )
@@ -755,7 +857,7 @@ def main(argv: list[str] | None = None) -> int:
             # Per-prompt archive: prompt ids + 8 correctness bits + 8 rewards.
             # Written after the samples loop so a crash costs at most this line.
             prompt_log.write_record(prompts_f, prompt_log.build_record(
-                rollout_idx=r_idx, arm=f"mu{mu}", seed=seed, mu=mu,
+                rollout_idx=r_idx, arm=f"mu{mu_cur}", seed=seed, mu=mu_cur,
                 prompt_idx=[int(rb.items[i].get("_idx", i // G))
                             for i in range(0, rb.n_responses, G)],
                 correct=correct,
@@ -776,6 +878,7 @@ def main(argv: list[str] | None = None) -> int:
                     "np_rng": np.random.get_state(),
                     "cuda_rng": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
                     "totals": meter.totals(),
+                    "sac": controller.state_dict() if controller is not None else None,
                 }, tmp)
                 tmp.replace(state_path)
                 print(f"[ckpt] {state_path} @ rollout {r_idx}")
