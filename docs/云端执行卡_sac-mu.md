@@ -82,15 +82,15 @@ rm -rf runs/sac_dryrun runs/sac_dryrun2   # 验完即删或移 runs_quarantine/�
 /opt/conda/bin/python src/train.py --config configs/p4_mu64.yaml
 ```
 
-判据（v2 §5，预注册）：每周期总耗时（rollout+old_logp+update，从 metrics.jsonl 逐周期求和）在 **890 s ± 25%**（即 668–1113 s）内。
-- **判读用脚本（2026-10-30 两次加固，断会话不影响）**：`python tools/p4_gate.py runs/p4_mu32 runs/p4_mu64 --json /root/rivermind-data/p4_gate_verdict.json`（stdlib，exit 0=PASS / 3=FAIL）。**周期墙钟 = rollout + old_logp + update 三分量之和**（metrics.jsonl 的 `wall_ms_rollout` + `wall_ms_old_logp` + `wall_ms_update`；⚠ `done:` 日志行的分段和含重叠，不得用）。校准（commit `11ff431` 修掉漏加 old_logp 的 bug 后）：历史 mu16_s0/s1/s2 = **840–939 s，均值 ~888–892**，与冻结带中心 890 s 吻合。⚠ 初版校准（727–813 s"偏保守"）是漏项下的低估值，已作废。
+判据（v2 §5，预注册）：每周期总耗时（**rollout+update 两分量**；`old_logp` 已含在 update 内——train.py 记账 update = old_logp + grad，**不可叠加**，从 metrics.jsonl 逐周期求和）在 **890 s ± 25%**（即 668–1113 s）内。
+- **判读用脚本（2026-10-30 三次修订，断会话不影响）**：`python tools/p4_gate.py runs/p4_mu32 runs/p4_mu64 --json /root/rivermind-data/p4_gate_verdict.json`（stdlib，exit 0=PASS / 3=FAIL）。**周期墙钟 = `wall_ms_rollout` + `wall_ms_update` 两分量**（⚠ `done:` 日志行的分段和含重叠，不得用）。校准（两分量，v2 Revision A-4）：历史 mu16_s0/s1/s2 = **727–813 s，均值 771.3 / 764.1 / 767.9**；冻结带中心 890 s 比实测节拍**高约 15%**，实际判别上界约 +44% 而非 ±25%——带值不动，登记为校准注记。⚠ 三分量口径（840–939 s / 948.9 / 909.8）是 `11ff431` 重复计数的产物，已作废（回退 `b666c26`）。
 - **自动链**：`/root/rivermind-data/p4_then_smoke.sh`（nohup）等两个 P4 run 完成 → 跑门脚本 → PASS 自动启动 §5 冒烟（sac_s0）；FAIL 或 Traceback 则停链等人工。chain 日志：`/root/rivermind-data/chain.log`。
 - **过** → 固定 µ32/64 臂按 R=8 跑（§6 原表）；
 - **不过** → µ32 臂按等壁钟折算周期数并披露采样不对齐；**µ64 臂砍掉**；
 - 每个 run 跑完立刻回传（§8），别攒。
-- **P4 实测结果（2026-10-30）**：mu32 [967.9, 929.9] 均值 948.9；mu64 [903.9, 915.7] 均值 909.8；带 [667.5, 1112.5] → **PASS**。证据（verdict 带 provenance + 两 run 文件）已入库 `runs_p4/`（commit `f730ec3`）。
-- **判读措辞禁令（审计 2026-10-30）**：两臂差 4.1%，分解后 update 段几乎相同（485.1 vs 485.0 s）、old_logp 相同（121.8 vs 122.2 s），差全落在 rollout 采样段（317.8 vs 304.5 s，cycle 1）。**只能写"周期成本与 µ 无关（差在采样噪声内）"，不得写"µ 增大降低成本/µ 大更省"。** 这个差是 P4 公平性（F2）成立的证据，不是效率结论。
-- **成本预估口径（审计 2026-10-30）**：890 s 是"计划 4096 responses 满跑"的单周期成本。SAC 臂早停时实际处理 b × executed < 4096，单周期成本 ≈ 890 s × executed/µ_plan；**8 周期 × 890 s ≈ 2 GPU-h 是上界，不是预期值**，报告直接乘 8 会高估。
+- **P4 实测结果（2026-10-30，两分量口径）**：mu32 [846.4, 808.1] 均值 **827.3**；mu64 [782.4, 793.5] 均值 **788.0**；带 [667.5, 1112.5] → **PASS**（两口径均 PASS，结论不变）。证据（verdict 带 provenance + 两 run 文件）已入库 `runs_p4/`（`f730ec3` + `660532b` 重生成；三分量旧版留档 `p4_gate_verdict.threecomponent_9fbaf34.json`）。
+- **判读措辞禁令（审计 2026-10-30）**：两臂差 5.0%，update 段两臂几乎相同（恒 ~485 s——这是 F2"每周期恒 4096 responses"成立的证据），差全落在 rollout 采样段（361.5 vs ~297 s，采样噪声内）。**只能写"周期成本与 µ 无关（差在采样噪声内）"，不得写"µ 增大降低成本/µ 大更省"。**
+- **成本预估口径（审计 2026-10-30）**：890 s 是"计划 4096 responses 满跑"的单周期成本。SAC 臂早停时实际处理 b × executed < 4096，单周期成本 ≈ 890 s × executed/µ_plan；**8 周期 × 890 s ≈ 2 GPU-h 是上界，不是预期值**，报告直接乘 8 会高估。另：metrics 的 `cost_cny_cum` 只计 rollout+update，不含 vllm 加载/checkpoint/adapters 快照（sac_s1 实测 elapsed 2604 s vs 计费 2247 s，差 ~14%）——**报告引用成本必须标口径**。
 
 ## 5 冒烟行为门（sac_s0，~2 GPU-h）
 
@@ -171,7 +171,9 @@ find runs/<tag> -type f -exec sha256sum {} \; >> MANIFEST.sha256
 3. **门判定离线化**：凡是"跑完等人判"的门，判读脚本必须提前部署（stdlib、可离线跑），断会话不产生 GPU 空转窗口。
 4. **run_meta 自文档**：`31682a6` 起 run_meta.json 记录 peft/accelerate——跨环境比对以后只看 run_meta，不靠回忆。
 5. **链脚本（2026-10-30 二次记录）**：① ~~不在仓内~~ **已修**——入库 `tools/p4_then_smoke.sh`（commit `5961290`），并新增 smoke 启动日志行（`smoke start <utc> pid=… cmd=…`）。**本次部署的链仍是旧版**：sac_s0（PID 5535）确由链启动，但 chain.log 只有 `chain start` + `gate_rc=0` 两行，启动事实仅当时 `ps` 可证、进程退出后无实据——已作遗留注记，下次部署换用入库版。**严禁在链等待期间原地覆盖云端脚本**（bash 增量读脚本，原地重写可致执行错乱）。② 等待循环无超时——mu64 若以非 Traceback 方式死掉（如 OOM-kill）链会无限空等，加 `--timeout` 兜底仍是待办。
-6. **门口径防误读**：周期墙钟只用 metrics 三分量；`done:` 行的分段打印（rollout/oldlogp/grad/update）含重叠记账，加总 ≠ 周期耗时，不得进门判定。
+6. **门口径防误读（2026-10-30 改两分量，A-4）**：周期墙钟只用 metrics **两分量**（`wall_ms_rollout` + `wall_ms_update`）；**`wall_ms_old_logp` 是 update 的子集（update = old_logp + grad），不可叠加**——叠了即三分量旧口径，每周期虚增 ~121 s（`11ff431` 的错误，`b666c26` 回退）。`done:` 行的分段打印含重叠记账，加总 ≠ 周期耗时，不得进门判定。
+10. **判活口径（审计 2026-10-30，排障前必读）**：运行期 `grid_logs/<tag>.log` 因 stdout 块缓冲是**哑的**——实测 sac_s1.log 停在启动行 43 分钟零更新、`done:` 0 行，而 metrics 已到 cycle 2、GPU 97%。**判活一律看 `runs/<tag>/metrics.jsonl` 末行 `ts` + `nvidia-smi`**；`done:` 只在进程退出时 flush，不得作为活证。
+11. **风险接受声明（用户已拍板，2026-10-30）**：不上云端 watchdog。因此 **fail-fast 后 GPU 空转（¥2.08/h）只能靠会话轮询发现**；轮询中断即视为无监控，需人工确认（开平台控制台看实例 + 上来跑 `tail grid.log`）。现有检测手段：每 10 分钟拉 `grid.log`，识别 `GRID_STOP` / `run end … rc≠0`；判活按第 10 条口径。此风险成本上限约 ¥20/夜，已明示接受。
 7. **术语表（防 10-27 "把行数当 rollout 数" 重犯）**：
    - `num_rollouts` = **周期数**（P4 探针=2、SAC 臂=8、历史 campaign=8），不是采样 batch 数；
    - `rollout_idx` = 第几个采样 batch，即**周期索引**（0 起）；
