@@ -811,6 +811,11 @@ def main(argv: list[str] | None = None) -> int:
                     f"zvC={100 * grp_stats['zero_var_correct_frac']:.2f}%"
                     + ("  [SAC TRIGGER: update skipped]" if triggered else "")
                 )
+                if triggered:
+                    # v2 §1.2: a trigger ends the cycle -- update si was skipped,
+                    # rows are 0..si, executed = si. Without this break the cycle
+                    # runs to plan and end_cycle() never sees the trigger.
+                    break
 
             # -- per-rollout bookkeeping ------------------------------------
             # executed updates: mu_cur on a clean cycle; si (rows-1) when the
