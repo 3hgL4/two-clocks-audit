@@ -36,7 +36,9 @@ def cycle_walls(run_dir: Path) -> list[float]:
     cycles: dict[int, float] = {}
     for r in rows:
         ri = int(r["rollout_idx"])
-        ms = float(r.get("wall_ms_rollout") or 0.0) + float(r.get("wall_ms_update") or 0.0)
+        ms = (float(r.get("wall_ms_rollout") or 0.0)
+              + float(r.get("wall_ms_old_logp") or 0.0)
+              + float(r.get("wall_ms_update") or 0.0))
         cycles[ri] = cycles.get(ri, 0.0) + ms
     return [cycles[k] / 1000.0 for k in sorted(cycles)]
 
