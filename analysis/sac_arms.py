@@ -1,39 +1,47 @@
-"""SAC arm guard: the directory name is the ONLY arm identity; metrics fields are not.
+"""SAC arm guard: the directory name / run_id is the only arm identity.
 
-Why this file exists (measured 2026-10-30, not guessed)
--------------------------------------------------------
-`runs/sac_s0` during burn-in is *field-for-field identical* to `runs/mu16_s0`:
+Why this file exists (measured 2026-10-30 on runs_sac/sac_s0, not guessed)
+-------------------------------------------------------------------------
+The obvious key for grouping arms is the `arm` field in metrics.jsonl. It is
+UNUSABLE for SAC runs, and it is worse than missing -- it looks valid.
 
-    mu=16   b_responses=256   br_responses=4096   br stays 4096
+`src/train.py:753,872` writes ``"arm": f"mu{mu_cur}"``: the label is the *current
+cycle's* mu, not the arm. Inside one SAC run the field therefore jumps:
 
-and metrics.jsonl carries NO tag/arm field -- the only thing separating a SAC arm
-from a fixed arm is the directory name. Any analysis script that walks ``runs/``
-and keys cells on (mu, b) -- the design pattern of ``bmu_2x2.load_cells`` -- will
-fold the SAC arm into the fixed mu16_b256 cell (or the reverse). This is the same
-failure mode as the 2026-10-27 noclip/mu16 collision, where the numbers moved by
-only ~0.x pp, so nothing looked wrong.
+    cycle   0    1    2    3   4   5    6    7
+    arm   mu16 mu16 mu16 mu8 mu4 mu8 mu16 mu32
+    counts           mu16 x58   mu8 x16   mu4 x4   mu32 x32   (110 rows)
+
+Those strings are *identical* to the fixed arms' labels (runs/mu16_s0 also has
+arm="mu16"). So any script that groups by `arm` silently folds SAC cycles 3/5
+into the mu8 arm, cycle 4 into mu4 and cycle 7 into mu32 -- no error, no warning,
+and the SAC-vs-fixed contrast is destroyed. Same failure family as the
+2026-10-27 noclip/mu16 collision, but sneakier because the field exists.
+
+`run_id` IS reliable (sac_s0 -> "sac_s0", mu16_s0 -> "mu16_s0"), and the
+directory name is reliable. Everything below keys on those.
 
 Rules enforced here
 -------------------
 1. Whitelist. A run directory name must match ``^sac[SR]?_s\\d+$`` or
    ``^mu\\d+(_b\\d+)?_s\\d+$``. Anything else -> SystemExit. We refuse rather
    than guess, because guessing is what silently merges arms.
-2. Arm identity comes from the directory name only. Never from mu/b/br.
-3. Cycle grouping uses ``rollout_idx``, never ``len(rows) // n_cycles``.
-   (2026-10-27: ``half = len(rows)//2`` treated rows as rollouts and halved
-   nothing; it also silently accepted the 19-rollout files.)
-4. ``assert_no_collision`` makes the (mu, b) key clash explicit, for use as a
+2. Arm identity comes from the directory name; `run_id` must agree with it.
+3. The `arm` field is never used as a grouping key. ``check_arm_field`` reports
+   what it actually contains so a downstream script can refuse loudly.
+4. Cycle grouping uses ``rollout_idx``, never ``len(rows) // n_cycles``.
+   (2026-10-27: ``half = len(rows)//2`` treated rows as rollouts; it also
+   silently accepted the 19-rollout files.)
+5. ``assert_no_collision`` makes the (mu, b) key clash explicit, for use as a
    layout check before archiving or before any cross-arm comparison.
 
 Usage
 -----
-    from sac_arms import load_run, by_cycle, assert_no_collision
+    from sac_arms import load_run, by_cycle, check_arm_field, assert_no_collision
     rows, arm = load_run("runs_sac/sac_s0")     # arm == "sac"
-    cycles = by_cycle(rows)                     # {rollout_idx: [rows...]}
+    assert check_arm_field(rows, "sac_s0")["usable"] is False   # SAC: expect False
 
-    assert_no_collision(["runs/mu16_s0", "runs_sac/sac_s0"])   # raises
-
-    python analysis/sac_arms.py --self-test     # runs the guards on real+shim data
+    python analysis/sac_arms.py --self-test     # guards on real+shim data
 """
 import json
 import os
@@ -165,6 +173,62 @@ def cycle_wall_s(rows):
 
 # --- layout guard (rule 4) -----------------------------------------------------
 
+def check_arm_field(rows, dirname=None):
+    """Report what the `arm` field actually contains -- and whether it is a label.
+
+    Returns a dict:
+      values        distinct arm values seen (ordered by first appearance)
+      n_values      how many distinct values
+      constant      True if the field is constant across the whole run
+      run_ids       distinct run_id values (expected: exactly one, == dirname)
+      run_id_ok     run_id matches dirname
+      usable        the arm field may be used as a grouping key  <-- the answer
+      reason        one-line explanation, safe to print into a report
+
+    For a FIXED arm usable is normally True. For any SAC arm it is expected to be
+    False: train.py labels the row with the current cycle's mu, so one SAC run
+    carries several "arms" whose names collide with the fixed arms.
+    """
+    vals, rids = [], []
+    for r in rows:
+        v = r.get("arm")
+        if v not in vals:
+            vals.append(v)
+        rid = r.get("run_id")
+        if rid not in rids:
+            rids.append(rid)
+    run_id_ok = bool(dirname) and rids == [dirname]
+    constant = len(vals) == 1
+    reasons = []
+    if not constant:
+        reasons.append("arm varies within the run (%d values: %s)" % (len(vals), vals))
+    if dirname is not None and not run_id_ok:
+        reasons.append("run_id %s does not match dirname %r" % (rids, dirname))
+    if constant and vals and vals[0] and vals[0].startswith("mu") and dirname and dirname.startswith("sac"):
+        reasons.append("arm=%r on a SAC dir names a fixed arm" % vals[0])
+    usable = constant and not (dirname or "").startswith("sac") and not reasons
+    return {
+        "values": vals,
+        "n_values": len(vals),
+        "constant": constant,
+        "run_ids": rids,
+        "run_id_ok": run_id_ok,
+        "usable": usable,
+        "reason": "; ".join(reasons) if reasons else ("constant %r" % (vals[0] if vals else None)),
+    }
+
+
+def assert_arm_field_usable(rows, dirname):
+    """Refuse if anything might tempt a caller to group by `arm` on a SAC run."""
+    rep = check_arm_field(rows, dirname)
+    if is_sac(classify(dirname)) and rep["usable"]:
+        raise SystemExit(
+            "sac_arms: %s reports arm field as usable, but SAC arms must never be "
+            "grouped by arm -- check train.py's arm= derivation" % dirname
+        )
+    return rep
+
+
 def assert_no_collision(paths, verbose=False):
     """Raise if two DIFFERENT arms share the same (mu, b, br) key in any cycle.
 
@@ -248,6 +312,28 @@ def _self_test(repo_root):
         print("  %-46s %s" % ("mu16_s0 loads as fixed, groups by rollout_idx", "passed"))
     else:
         print("  SKIP: %s not present" % real)
+
+    print("[2b] arm field: usable on fixed, MUST be unusable on SAC")
+    if os.path.isdir(real):
+        rep = check_arm_field(rows, "mu16_s0")
+        print("  mu16_s0  values=%s constant=%s usable=%s"
+              % (rep["values"], rep["constant"], rep["usable"]))
+        if not rep["usable"]:
+            print("  NOTE fixed arm's arm field flagged unusable: %s" % rep["reason"])
+    sacdir = os.path.join(repo_root, "runs_sac", "sac_s0")
+    if os.path.isdir(sacdir):
+        srows, sarm = load_run(sacdir)
+        srep = check_arm_field(srows, "sac_s0")
+        print("  sac_s0   values=%s (%d distinct) constant=%s usable=%s"
+              % (srep["values"], srep["n_values"], srep["constant"], srep["usable"]))
+        print("           reason: %s" % srep["reason"])
+        if srep["usable"]:
+            print("  FAIL: SAC arm reported usable -- train.py's arm= derivation changed")
+            ok = False
+        check("assert_arm_field_usable(sac_s0) does not raise",
+              lambda: assert_arm_field_usable(srows, "sac_s0"), False)
+    else:
+        print("  SKIP: %s not present" % sacdir)
 
     print("[3] collision detector (shim: sac_s0 cloned from mu16_s0)")
     import shutil, tempfile
