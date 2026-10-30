@@ -1,0 +1,11 @@
+# P4 cost probe, mu=64: 2 cycles, single seed. b=64 -> micro=4 gives 16
+# forward chunks, group=8 gives 8 sigma groups (>=2, valid). If cycle wall
+# time leaves the gate band, semantics-B cost-flatness is falsified at high mu
+# and the mu64 main arm is cut (P4 branch B, v2 doc).
+extends: cloud48g_main.yaml
+run:
+  tag: p4_mu64
+  seed: 0
+train:
+  num_rollouts: 2
+  mu: 64

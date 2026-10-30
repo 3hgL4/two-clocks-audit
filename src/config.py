@@ -58,6 +58,7 @@ DEFAULTS: dict[str, Any] = {
             "U": 1.0738,               # frozen: 12/24 hits on the 24 mu16_b256 cycles
             "burn_in_cycles": 2,       # cycles 0..1 fixed mu=16, checks disabled
             "slow_loop": True,         # False = fast loop only (ablation S)
+            "random_trigger": False,   # True = ablation R (HAZARD_M16 coin)
         },
         # Explicit per-rollout mu list (ablation R). Fixed schedule: no trigger
         # checks, no slow loop. Mutually exclusive with sac.enabled.

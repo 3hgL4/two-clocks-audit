@@ -1,0 +1,12 @@
+# P4 cost probe, mu=32: 2 cycles, single seed. Gate: cycle wall time within
+# 890 s +/- 25% (v2 doc P4; the pre-registered F1 band is 895-948 s, the gate
+# allows slack for the b=128 step-shape change). Under semantics B the update
+# cost should be mu-independent (the optimizer sees Br total responses either
+# way) -- P4 is exactly the test of that prediction.
+extends: cloud48g_main.yaml
+run:
+  tag: p4_mu32
+  seed: 0
+train:
+  num_rollouts: 2
+  mu: 32

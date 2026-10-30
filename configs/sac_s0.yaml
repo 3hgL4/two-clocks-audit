@@ -1,0 +1,12 @@
+# SAC-mu main arm, seed 0. This run doubles as the smoke / behavior gate
+# (v2 doc section 6): judge the M trajectory and trigger-rate band on it
+# BEFORE launching s1/s2 and the rest of the grid.
+extends: cloud48g_main.yaml
+run:
+  tag: sac_s0
+  seed: 0
+train:
+  num_rollouts: 8
+  mu: 16                  # nominal; unused by the controller (ladder start 16)
+  sac:
+    enabled: true         # frozen: U=1.0738, burn_in=2, slow_loop=true

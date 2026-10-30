@@ -1,0 +1,14 @@
+# Abllation R ("same distribution, no staleness information"): the trigger
+# decision at each step is a coin with the frozen HAZARD_M16 table instead of
+# the ratio_p95 threshold. Same burn-in, same rung walk, same b structure --
+# only the state signal is removed. v2 doc section 3 / P3.
+extends: cloud48g_main.yaml
+run:
+  tag: sacR_s0
+  seed: 0
+train:
+  num_rollouts: 8
+  mu: 16
+  sac:
+    enabled: true
+    random_trigger: true

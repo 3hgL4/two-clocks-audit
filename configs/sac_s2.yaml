@@ -1,0 +1,10 @@
+# SAC-mu main arm, seed 2. Launch only after the sac_s0 behavior gate passes.
+extends: cloud48g_main.yaml
+run:
+  tag: sac_s2
+  seed: 2
+train:
+  num_rollouts: 8
+  mu: 16
+  sac:
+    enabled: true

@@ -1,0 +1,11 @@
+# Ablation R, seed 1 (controller rng seeded from run seed inside train.py).
+extends: cloud48g_main.yaml
+run:
+  tag: sacR_s1
+  seed: 1
+train:
+  num_rollouts: 8
+  mu: 16
+  sac:
+    enabled: true
+    random_trigger: true

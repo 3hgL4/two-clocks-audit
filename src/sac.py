@@ -29,6 +29,7 @@ arms and is also the controller's own early operating regime.
 
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass
 
 # Only values dividing Br (=4096 = 2**12) keep b integral; {4, 8, 16, 32} is
@@ -38,6 +39,16 @@ LADDER = (4, 8, 16, 32)
 
 START_RUNG = 16  # F4: best fixed arm; the controller starts where the audit ended
 
+# Frozen per-step hazard for the random-trigger ablation R ("same distribution,
+# no staleness information" -- v1 section 6, kept verbatim in v2): first-crossing
+# hazard of ratio_p95 at U=1.0738 over the 24 historical mu16_b256 cycles.
+# hazard[si-1] = P(first fire at step si | reached step si unfired). Any-hit
+# rate reproduces the empirical 12/24 = 0.5. Caveats (v2 doc section 5): n=24,
+# measured on mu16_b256 cycles, applied verbatim at every rung (steps beyond 15
+# reuse hazard[15]) -- an approximation, disclosed, not a matched-per-rung fit.
+HAZARD_M16 = (0.0, 0.0, 0.0, 0.0417, 0.0435, 0.0455, 0.0, 0.0, 0.0, 0.0,
+              0.0952, 0.1053, 0.0588, 0.125, 0.1429)
+
 
 @dataclass(frozen=True)
 class SacParams:
@@ -46,6 +57,7 @@ class SacParams:
     U: float                      # trigger threshold on ratio_p95 (frozen 1.0738)
     burn_in_cycles: int = 2       # cycles 0..1 run fixed mu=16, checks disabled
     slow_loop: bool = True        # False = fast loop only (ablation S)
+    random_trigger: bool = False  # True = ablation R: coin with HAZARD_M16
 
     def __post_init__(self) -> None:
         if not (1.0 < float(self.U) <= 2.0):
@@ -57,7 +69,7 @@ class SacParams:
 class SacController:
     """Rung-walk controller over LADDER; one instance per run."""
 
-    def __init__(self, params: SacParams, br: int):
+    def __init__(self, params: SacParams, br: int, rng_seed: int = 0):
         if br <= 0:
             raise ValueError(f"br must be positive, got {br}")
         rungs = tuple(r for r in LADDER if br % r == 0)
@@ -70,6 +82,8 @@ class SacController:
         self.rungs = rungs
         self._idx = rungs.index(START_RUNG)
         self._cycle = 0
+        self._si = 0  # steps elapsed in the current cycle (check() calls)
+        self._rng = random.Random(rng_seed)
         # (cycle_idx, mu_planned, executed_updates, triggered) per finished cycle
         self.history: list[tuple[int, int, int, bool]] = []
 
@@ -88,16 +102,26 @@ class SacController:
         return self.mu_max
 
     def check(self, ratio_p95: float) -> bool:
-        """Fast loop: fire once per cycle, on the step whose measured ratio_p95
-        reaches U. Disabled during burn-in."""
+        """Fast loop: called once per optimizer step, in order, with the ratio
+        measured on that step's forward pass (ratio after `si` updates).
+        Disabled during burn-in. Random-trigger mode (ablation R) replaces the
+        threshold test with a HAZARD_M16 coin, consuming the same call order."""
+        si = self._si
+        self._si += 1
         if self._cycle < self.p.burn_in_cycles:
             return False
+        if self.p.random_trigger:
+            if si < 1:
+                return False
+            h = HAZARD_M16[min(si - 1, len(HAZARD_M16) - 1)]
+            return self._rng.random() < h
         return float(ratio_p95) >= self.p.U
 
     def end_cycle(self, triggered: bool, executed: int) -> None:
         """Slow loop: one rung down on trigger, one up on a clean cycle.
         No-op rung move during burn-in (checks were disabled anyway)."""
         self.history.append((self._cycle, self.cycle_mu(), int(executed), bool(triggered)))
+        self._si = 0
         if self._cycle < self.p.burn_in_cycles:
             self._cycle += 1
             return
@@ -112,12 +136,17 @@ class SacController:
         return {
             "rung_idx": self._idx,
             "cycle": self._cycle,
+            "si": self._si,
+            "rng_state": self._rng.getstate(),
             "history": list(self.history),
         }
 
     def load_state_dict(self, state: dict) -> None:
         self._idx = int(state["rung_idx"])
         self._cycle = int(state["cycle"])
+        self._si = int(state.get("si", 0))
+        if state.get("rng_state") is not None:
+            self._rng.setstate(state["rng_state"])
         self.history = [tuple(h) for h in state.get("history", [])]
         if not (0 <= self._idx < len(self.rungs)):
             raise ValueError(f"restored rung_idx {self._idx} outside rungs {self.rungs}")

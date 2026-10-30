@@ -1,0 +1,11 @@
+# Ablation S, seed 1.
+extends: cloud48g_main.yaml
+run:
+  tag: sacS_s1
+  seed: 1
+train:
+  num_rollouts: 8
+  mu: 16
+  sac:
+    enabled: true
+    slow_loop: false

@@ -1,0 +1,13 @@
+# Ablation S ("stop but never scale"): fast loop only, slow loop disabled --
+# mu_max stays 16 for every cycle. Isolates the fast loop's contribution from
+# the rung walk. v2 doc section 3.
+extends: cloud48g_main.yaml
+run:
+  tag: sacS_s0
+  seed: 0
+train:
+  num_rollouts: 8
+  mu: 16
+  sac:
+    enabled: true
+    slow_loop: false
