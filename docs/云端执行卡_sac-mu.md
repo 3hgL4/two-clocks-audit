@@ -135,8 +135,8 @@ for s in 0 1 2; do
 done
 ```
 
-- 用 `tmux`/`screen` 挂会话（WSL 惯例：留持久客户端）；中断用 `--resume` 续；
-- **磁盘预算**：每 run 产物 ≈2.5 GB（adapter 2.1G + rollouts npz + metrics）；49G 数据盘装不下 15 个 run 的全量——**每个 run 回传校验通过后立刻 `rm -rf runs/<tag>/adapters`**（原件在魔搭私有仓）；
+- ~~用 `tmux`/`screen` 挂会话~~ → 实际用 **`tools/grid_queue.sh`**（commit `ae678da`，nohup 挂 /root/rivermind-data/grid_queue.sh）：顺序 14 run、单 run 日志 `grid_logs/<tag>.log`、总账 `grid.log`（带启动/结束 utc + rc，沿用链脚本 ④ 的日志纪律）、fail-fast（任一 run rc≠0 停队列等人工）；中断用 `--resume` 续；
+- ~~**磁盘预算**：49G 装不下 15 run 全量，回传后立刻删 adapters~~ → **2026-10-30 17:51 数据盘扩到 99G（+50G ≈ ¥1/天），该纪律作废**：所有 run 的 adapters/state.pt 完整保留，上传 modelscope + sha256 校验通过后才清理（实测单 run ≈2.9 GB：adapters 2.1G + state.pt 0.8G）。
 - `save_adapter_every_rollout` 保持与原 campaign 一致（provenance 纪律），靠"跑完即清"控盘。
 
 ## 7 回传与校验（每 run 收尾立刻做）
