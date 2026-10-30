@@ -12,7 +12,11 @@
   old_logp），每周期虚增 ~121 s；被 `b666c26` 回退（v2 Revision A-4）
 - `p4_gate_verdict.chain_consumed.json` — 自动链实际消费的最初版 verdict
   （无 provenance 字段；三分量数值，判为 PASS 的结论本身没错——两个口径都 PASS）
-- `p4_gate.log` / `chain.log` — 门判输出与链日志（chain start 2026-10-30T07:42:22Z，gate_rc=0）
+- `p4_gate.threecomponent.log` — **历史留档（勿当作现行门判结果）**：`08:23:08Z`
+  那次三分量运行的 stdout（`gate_commit 9fbaf34`，967.9/929.9 与 903.9/915.7，
+  948.9/909.8）。文件名带 `threecomponent` 就是为了让引用者一眼看出口径；
+  **现行门判结果只有 `p4_gate_verdict.json` 一份**
+- `chain.log` — 自动链日志（chain start 2026-10-30T07:42:22Z，gate_rc=0）
 - `p4_mu32/`、`p4_mu64/` — 各含 config.resolved.yaml / metrics.jsonl /
   prompts.jsonl / run_meta.json / samples.jsonl / summary.json
 
