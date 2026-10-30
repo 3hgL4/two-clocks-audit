@@ -335,6 +335,11 @@ def _run_meta(cfg) -> dict:
         # produced its data. Both were missing, so a run could not be traced
         # back to a commit without reading the shell history.
         "vllm": _pkg_version("vllm"),
+        # peft wraps the LoRA training path; it was the one package the
+        # 2026-10-26 campaign never recorded, which forced an env-audit caveat
+        # on every cross-campaign comparison afterwards (2026-10-30 audit).
+        "peft": _pkg_version("peft"),
+        "accelerate": _pkg_version("accelerate"),
         "numpy": np.__version__,
         "nvidia_driver": _sh("nvidia-smi", "--query-gpu=driver_version", "--format=csv,noheader"),
         "git_commit": commit,
