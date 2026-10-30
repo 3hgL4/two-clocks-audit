@@ -1,41 +1,41 @@
 {
-  "utc_time": "2026-10-30T08:23:08+00:00",
-  "gate_commit": "9fbaf34",
-  "gate_script_sha256": "4a237c5b0b1e8a9b200fe9409ca54b30a8ba0aa955720c47aede358083f5f0d8",
-  "host": "jupyter-cl2zfu43xyr9vkps",
+  "utc_time": "2026-10-30T10:48:22+00:00",
+  "gate_commit": "b666c26",
+  "gate_script_sha256": "e01a8c7e45b87288c18f053e9119906169228f874a5b3b385ff87d0a59353e84",
+  "host": "WIN-KIBFEBCHUTK",
   "band_s": [
     667.5,
     1112.5
   ],
-  "band_source": "历史 mu16 三 seed 三分量校准 840.4–939.2 s（runs/mu16_s0/s1/s2）",
+  "band_source": "历史 mu16 三 seed 两分量校准（rollout+update）：727–813 s，均值 771.3 s（runs/mu16_s0/s1/s2）；old_logp 为 update 子集，不可叠加。冻结带中心 890 s 比实测节拍高约 15%，已登记为校准注记（v2 Revision A-4），带值未改；实际判别上界因此约为 +44% 而非 ±25%。",
   "runs": {
-    "runs/p4_mu32": {
+    "runs_p4\\p4_mu32": {
       "status": "ok",
       "metrics_sha256": "29f5e20725c84b242e11b0739c876f96c2bae37a94a9b4615d9fd766e1bf5291",
       "n_cycles": 2,
       "cycle_wall_s": [
-        967.9,
-        929.9
+        846.4,
+        808.1
       ],
       "in_band": [
         true,
         true
       ],
-      "mean_s": 948.9
+      "mean_s": 827.3
     },
-    "runs/p4_mu64": {
+    "runs_p4\\p4_mu64": {
       "status": "ok",
       "metrics_sha256": "7815bb15c359bc724d57fad3a686e554c9b90bb2bdd9b37fff5b87567309769e",
       "n_cycles": 2,
       "cycle_wall_s": [
-        903.9,
-        915.7
+        782.4,
+        793.5
       ],
       "in_band": [
         true,
         true
       ],
-      "mean_s": 909.8
+      "mean_s": 788.0
     }
   },
   "verdict": "PASS"
