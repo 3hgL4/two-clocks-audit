@@ -6,7 +6,7 @@
 > **代码**：`two-clocks-audit` 仓，分支 **`sac-analysis`**（含 sac-mu 全部历史）。执行侧代码 = `31682a6`（控制器 + 修复 `9211933`/`89c30e9`，59/59 测试，云端在跑的就是它 + `11ff431` 门脚本散件）；判读侧：`e149d4c`（审计方 `analysis/sac_arms.py` 守卫）、`9fbaf34`（门脚本 provenance）、`f730ec3`（P4 证据入库 `runs_p4/`）、`5961290`（链脚本入库+启动日志）。**主网格开跑前的全量重上传改对准 sac-analysis 当时 HEAD**（§1）。
 > **平台参考**：`gpt2/TwoClocks云端操作卡.md`（三层落地、--resume、关机检查清单全部沿用）。定价 4090-48G ¥2.08/h；预算新花 ≈31 GPU-h ≈ ¥65，上限 ¥104。
 >
-> **环境一致性（2026-10-30 审计后钉死）**：本实例与原 campaign（`runs/mu16_s0/run_meta.json` + `notes/2026-10-26_pull/cloud_only/env.txt`）七项记录字段逐位一致——python 3.11.13 / torch 2.13.0+cu130 / transformers 5.19.0 / vllm 0.32.0 / numpy 2.3.2 / driver 580.119.02 / cuda 13.0。唯一未记录项 peft（campaign 的 run_meta 没存），已作局限注记落 v2 Revision A-2；`31682a6` 起 run_meta 增加 peft/accelerate 字段，新 run 自文档化。**µ16 历史基线（F4=0.517）复用成立，不需复跑。**
+> **环境一致性（2026-10-30 两次收紧，A-2 → A-3）**：本实例与原 campaign 的环境比对以 `runs/mu16_s0/run_meta.json` + `notes/2026-10-26_pull/cloud_only/env.txt` 为准——python 3.11.13 / torch 2.13.0+cu130 / transformers 5.19.0 / vllm 0.32.0 / numpy 2.3.2 / driver 580.119.02 / cuda 13.0 七项逐位一致；**原唯一未记录项 peft 已于 10-30 闭合**：campaign 原实例无卡启动抓取 pip freeze（入库 `notes/2026-10-26_pull/cloud_only/pip_freeze_2026-10-30.txt`），peft==0.21.2 / accelerate==1.15.0 与本实例 run_meta 逐位一致（v2 Revision A-3）。**µ16 历史基线（F4=0.517）复用成立，八项全对齐，不需复跑；`31682a6` 起 run_meta 记录 peft/accelerate，此后跨环境比对只看 run_meta。**
 
 ---
 
