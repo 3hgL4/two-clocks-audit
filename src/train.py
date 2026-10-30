@@ -444,7 +444,9 @@ def main(argv: list[str] | None = None) -> int:
             burn_in_cycles=int(sac_cfg.get("burn_in_cycles", 2)),
             slow_loop=bool(sac_cfg.get("slow_loop", True)),
         )
-        controller = sac_mod.SacController(sac_params, br=Br, rng_seed=seed)
+        controller = sac_mod.SacController(
+            sac_params, br=int(cfg["train.responses_per_rollout"]), rng_seed=seed
+        )
         nominal_mu = max(sac_mod.LADDER)
         schedule = None
     elif schedule is not None:
