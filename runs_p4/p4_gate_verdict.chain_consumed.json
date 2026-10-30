@@ -1,0 +1,35 @@
+{
+  "band_s": [
+    667.5,
+    1112.5
+  ],
+  "runs": {
+    "runs/p4_mu32": {
+      "status": "ok",
+      "n_cycles": 2,
+      "cycle_wall_s": [
+        967.9,
+        929.9
+      ],
+      "in_band": [
+        true,
+        true
+      ],
+      "mean_s": 948.9
+    },
+    "runs/p4_mu64": {
+      "status": "ok",
+      "n_cycles": 2,
+      "cycle_wall_s": [
+        903.9,
+        915.7
+      ],
+      "in_band": [
+        true,
+        true
+      ],
+      "mean_s": 909.8
+    }
+  },
+  "verdict": "PASS"
+}

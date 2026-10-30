@@ -1,0 +1,42 @@
+{
+  "utc_time": "2026-10-30T08:23:08+00:00",
+  "gate_commit": "9fbaf34",
+  "gate_script_sha256": "4a237c5b0b1e8a9b200fe9409ca54b30a8ba0aa955720c47aede358083f5f0d8",
+  "host": "jupyter-cl2zfu43xyr9vkps",
+  "band_s": [
+    667.5,
+    1112.5
+  ],
+  "band_source": "历史 mu16 三 seed 三分量校准 840.4–939.2 s（runs/mu16_s0/s1/s2）",
+  "runs": {
+    "runs/p4_mu32": {
+      "status": "ok",
+      "metrics_sha256": "29f5e20725c84b242e11b0739c876f96c2bae37a94a9b4615d9fd766e1bf5291",
+      "n_cycles": 2,
+      "cycle_wall_s": [
+        967.9,
+        929.9
+      ],
+      "in_band": [
+        true,
+        true
+      ],
+      "mean_s": 948.9
+    },
+    "runs/p4_mu64": {
+      "status": "ok",
+      "metrics_sha256": "7815bb15c359bc724d57fad3a686e554c9b90bb2bdd9b37fff5b87567309769e",
+      "n_cycles": 2,
+      "cycle_wall_s": [
+        903.9,
+        915.7
+      ],
+      "in_band": [
+        true,
+        true
+      ],
+      "mean_s": 909.8
+    }
+  },
+  "verdict": "PASS"
+}
