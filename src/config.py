@@ -51,6 +51,15 @@ DEFAULTS: dict[str, Any] = {
         "eps_high": 0.28,
         "clip_delta": 10.0,            # dual-clip upper bound (None disables)
         "loss_norm": "token_mean",     # token_mean | rollout_token
+        # format-signal-audit arms (2026-10-31). "none" reproduces the historical
+        # behaviour exactly. "accuracy" = DAPO dynamic-sampling predicate
+        # (reject acc in {0,1}); "variance" = reject zero-reward-variance groups.
+        # Rejected groups are refilled from later positions of the same rollout
+        # permutation; the cap counts REFILL prompts only.
+        "resample": {
+            "mode": "none",
+            "max_extra_prompts": 1488,   # = pool 2000 - initial 512
+        },
     },
     "rollout": {
         "backend": "fake",             # fake | hf | vllm
@@ -174,6 +183,11 @@ class Config:
             )
         if str(self["train.loss_norm"]) not in {"token_mean", "rollout_token"}:
             errs.append("loss_norm must be 'token_mean' or 'rollout_token'")
+        rs_mode = str(self.get("train.resample.mode", "none"))
+        if rs_mode not in ("none", "accuracy", "variance"):
+            errs.append("train.resample.mode must be 'none' | 'accuracy' | 'variance'")
+        if rs_mode != "none" and int(self["train.resample.max_extra_prompts"]) < 1:
+            errs.append("train.resample.max_extra_prompts must be >= 1 when resample mode is on")
         if int(self["train.num_rollouts"]) < 1:
             errs.append("num_rollouts must be >= 1")
         if errs:

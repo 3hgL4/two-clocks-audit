@@ -1,0 +1,48 @@
+{
+  "generated": "2026-10-31",
+  "generator": "src/gen_counting.py @ fsa-resample branch (see COMMIT file)",
+  "note": "held-out test sets are evaluation-only; training pools are training-only. Disjointness is by prompt text, asserted below.",
+  "pools": {
+    "data/prompts_mixed2000.jsonl": {
+      "role": "train/counting",
+      "seed": "legacy (S1 rebuild pool, sha256 d781f955...)",
+      "n_items": 2000
+    },
+    "data/heldout_counting_512.jsonl": {
+      "role": "heldout/counting",
+      "seed": 20261101,
+      "n_items": 512,
+      "draw_margin": 768,
+      "tier_mix": "uniform easy/medium/hard, ranges 30/60/100"
+    },
+    "data/prompts_mod2000.jsonl": {
+      "role": "train/mod",
+      "seed": 20261102,
+      "n_items": 2000,
+      "ops": "filters=mod3/5/7 residues>=1; transforms include mod_9/mod_10; aggregations include sum_mod_9/sum_mod_10; every item has >=1 mod op"
+    },
+    "data/heldout_mod_512.jsonl": {
+      "role": "heldout/mod",
+      "seed": 20261103,
+      "n_items": 512,
+      "draw_margin": 768,
+      "disjoint_from": [
+        "data/prompts_mixed2000.jsonl",
+        "data/prompts_mod2000.jsonl"
+      ]
+    }
+  },
+  "sha256": {
+    "data/prompts_mixed2000.jsonl": "d781f955ad9773cc0107fd171b2371ea3bec262a2021b6e8e481da81f64a798b",
+    "data/heldout_counting_512.jsonl": "2150f697afc78d843770a80527dd96fa120123496cad10df57907e82ce942043",
+    "data/prompts_mod2000.jsonl": "7be573567c9914da026d0a7254172da474c254e2969d0fb1d987156684c19be7",
+    "data/heldout_mod_512.jsonl": "adcc68e2d5098e607a68df5ae34a5dd7359db4fc778002067b53c2bd61778c42"
+  },
+  "disjointness_assertions": {
+    "prompts_mixed2000.jsonl x heldout_counting_512.jsonl": 0,
+    "prompts_mixed2000.jsonl x heldout_mod_512.jsonl": 0,
+    "prompts_mod2000.jsonl x heldout_mod_512.jsonl": 0,
+    "prompts_mod2000.jsonl x heldout_counting_512.jsonl": 0,
+    "heldout_counting_512.jsonl x heldout_mod_512.jsonl": 0
+  }
+}

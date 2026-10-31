@@ -45,6 +45,7 @@ import config as config_mod  # noqa: E402
 import data as data_mod  # noqa: E402
 import grpo  # noqa: E402
 import metrics as metrics_mod  # noqa: E402
+import resample as resample_mod  # noqa: E402
 import rollout as rollout_mod  # noqa: E402
 import verify  # noqa: E402
 from model import Policy  # noqa: E402
@@ -231,6 +232,37 @@ def snapshot_adapter(run_dir: Path, r_idx: int, adapter_dir: str | Path,
         print(f"[adapter] rollout {r_idx} NOT archived: {rec['reason']}")
     with open(out_dir / "index.jsonl", "a", encoding="utf-8") as f:
         f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    return rec
+
+
+def save_discarded_ids(out_dir: Path, r_idx: int, pids: list[list[int]],
+                       cids: list[list[int]]) -> dict:
+    """Archive the token ids of resample-discarded responses (arms B/C).
+
+    The discarded groups are the audit's object of study -- the frozen budget
+    counts their generation tokens, and their accuracy/format statistics are
+    Phase-0-style evidence -- so they get the same flat-ids archive as the
+    trained-on rollout, one file per rollout: `rollouts/r{idx}_discarded.npz`.
+    """
+    if not cids:
+        return {}
+    out_dir.mkdir(parents=True, exist_ok=True)
+    p_flat, p_len = _flatten(pids)
+    c_flat, c_len = _flatten(cids)
+    path = out_dir / f"r{r_idx:03d}_discarded.npz"
+    np.savez_compressed(path, prompt_flat=p_flat, prompt_len=p_len,
+                        completion_flat=c_flat, completion_len=c_len)
+    rec = {
+        "rollout_idx": r_idx,
+        "kind": "discarded",
+        "n_responses": int(len(c_len)),
+        "prompt_tokens": int(p_len.sum()),
+        "completion_tokens": int(c_len.sum()),
+        "npz": path.name,
+        "bytes": path.stat().st_size,
+    }
+    with open(out_dir / "index.jsonl", "a", encoding="utf-8") as f:
+        f.write(json.dumps(rec) + "\n")
     return rec
 
 
@@ -465,21 +497,64 @@ def main(argv: list[str] | None = None) -> int:
     clip_delta = cfg["train.clip_delta"]
     kappa = float(cfg["drift.kappa"])
     max_len = int(cfg["train.max_completion_length"])
+    # format-signal-audit arms: none (A) | accuracy (B) | variance (C)
+    rs_mode = str(cfg.get("train.resample.mode", "none"))
+    rs_cap = int(cfg.get("train.resample.max_extra_prompts", 0))
+    if rs_mode not in resample_mod.VALID_MODES:
+        raise ValueError(f"train.resample.mode must be one of {resample_mod.VALID_MODES}")
+    if rs_mode != "none":
+        refill_room = len(pool) - cfg.prompts_per_rollout
+        if refill_room <= 0:
+            raise ValueError(
+                f"pool has {len(pool)} prompts, no positions left beyond the initial "
+                f"{cfg.prompts_per_rollout} for resampling"
+            )
+        print(f"[info] resample arm mode={rs_mode} cap={rs_cap} refill_positions={refill_room}")
 
     print(f"[info] arm mu={mu} b={Br//mu} Br={Br} micro={micro} "
           f"M={Br//mu//micro} rollouts={cfg['train.num_rollouts']} total_steps={total_steps}")
 
     try:
         for r_idx in range(start_rollout, int(cfg["train.num_rollouts"])):
-            items = data_mod.prompt_batch(pool, seed, r_idx, cfg.prompts_per_rollout)
-
             # -- rollout -----------------------------------------------------
+            # Arm A: one generate call on the first P prompts of the permutation
+            # (the historical path, byte-identical to the mu-campaign runs).
+            # Arms B/C: filtered generation with refill rounds from later
+            # permutation positions; the merged rollout keeps only valid groups.
             if backend.name == "vllm" and bool(cfg.get("rollout.vllm.offload_policy", False)):
                 policy.model.to("cpu")
                 torch.cuda.empty_cache()
-            rb = backend.generate(items, G, r_idx, seed=seed)
+            roll_t0 = time.perf_counter()
+            res_stats: dict | None = None
+            if rs_mode == "none":
+                items = data_mod.prompt_batch(pool, seed, r_idx, cfg.prompts_per_rollout)
+                rb = backend.generate(items, G, r_idx, seed=seed)
+            else:
+                rb, res_stats = resample_mod.rollout_with_resample(
+                    pool, seed=seed, rollout_idx=r_idx, G=G,
+                    n_target_groups=cfg.prompts_per_rollout,
+                    backend=backend, mode=rs_mode, max_extra_prompts=rs_cap,
+                )
+                rb.wall_ms = (time.perf_counter() - roll_t0) * 1000.0
             if backend.name == "vllm" and bool(cfg.get("rollout.vllm.offload_policy", False)):
                 policy.model.to(policy.device)
+
+            # Effective batch actually trained on. Uncapped arms B/C and arm A
+            # all land on the planned Br; a capped B/C run is smaller, and the
+            # partition math below inherits config.validate's divisibility
+            # assumptions, so it is checked here with the real numbers.
+            Br_eff = rb.n_responses
+            if Br_eff % mu or (Br_eff // mu) % micro or (Br_eff // mu) % group:
+                raise RuntimeError(
+                    f"effective responses {Br_eff} (kept groups {rb.n_prompts}) cannot be "
+                    f"partitioned: mu={mu}, micro={micro}, group={group}. Raise "
+                    f"train.resample.max_extra_prompts or the cap logic must not truncate "
+                    f"mid-group; refusing to silently drop groups."
+                )
+            if res_stats and res_stats["resample_capped"]:
+                print(f"[warn] rollout {r_idx}: resample cap hit, training on "
+                      f"{rb.n_prompts}/{cfg.prompts_per_rollout} groups")
+
             # D-22: the weights that generated these responses, before the update
             # mutates them. Must happen here, not after the update.
             if backend.name == "vllm" and bool(cfg.get("logging.save_adapter_every_rollout", False)):
@@ -504,6 +579,16 @@ def main(argv: list[str] | None = None) -> int:
                     if info["variant"]:
                         print(f"[ids] WARNING variant={info['variant']}: an earlier file "
                               f"for rollout {r_idx} exists, i.e. this run re-sampled it")
+                # Arms B/C: the discarded responses are the audit's object of
+                # study (their own accuracy/format statistics), so they are
+                # archived with the same fidelity as the trained-on ids.
+                if res_stats and res_stats["resample_discarded_responses"]:
+                    save_discarded_ids(
+                        run_dir / str(cfg.get("logging.rollout_id_dir", "rollouts")),
+                        r_idx,
+                        res_stats["discarded_prompt_ids"],
+                        res_stats["discarded_completion_ids"],
+                    )
             adv, adv_stats = grpo.group_advantages(rewards, G)
             adv = adv.to(policy.device)
 
@@ -517,7 +602,7 @@ def main(argv: list[str] | None = None) -> int:
 
             # -- old policy log-probs (once per rollout) ---------------------
             part_rng = np.random.default_rng((seed * 1_000_003) ^ (r_idx * 9_176 + 1))
-            parts = plan_partition(Br, mu, micro, part_rng)
+            parts = plan_partition(Br_eff, mu, micro, part_rng)
             old_lp: dict[tuple[int, int], torch.Tensor] = {}
             try:
                 with torch.no_grad():
@@ -541,6 +626,21 @@ def main(argv: list[str] | None = None) -> int:
             prompt_tokens = sum(len(p) for p in rb.prompt_ids)
             completion_tokens = sum(len(c) for c in rb.completion_ids)
             mean_resp_len = completion_tokens / max(1, rb.n_responses)
+
+            # Frozen budget bookkeeping (方案 §三 等预算口径): every attempted
+            # completion token counts -- kept AND discarded. The meter is fed
+            # the attempted totals; the kept/discarded split lives in metrics
+            # rows and in the archived ids, so the count stays auditable.
+            if res_stats:
+                discarded_tokens = sum(len(c) for c in res_stats["discarded_completion_ids"])
+                attempted_completion_tokens = completion_tokens + discarded_tokens
+                attempted_responses = res_stats["resample_attempted_responses"]
+                attempted_correct = sum(correct) + res_stats["resample_discarded_correct"]
+            else:
+                discarded_tokens = 0
+                attempted_completion_tokens = completion_tokens
+                attempted_responses = Br_eff
+                attempted_correct = sum(correct)
 
             # -- one pass of mu optimizer steps ------------------------------
             # (upd_t0 already started before the old-policy forward; see D-24)
@@ -631,8 +731,8 @@ def main(argv: list[str] | None = None) -> int:
 
                 denom = max(1, n_tok_step)
                 meter.add_rollout(
-                    rollout_idx=r_idx, mu=mu, n_responses=Br // mu,
-                    prompt_tokens=prompt_tokens // mu, completion_tokens=completion_tokens // mu,
+                    rollout_idx=r_idx, mu=mu, n_responses=attempted_responses // mu,
+                    prompt_tokens=prompt_tokens // mu, completion_tokens=attempted_completion_tokens // mu,
                     trained_tokens=n_tok_step,
                     wall_ms_rollout=rb.wall_ms if si == 0 else 0.0,
                     wall_ms_update=0.0,
@@ -647,14 +747,26 @@ def main(argv: list[str] | None = None) -> int:
                     "mu": mu,
                     "mu_step": si,
                     "global_step": r_idx * mu + si,
-                    "b_responses": Br // mu,
-                    "br_responses": Br,
+                    "b_responses": Br_eff // mu,
+                    "br_responses": Br_eff,
                     "prompts_per_rollout": cfg.prompts_per_rollout,
                     "n_generations": G,
                     "resp_len_mean": round(mean_resp_len, 4),
                     "completion_tokens": completion_tokens,
                     "reward_mean": round(float(rewards.mean()), 6),
                     "pass_rate": round(float(np.mean(correct)), 6),
+                    # frozen-budget fields (all attempted responses count)
+                    "completion_tokens_attempted": attempted_completion_tokens if si == 0 else 0,
+                    "completion_tokens_discarded": discarded_tokens if si == 0 else 0,
+                    "pass_rate_attempted": round(attempted_correct / max(1, attempted_responses), 6) if si == 0 else None,
+                    # resample arm fields (rollout-level, booked on row 0)
+                    "resample_mode": rs_mode,
+                    "resample_rounds": res_stats["resample_rounds"] if res_stats and si == 0 else 0,
+                    "resample_attempted_prompts": res_stats["resample_attempted_prompts"] if res_stats and si == 0 else 0,
+                    "resample_attempted_responses": attempted_responses if si == 0 else 0,
+                    "resample_discarded_groups": res_stats["resample_discarded_groups"] if res_stats and si == 0 else 0,
+                    "resample_discarded_responses": res_stats["resample_discarded_responses"] if res_stats and si == 0 else 0,
+                    "resample_capped": bool(res_stats["resample_capped"]) if res_stats and si == 0 else False,
                     "zero_var_group_frac": adv_stats["zero_var_group_frac"],
                     "adv_abs_mean": adv_stats["adv_abs_mean"],
                     "wall_ms_rollout": round(rb.wall_ms if si == 0 else 0.0, 3),

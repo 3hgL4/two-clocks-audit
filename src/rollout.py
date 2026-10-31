@@ -75,9 +75,10 @@ class FakeBackend:
         self.vocab = vocab_hint or (len(tok) if tok is not None else 1000)
         self.name = "fake"
 
-    def generate(self, items: list[dict], G: int, rollout_idx: int, seed: int = 0) -> Rollout:
+    def generate(self, items: list[dict], G: int, rollout_idx: int, seed: int = 0,
+                 attempt: int = 0, response_offset: int = 0) -> Rollout:
         t0 = time.perf_counter()
-        rng = random.Random(seed * 7919 + rollout_idx)
+        rng = random.Random(seed * 7919 + rollout_idx + attempt * 1_000_003)
         expanded = _expand(items, G)
         prompt_ids, completion_ids, texts = [], [], []
         max_len = int(self.cfg["train.max_completion_length"])
@@ -120,11 +121,12 @@ class HFBackend:
         self.batch_size = batch_size
         self.name = "hf"
 
-    def generate(self, items: list[dict], G: int, rollout_idx: int, seed: int = 0) -> Rollout:
+    def generate(self, items: list[dict], G: int, rollout_idx: int, seed: int = 0,
+                 attempt: int = 0, response_offset: int = 0) -> Rollout:
         import torch
 
         t0 = time.perf_counter()
-        torch.manual_seed(seed * 7919 + rollout_idx)
+        torch.manual_seed(seed * 7919 + rollout_idx + attempt * 1_000_003)
         expanded = _expand(items, G)
         texts_all, pids_all, cids_all = [], [], []
         tok = self.policy.tokenizer
@@ -243,7 +245,8 @@ class VLLMBackend:
         self._lora_id += 1
         return self._LoRARequest(f"policy_v{self._lora_id}", self._lora_id, self.adapter_dir)
 
-    def generate(self, items: list[dict], G: int, rollout_idx: int, seed: int = 0) -> Rollout:
+    def generate(self, items: list[dict], G: int, rollout_idx: int, seed: int = 0,
+                 attempt: int = 0, response_offset: int = 0) -> Rollout:
         t0 = time.perf_counter()
         expanded = _expand(items, G)
         base_seed = int(seed * 7919 + rollout_idx)
@@ -266,8 +269,16 @@ class VLLMBackend:
             # seed also makes the G samples of one prompt share a random stream
             # is the open question the diversity check answers; if it does, the
             # effective sample size is prompts, not responses.
+            #
+            # attempt/response_offset (fsa-resample): refill rounds continue the
+            # same per-request seed stream. attempt=0, offset=0 reproduces the
+            # arm-A seeds exactly; attempt>0 offsets by 10_000_007 (>> any
+            # realistic rollout size, so streams never overlap between rounds).
             if self.seed_per_request:
-                sp = [_params(base_seed * 1_000_003 + i + j) for j in range(len(chunk))]
+                sp = [
+                    _params(base_seed * 1_000_003 + attempt * 10_000_007 + response_offset + i + j)
+                    for j in range(len(chunk))
+                ]
             else:
                 sp = _params(base_seed)
             outs = self.llm.generate([c["prompt"] for c in chunk], sp, lora_request=req, use_tqdm=False)

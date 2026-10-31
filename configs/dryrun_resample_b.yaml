@@ -1,0 +1,13 @@
+# CPU dry-run for the fsa-resample B arm (accuracy filter + refill):
+# the full train.py path -- rollout rounds, filtering, refill, advantages,
+# old-logp, backward, optimizer step, metrics, archive -- with the stub model
+# and the fake backend. Zero GPU.
+#
+#   python src/train.py --config configs/dryrun_resample_b.yaml --device cpu
+extends: dryrun.yaml
+run:
+  tag: dryrun_resample_b
+train:
+  resample:
+    mode: accuracy
+    max_extra_prompts: 64

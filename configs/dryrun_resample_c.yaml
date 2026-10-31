@@ -1,0 +1,11 @@
+# CPU dry-run for the fsa-resample C arm (variance filter + refill).
+# Same shape as dryrun_resample_b.yaml; see that file.
+#
+#   python src/train.py --config configs/dryrun_resample_c.yaml --device cpu
+extends: dryrun.yaml
+run:
+  tag: dryrun_resample_c
+train:
+  resample:
+    mode: variance
+    max_extra_prompts: 64

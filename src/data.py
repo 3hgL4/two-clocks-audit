@@ -95,6 +95,21 @@ def _rollout_rng(seed: int, rollout_idx: int) -> random.Random:
     return random.Random((seed * 1_000_003) ^ (rollout_idx * 9_176 + 1))
 
 
+def rollout_permutation(pool_len: int, seed: int, rollout_idx: int) -> list[int]:
+    """The full shuffled id order for `rollout_idx`. Pure function of (len, seed, idx).
+
+    This is the same single shuffle `prompt_batch` performs to take its first n
+    entries -- exposed separately so the resample arms can draw REFILL prompts
+    from LATER positions of the same permutation (frozen refill rule) without
+    re-deriving the shuffle by hand. Must stay in exact sync with prompt_batch:
+    tests/test_resample.py asserts prefix equality.
+    """
+    rng = _rollout_rng(seed, rollout_idx)
+    ids = list(range(pool_len))
+    rng.shuffle(ids)
+    return ids
+
+
 def prompt_batch(pool: list[dict], seed: int, rollout_idx: int, n: int) -> list[dict]:
     """The n prompts used by `rollout_idx`. Pure function of (pool, seed, idx, n).
 
