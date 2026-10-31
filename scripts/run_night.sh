@@ -5,7 +5,7 @@ cd /root/rivermind-data/format-signal-audit/repo
 PY=/opt/conda/bin/python
 BASE=/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-AD=adapters_mu1   # uploaded campaign A-arm final adapters: adapters_mu1/s{0,1,2}/r007
+AD=/root/rivermind-data/format-signal-audit/adapters_mu1
 
 step() { echo "=== $(date -u +%FT%TZ) $*"; }
 
