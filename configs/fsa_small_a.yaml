@@ -1,0 +1,23 @@
+# Small-scale real-weights comparison, arm A (no filtering).
+#
+# Exploration-stage scale check: 2 rollouts x 512 responses, seed via CLI
+# (--seed 0/1/2). Same codebase as B/C (fsa-resample branch), so any arm
+# difference below is the filter, not the harness. Final adapter (r001) is
+# evaluated on the frozen held-out counting pool:
+#   python tools/eval_heldout.py --pool data/heldout_counting_512.jsonl \
+#       --model <base> --adapter runs/<tag>/adapters/r001 --n 4 --tag eval_<tag>
+extends: cloud48g_main.yaml
+run:
+  tag: fsa_small_a
+  seed: 0
+train:
+  num_rollouts: 2
+  num_generations: 8
+  responses_per_rollout: 512
+  micro_batch_responses: 4
+  mu: 1
+  max_completion_length: 512
+  resample:
+    mode: none
+logging:
+  log_rollout_samples: 4

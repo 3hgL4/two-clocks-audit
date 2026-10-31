@@ -1,0 +1,12 @@
+# Small-scale real-weights comparison, arm C (variance filter + refill).
+# Verdict: group is rejected iff composed-reward std (ddof=1) < 1e-8 -- the
+# SAME threshold grpo.group_advantages uses to zero an advantage group, so
+# "C discards" and "GRPO zeroes" are the identical predicate (tested in
+# tests/test_resample.py::test_threshold_matches_grpo).
+extends: fsa_small_a.yaml
+run:
+  tag: fsa_small_c
+train:
+  resample:
+    mode: variance
+    max_extra_prompts: 128

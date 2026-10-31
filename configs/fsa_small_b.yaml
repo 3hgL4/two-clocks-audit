@@ -1,0 +1,12 @@
+# Small-scale real-weights comparison, arm B (DAPO accuracy filter + refill).
+# Verdict: group is rejected iff composed-reward accuracy in {0,1} -- here
+# is_correct on the composed reward (see src/resample.py docstring: the
+# composed bonus cannot reconstruct a raw acc=0 vs acc=1 distinction, so the
+# operationalization is reject all-correct or all-wrong groups).
+extends: fsa_small_a.yaml
+run:
+  tag: fsa_small_b
+train:
+  resample:
+    mode: accuracy
+    max_extra_prompts: 128
