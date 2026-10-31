@@ -1,0 +1,18 @@
+# Campaign-scale B arm (DAPO accuracy filter + refill) on the counting pool.
+#
+# Paired design: A side = the two-clocks campaign's mu1_s{0,1,2} (same code
+# lineage, same pool, same hyperparameters, rollout ids bit-verified for
+# round-1 in the fsa smoke). Everything here mirrors runs/mu1_s*/config.resolved.yaml
+# via cloud48g_main; the ONLY deltas are the resample block and the tag.
+# 8 rollouts x 4096 responses; seed via CLI (--seed 0/1/2). Final adapter r007
+# is evaluated on heldout_counting_512 alongside the campaign A adapters r007.
+extends: cloud48g_main.yaml
+run:
+  tag: fsa_b_full
+  seed: 0
+train:
+  mu: 1
+  num_rollouts: 8
+  resample:
+    mode: accuracy
+    max_extra_prompts: 512

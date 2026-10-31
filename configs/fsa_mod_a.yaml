@@ -1,0 +1,18 @@
+# Mod-arithmetic second task family, arm A (no filtering).
+#
+# Same scale and hyperparameters as the counting comparison (8 rollouts x 4096,
+# mu 1, G 8, micro 4) with the training pool switched to the frozen mod pool.
+# Base-model calibration on heldout_mod_512: pass@1 0.0835, pass@any(4) 0.2734
+# (2026-10-31), i.e. a much higher all-wrong group rate than counting -- B's
+# resample treatment fires ~2x harder here, making this the sharper testbed.
+extends: cloud48g_main.yaml
+run:
+  tag: fsa_mod_a
+  seed: 0
+data:
+  pool: data/prompts_mod2000.jsonl
+train:
+  mu: 1
+  num_rollouts: 8
+  resample:
+    mode: none

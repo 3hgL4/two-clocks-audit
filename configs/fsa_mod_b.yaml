@@ -1,0 +1,9 @@
+# Mod-arithmetic second task family, arm B (accuracy filter + refill).
+# Only deltas vs fsa_mod_a: resample block and tag. Seed via CLI.
+extends: fsa_mod_a.yaml
+run:
+  tag: fsa_mod_b
+train:
+  resample:
+    mode: accuracy
+    max_extra_prompts: 512
