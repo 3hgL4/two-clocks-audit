@@ -111,7 +111,8 @@ def main(argv=None) -> int:
                 c_reject += 1
         recomputed = n_corr / n_resp
         logged = metrics.get(str(ri))
-        if logged is not None and abs(recomputed - logged) > 1e-9:
+        # metrics rows are stored round(x, 6); compare at that precision
+        if logged is not None and abs(round(recomputed, 6) - logged) > 1e-9:
             mismatch.append((ri, recomputed, logged))
         per[str(ri)] = {
             "n_groups": n_groups,
