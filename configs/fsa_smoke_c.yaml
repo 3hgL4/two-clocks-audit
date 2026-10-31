@@ -1,0 +1,20 @@
+# GPU smoke for the fsa-resample C arm (variance filter + refill).
+# Same shape as fsa_smoke_b.yaml; see that file for the protocol.
+#
+#   python src/train.py --config configs/fsa_smoke_c.yaml --tag fsa_smoke_c_a
+extends: cloud48g_main.yaml
+run:
+  tag: fsa_smoke_c
+  seed: 0
+train:
+  num_rollouts: 1
+  num_generations: 8
+  responses_per_rollout: 64
+  mu: 2
+  micro_batch_responses: 2
+  max_completion_length: 512
+  resample:
+    mode: variance
+    max_extra_prompts: 64
+logging:
+  log_rollout_samples: 8

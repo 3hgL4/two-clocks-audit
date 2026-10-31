@@ -1,0 +1,29 @@
+# GPU smoke for the fsa-resample B arm on the 48G card.
+#
+# Purpose: prove the resample path end-to-end on real vLLM + real weights --
+# refill rounds trigger, the budget counts discarded tokens, the discarded
+# archive lands, and (run twice) the rollout ids repeat BIT FOR BIT at the
+# same seed (the same-seed bit-exact recalculation acceptance test).
+#
+#   python src/train.py --config configs/fsa_smoke_b.yaml --tag fsa_smoke_b_a
+#   python src/train.py --config configs/fsa_smoke_b.yaml --tag fsa_smoke_b_b
+#   python tools/audit_rollout_ids.py runs/fsa_smoke_b_a/rollouts/r000.npz \
+#          --compare runs/fsa_smoke_b_b/rollouts/r000.npz --group 8
+#
+# 8 initial prompts + refill rounds at 64 responses total is ~2-4 min.
+extends: cloud48g_main.yaml
+run:
+  tag: fsa_smoke_b
+  seed: 0
+train:
+  num_rollouts: 1
+  num_generations: 8
+  responses_per_rollout: 64
+  mu: 2
+  micro_batch_responses: 2
+  max_completion_length: 512
+  resample:
+    mode: accuracy
+    max_extra_prompts: 64
+logging:
+  log_rollout_samples: 8
