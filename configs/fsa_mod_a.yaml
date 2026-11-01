@@ -11,6 +11,9 @@ run:
   seed: 0
 data:
   pool: data/prompts_mod2000.jsonl
+  # Override the counting-pool sha hardcoded in base.yaml (2026-11-01: night
+  # run failed fast on this guard -- the frozen-pool check did its job).
+  sha256: "7be573567c9914da026d0a7254172da474c254e2969d0fb1d987156684c19be7"
 train:
   mu: 1
   num_rollouts: 8
