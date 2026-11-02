@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Reproduce the audit.
 #
+#   ./reproduce.sh verdict  one command: recompute all claims from runs/ (0 GPU, no retraining)
 #   ./reproduce.sh dry     local only: tests + CPU dry-run (0 GPU, 0 元, ~1 min)
 #   ./reproduce.sh full    9 runs x 4090-24G (expect ¥22-54) + analysis
 #   ./reproduce.sh analyse  rebuild the table/figures from existing runs/
@@ -16,6 +17,29 @@ PY="${PY:-python}"
 step() { printf '\n=== %s ===\n' "$*"; }
 
 case "$MODE" in
+  verdict)
+    # One command to recompute every headline claim from the runs/ data in this
+    # repo (no GPU, no retraining). Any failure aborts (set -e): ALL_DONE means
+    # all six blocks actually ran.
+    step "dependency gate"
+    "$PY" -c "import yaml, numpy, pandas" 2>/dev/null || {
+      echo "missing python deps -- run: $PY -m pip install -r requirements.txt"
+      exit 1
+    }
+    step "C2-C7 + P1 (residual claims vs paper)"
+    "$PY" analysis/residual_claims.py --runs runs
+    step "C8 (slope ratio, paper Eq.(5) = 6.1x)"
+    "$PY" analysis/slope_ratio.py
+    step "C10 (b x mu 2x2 -> mu_is_primary)"
+    "$PY" analysis/bmu_2x2.py --runs runs --ab runs_ab2x2
+    step "C11 (no-clip ablation -> clip_is_inert)"
+    "$PY" analysis/noclip_ablation.py
+    step "C12 (R4-A: mu=1 19-rollout continuation grid)"
+    "$PY" analysis/r4a_grid.py --runs runs_r4a --base runs
+    step "claim trace (16 claims, strict: fail on pending evidence)"
+    "$PY" analysis/trace.py --strict
+    echo "ALL_DONE (verdict)"
+    ;;
   dry)
     step "unit tests"
     "$PY" tests/run_all.py
