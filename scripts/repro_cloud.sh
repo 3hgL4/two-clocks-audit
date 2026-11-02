@@ -15,7 +15,8 @@
 # so code arrives via codeload tarball with resume+retry; weights arrive from
 # ModelScope via tools/fetch_model.py (parallel ranges, sha256-verified).
 # Overridables: REPO_DIR, MODEL_DIR (env).
-set -u
+# set -e matters: ALL_DONE must mean "every step actually passed".
+set -eu
 REPO_DIR=${REPO_DIR:-/root/fsa-repro}
 MODEL_DIR=${MODEL_DIR:-/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base}
 TARBALL=/root/fsa_repo.tar.gz
@@ -48,6 +49,12 @@ MODE=${1:-verdict}
 case "$MODE" in verdict) echo "ALL_DONE (verdict)"; exit 0;; esac
 
 # --- 4) tests + CPU dry-run ---
+step "dependency check (self-heal via pypi if the image variant lacks them)"
+if ! $PY -c "import peft, transformers, accelerate" 2>/dev/null; then
+  $PY -m pip install --quiet peft transformers accelerate
+  $PY -c "import peft, transformers, accelerate" || { echo "deps missing after install"; exit 1; }
+fi
+echo "deps OK"
 step "unit tests"
 $PY tests/run_all.py
 step "CPU dry-run (stub model + fake backend)"
