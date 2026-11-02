@@ -29,3 +29,11 @@ analysis/out/
 data/calibration_*.json
 data/prompts_band.jsonl
 data/prompts_band.MANIFEST.json
+
+# SAC-µ 判读输入入仓（约 10 MB，无大件）：陌生人 clone 后无需 GPU 即可复算四表。
+!runs_sac/
+!runs_fixed/
+# µ16 重打分基线（rescore_mu16.py 的确定性产物；npz 本地重建属离线验证）
+!analysis/out/
+analysis/out/*
+!analysis/out/mu16_rescored_r6r7.json
