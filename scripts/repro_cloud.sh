@@ -25,11 +25,21 @@ PY=/opt/conda/bin/python; [ -x "$PY" ] || PY=python3
 
 step() { echo "=== $(date -u +%FT%TZ) $*"; }
 
+MODE=${1:-verdict}
+case "$MODE" in verdict|smoke|gpu-smoke|arm) ;; *) echo "usage: $0 {verdict|smoke|gpu-smoke|arm}"; exit 2;; esac
+
 # --- 1) code ---
 if [ ! -f "$REPO_DIR/reproduce.sh" ]; then
   step "fetch code tarball (resume + retry; github is flaky from the box)"
-  curl -sSL -C - --retry 20 --retry-delay 2 --retry-all-errors \
-       --speed-time 30 --speed-limit 10000 -o "$TARBALL" "$URL"
+  if ! curl -sSL -C - --retry 20 --retry-delay 2 --retry-all-errors \
+       --speed-time 30 --speed-limit 10000 -o "$TARBALL" "$URL"; then
+    echo "github unreachable from this box (varies per instance)."
+    echo "Fallback: upload the tarball from any machine with repo access:"
+    echo "  git archive --format=tar.gz -o fsa.tar.gz fsa-resample"
+    echo "  python -c \"import paramiko; t=paramiko.Transport(('<host>',<port>)); t.connect(username='root',password='<pwd>'); s=paramiko.SFTPClient.from_transport(t); s.put('fsa.tar.gz','$TARBALL'); s.close(); t.close()\""
+    echo "then re-run: tar xzf $TARBALL -C $REPO_DIR --strip-components=1 && sh scripts/repro_cloud.sh $MODE"
+    exit 1
+  fi
   rm -rf "$REPO_DIR" && mkdir -p "$REPO_DIR"
   tar xzf "$TARBALL" -C "$REPO_DIR" --strip-components=1
 fi
@@ -45,7 +55,6 @@ echo "evidence OK ($(grep -c . evidence/MANIFEST.sha256) files)"
 step "frozen-rule verdict from evidence/"
 $PY analysis/verdict.py
 
-MODE=${1:-verdict}
 case "$MODE" in verdict) echo "ALL_DONE (verdict)"; exit 0;; esac
 
 # --- 4) tests + CPU dry-run ---
