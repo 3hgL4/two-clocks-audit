@@ -1,0 +1,78 @@
+{
+  "pool": "data/heldout_mod_512.jsonl",
+  "pool_sha256": "adcc68e2d5098e607a68df5ae34a5dd7359db4fc778002067b53c2bd61778c42",
+  "model": "/root/rivermind-data/two-clocks-audit/models/Qwen3-1.7B-Base",
+  "adapter": null,
+  "n_prompts": 512,
+  "samples_per_prompt": 4,
+  "temperature": 1.0,
+  "top_p": 1.0,
+  "max_tokens": 512,
+  "seed": 0,
+  "judge": "src/verify.is_correct (same as GRPO reward correctness)",
+  "pass_rate": 0.0835,
+  "pass_rate_std_by_prompt": 0.1475,
+  "pass_any_rate": 0.2734,
+  "format_rate": 0.7505,
+  "by_depth": {
+    "2": {
+      "pass_rate": 0.1209,
+      "n_samples": 612
+    },
+    "3": {
+      "pass_rate": 0.1005,
+      "n_samples": 368
+    },
+    "4": {
+      "pass_rate": 0.057,
+      "n_samples": 316
+    },
+    "5": {
+      "pass_rate": 0.0556,
+      "n_samples": 396
+    },
+    "6": {
+      "pass_rate": 0.0625,
+      "n_samples": 208
+    },
+    "7": {
+      "pass_rate": 0.0473,
+      "n_samples": 148
+    }
+  },
+  "by_aggregation": {
+    "count": {
+      "pass_rate": 0.0753,
+      "n_samples": 292
+    },
+    "max": {
+      "pass_rate": 0.0805,
+      "n_samples": 236
+    },
+    "min": {
+      "pass_rate": 0.0773,
+      "n_samples": 220
+    },
+    "range": {
+      "pass_rate": 0.0896,
+      "n_samples": 268
+    },
+    "sum": {
+      "pass_rate": 0.0556,
+      "n_samples": 252
+    },
+    "sum_mod_10": {
+      "pass_rate": 0.1029,
+      "n_samples": 204
+    },
+    "sum_mod_9": {
+      "pass_rate": 0.0915,
+      "n_samples": 284
+    },
+    "unique_count": {
+      "pass_rate": 0.0959,
+      "n_samples": 292
+    }
+  },
+  "generate_seconds": 78.8
+}
