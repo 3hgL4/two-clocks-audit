@@ -51,8 +51,14 @@ case "$MODE" in verdict) echo "ALL_DONE (verdict)"; exit 0;; esac
 step "unit tests"
 $PY tests/run_all.py
 step "CPU dry-run (stub model + fake backend)"
+# Many-core boxes (192C) thrash on tiny stub matrices: torch spawns one OMP
+# thread per core and the sync overhead turns a <1 min dry-run into 30+ min.
+# Cap the threads; the GPU modes below are unaffected.
+OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 \
 $PY src/train.py --config configs/dryrun.yaml --device cpu
+OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 \
 $PY src/train.py --config configs/dryrun_resample_b.yaml --device cpu
+OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 \
 $PY src/train.py --config configs/dryrun_resample_c.yaml --device cpu
 case "$MODE" in smoke) echo "ALL_DONE (smoke)"; exit 0;; esac
 
