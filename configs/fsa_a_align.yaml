@@ -1,0 +1,19 @@
+# Compute-aligned A arm on the counting pool.
+#
+# Pre-registered open decision (探索期日志 第九节, adjudicated by user 2026-11-02 01:10):
+# A x 11 rollouts (~1.775M attempted tokens) vs campaign B x 8 rollouts
+# (attempted 1.69M s0 / 1.77M s1-2) — equal-attempted comparison to decide
+# whether B's +1.09pp held-out edge over A x 8 is sample efficiency or a
+# compute confound. A x 11 gets >= B s0's compute (+4.5%), which biases
+# TOWARD A, i.e. the conservative direction.
+# seed via CLI (--seed 0/1). Final adapter r010 is evaluated on
+# heldout_counting_512 with the same protocol as the B arm evals.
+extends: cloud48g_main.yaml
+run:
+  tag: fsa_a_align
+  seed: 0
+train:
+  mu: 1
+  num_rollouts: 11
+  resample:
+    mode: none

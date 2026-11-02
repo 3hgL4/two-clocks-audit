@@ -1,0 +1,88 @@
+{
+  "run_dir": "C:\\Users\\Administrator\\Desktop\\work sapce 1\\jd-lab\\projects\\two-clocks-audit\\runs\\mu1_s2",
+  "seed": 2,
+  "group_size": 8,
+  "n_rollouts": 8,
+  "per_rollout": {
+    "0": {
+      "n_groups": 512,
+      "wouldbe_b_reject_rate": 0.3496,
+      "all_wrong_frac": 0.3457,
+      "all_correct_frac": 0.0039,
+      "wouldbe_c_reject_rate": 0.0,
+      "kept_batch_pass": 0.3401,
+      "batch_pass": 0.225098
+    },
+    "1": {
+      "n_groups": 512,
+      "wouldbe_b_reject_rate": 0.293,
+      "all_wrong_frac": 0.293,
+      "all_correct_frac": 0.0,
+      "wouldbe_c_reject_rate": 0.0,
+      "kept_batch_pass": 0.3253,
+      "batch_pass": 0.22998
+    },
+    "2": {
+      "n_groups": 512,
+      "wouldbe_b_reject_rate": 0.3164,
+      "all_wrong_frac": 0.3164,
+      "all_correct_frac": 0.0,
+      "wouldbe_c_reject_rate": 0.0,
+      "kept_batch_pass": 0.335,
+      "batch_pass": 0.229004
+    },
+    "3": {
+      "n_groups": 512,
+      "wouldbe_b_reject_rate": 0.3066,
+      "all_wrong_frac": 0.293,
+      "all_correct_frac": 0.0137,
+      "wouldbe_c_reject_rate": 0.0117,
+      "kept_batch_pass": 0.3243,
+      "batch_pass": 0.238525
+    },
+    "4": {
+      "n_groups": 512,
+      "wouldbe_b_reject_rate": 0.2695,
+      "all_wrong_frac": 0.2676,
+      "all_correct_frac": 0.002,
+      "wouldbe_c_reject_rate": 0.0,
+      "kept_batch_pass": 0.3309,
+      "batch_pass": 0.243652
+    },
+    "5": {
+      "n_groups": 512,
+      "wouldbe_b_reject_rate": 0.2988,
+      "all_wrong_frac": 0.2949,
+      "all_correct_frac": 0.0039,
+      "wouldbe_c_reject_rate": 0.0,
+      "kept_batch_pass": 0.3454,
+      "batch_pass": 0.246094
+    },
+    "6": {
+      "n_groups": 512,
+      "wouldbe_b_reject_rate": 0.252,
+      "all_wrong_frac": 0.2461,
+      "all_correct_frac": 0.0059,
+      "wouldbe_c_reject_rate": 0.0059,
+      "kept_batch_pass": 0.3708,
+      "batch_pass": 0.283203
+    },
+    "7": {
+      "n_groups": 512,
+      "wouldbe_b_reject_rate": 0.2656,
+      "all_wrong_frac": 0.2578,
+      "all_correct_frac": 0.0078,
+      "wouldbe_c_reject_rate": 0.0039,
+      "kept_batch_pass": 0.3451,
+      "batch_pass": 0.26123
+    }
+  },
+  "summary": {
+    "b_reject_rate_mean": 0.2939,
+    "b_reject_rate_first_half": 0.3164,
+    "b_reject_rate_second_half": 0.2715,
+    "c_reject_rate_mean": 0.0027,
+    "kept_batch_pass_mean": 0.3396,
+    "batch_pass_mean": 0.2446
+  }
+}

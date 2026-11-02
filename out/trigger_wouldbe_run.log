@@ -1,0 +1,31 @@
+PASS MISMATCH vs metrics.jsonl (replay not bit-exact): [(0, 0.218017578125, 0.218018), (1, 0.22705078125, 0.227051), (2, 0.234619140625, 0.234619), (3, 0.237548828125, 0.237549), (4, 0.2578125, 0.257812), (5, 0.25439453125, 0.254395), (6, 0.26708984375, 0.26709), (7, 0.27001953125, 0.27002)]
+
+ERROR conda.cli.main_run:execute(127): `conda run python tools/trigger_wouldbe_npz.py C:/Users/Administrator/Desktop/work sapce 1/jd-lab/projects/two-clocks-audit/runs/mu1_s0 --seed 0 --out out/trigger_wouldbe` failed. (See above for error)
+r000: B reject 0.2910 (allw 0.2910 allc 0.0000) C reject 0.0000 kept-pass 0.3075 batch 0.2180
+r001: B reject 0.3027 (allw 0.2988 allc 0.0039) C reject 0.0000 kept-pass 0.3200 batch 0.2271
+r002: B reject 0.2930 (allw 0.2930 allc 0.0000) C reject 0.0000 kept-pass 0.3318 batch 0.2346
+r003: B reject 0.3223 (allw 0.3145 allc 0.0078) C reject 0.0039 kept-pass 0.3390 batch 0.2375
+r004: B reject 0.2930 (allw 0.2871 allc 0.0059) C reject 0.0059 kept-pass 0.3564 batch 0.2578
+r005: B reject 0.2871 (allw 0.2812 allc 0.0059) C reject 0.0059 kept-pass 0.3486 batch 0.2544
+r006: B reject 0.2773 (allw 0.2656 allc 0.0117) C reject 0.0020 kept-pass 0.3534 batch 0.2671
+r007: B reject 0.2637 (allw 0.2617 allc 0.0020) C reject 0.0039 kept-pass 0.3641 batch 0.2700
+
+The process cannot access the file because it is being used by another process.
+The system cannot find the file C:\Users\Administrator\AppData\Local\Temp\__conda_tmp_13237.txt.
+
+ERROR conda.cli.main_run:execute(127): `conda run python tools/trigger_wouldbe_npz.py C:/Users/Administrator/Desktop/work sapce 1/jd-lab/projects/two-clocks-audit/runs/mu1_s1 --seed 1 --out out/trigger_wouldbe` failed. (See above for error)
+Failed to run 'conda activate "C:\Users\Administrator\anaconda3\envs\ai"'.
+C:\Users\Administrator\AppData\Local\Temp\__conda_tmp_13237.txt
+
+PASS MISMATCH vs metrics.jsonl (replay not bit-exact): [(0, 0.22509765625, 0.225098), (1, 0.22998046875, 0.22998), (2, 0.22900390625, 0.229004), (3, 0.238525390625, 0.238525), (4, 0.24365234375, 0.243652), (5, 0.24609375, 0.246094), (6, 0.283203125, 0.283203), (7, 0.26123046875, 0.26123)]
+
+ERROR conda.cli.main_run:execute(127): `conda run python tools/trigger_wouldbe_npz.py C:/Users/Administrator/Desktop/work sapce 1/jd-lab/projects/two-clocks-audit/runs/mu1_s2 --seed 2 --out out/trigger_wouldbe` failed. (See above for error)
+r000: B reject 0.3496 (allw 0.3457 allc 0.0039) C reject 0.0000 kept-pass 0.3401 batch 0.2251
+r001: B reject 0.2930 (allw 0.2930 allc 0.0000) C reject 0.0000 kept-pass 0.3253 batch 0.2300
+r002: B reject 0.3164 (allw 0.3164 allc 0.0000) C reject 0.0000 kept-pass 0.3350 batch 0.2290
+r003: B reject 0.3066 (allw 0.2930 allc 0.0137) C reject 0.0117 kept-pass 0.3243 batch 0.2385
+r004: B reject 0.2695 (allw 0.2676 allc 0.0020) C reject 0.0000 kept-pass 0.3309 batch 0.2437
+r005: B reject 0.2988 (allw 0.2949 allc 0.0039) C reject 0.0000 kept-pass 0.3454 batch 0.2461
+r006: B reject 0.2520 (allw 0.2461 allc 0.0059) C reject 0.0059 kept-pass 0.3708 batch 0.2832
+r007: B reject 0.2656 (allw 0.2578 allc 0.0078) C reject 0.0039 kept-pass 0.3451 batch 0.2612
+
